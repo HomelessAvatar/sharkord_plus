@@ -31,7 +31,7 @@ import { releaseStalePictureInPicture } from '@/helpers/picture-in-picture';
 import { registerVoiceDebugSource } from '@/helpers/voice-debug';
 import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
 import { getTRPCClient } from '@/lib/trpc';
-import { NoiseSuppression, VideoCodec, type TStreamQuality } from '@/types';
+import { NoiseSuppression, type TStreamQuality } from '@/types';
 import {
   DEFAULT_BITRATE,
   getErrorMessage,
@@ -63,6 +63,7 @@ import {
 } from './controls-bridge';
 import { FloatingPinnedCard } from './floating-pinned-card';
 import {
+  getPreferredVideoCodec,
   getRemoteConsumerTypeKey,
   getScreenShareSimulcastEncodings,
   getSimulcastCodec,
@@ -1089,19 +1090,13 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
           let preferredCodec: RtpCodecCapability | undefined;
 
-          if (
-            !simulcastEnabled &&
-            screenSettings.screenCodec &&
-            screenSettings.screenCodec !== VideoCodec.AUTO &&
-            routerRtpCapabilities.current?.codecs
-          ) {
-            preferredCodec = routerRtpCapabilities.current.codecs.find(
-              (c) =>
-                c.mimeType.toLowerCase() ===
-                screenSettings.screenCodec.toLowerCase()
+          if (routerRtpCapabilities.current?.codecs) {
+            preferredCodec = getPreferredVideoCodec(
+              routerRtpCapabilities.current.codecs,
+              screenSettings.screenCodec
             );
 
-            if (preferredCodec) {
+            if (preferredCodec && !simulcastEnabled) {
               voiceLogger.info('screen: using preferred codec', {
                 codec: preferredCodec.mimeType
               });
@@ -1111,17 +1106,20 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
           const maxBitrateKbps =
             screenSettings.screenBitrate ?? DEFAULT_BITRATE;
           const simulcastCodec = simulcastEnabled
-            ? getSimulcastCodec(routerRtpCapabilities.current)
+            ? getSimulcastCodec(
+                routerRtpCapabilities.current,
+                screenSettings.screenCodec
+              )
             : undefined;
           const screenCodec = simulcastCodec ?? preferredCodec;
 
           if (simulcastCodec) {
-            voiceLogger.info('screen: using vp8 for simulcast', {
+            voiceLogger.info('screen: using codec for simulcast', {
               codec: simulcastCodec.mimeType
             });
           } else if (simulcastEnabled) {
             voiceLogger.warn(
-              'screen: vp8 unavailable, creating without simulcast'
+              'screen: simulcast codec unavailable, creating without simulcast'
             );
           }
           const screenShareProducerOptions: ProducerOptions<TVideoProducerAppData> =

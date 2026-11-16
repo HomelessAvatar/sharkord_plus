@@ -1,8 +1,15 @@
+import { VideoCodec } from '@/types';
 import type { TExternalStreamsMap } from '@sharkord/shared';
 import { StreamKind } from '@sharkord/shared';
 import { describe, expect, test } from 'bun:test';
+import type {
+  RtpCapabilities,
+  RtpCodecCapability
+} from 'mediasoup-client/types';
 import {
   getOwnedExternalVolumeKeys,
+  getPreferredVideoCodec,
+  getSimulcastCodec,
   getUserScreenVolumeKey,
   isOwnProducerEvent,
   resolveVolume
@@ -94,5 +101,138 @@ describe('screen share audio default volume', () => {
     expect(resolveVolume({ [screenKey]: 60 }, screenKey, new Set(), true)).toBe(
       60
     );
+  });
+});
+
+const createVideoCodec = (
+  mimeType: string,
+  profileLevelId?: string
+): RtpCodecCapability => ({
+  kind: 'video',
+  mimeType,
+  preferredPayloadType: 96,
+  clockRate: 90000,
+  parameters: profileLevelId ? { 'profile-level-id': profileLevelId } : {}
+});
+
+describe('getPreferredVideoCodec', () => {
+  const h264Baseline = createVideoCodec('video/H264', '42e01f');
+  const h264Main = createVideoCodec('video/H264', '4d0032');
+  const h264High = createVideoCodec('video/H264', '640032');
+  const vp8 = createVideoCodec('video/VP8');
+  const vp9 = createVideoCodec('video/VP9');
+  const av1 = createVideoCodec('video/AV1');
+
+  test('should select High profile H264 over Baseline profile when VideoCodec.H264 is preferred', () => {
+    const codecs = [vp8, h264Baseline, h264High];
+    const selected = getPreferredVideoCodec(codecs, VideoCodec.H264);
+
+    expect(selected).toBe(h264High);
+  });
+
+  test('should select High profile H264 when VideoCodec.AUTO is preferred', () => {
+    const codecs = [vp8, h264Baseline, h264High];
+    const selected = getPreferredVideoCodec(codecs, VideoCodec.AUTO);
+
+    expect(selected).toBe(h264High);
+  });
+
+  test('should select Main profile H264 if High profile is not present when VideoCodec.H264 is preferred', () => {
+    const codecs = [vp8, h264Baseline, h264Main];
+    const selected = getPreferredVideoCodec(codecs, VideoCodec.H264);
+
+    expect(selected).toBe(h264Main);
+  });
+
+  test('should select any matching H264 codec if neither High nor Main profile is present', () => {
+    const codecs = [vp8, h264Baseline];
+    const selected = getPreferredVideoCodec(codecs, VideoCodec.H264);
+
+    expect(selected).toBe(h264Baseline);
+  });
+
+  test('should select matching codec when another codec like AV1 or VP9 is preferred', () => {
+    const codecs = [vp8, h264High, vp9, av1];
+
+    expect(getPreferredVideoCodec(codecs, VideoCodec.AV1)).toBe(av1);
+    expect(getPreferredVideoCodec(codecs, VideoCodec.VP9)).toBe(vp9);
+    expect(getPreferredVideoCodec(codecs, VideoCodec.VP8)).toBe(vp8);
+  });
+
+  test('should return undefined if preferred codec is not available in codecs list', () => {
+    const codecs = [vp8, h264High];
+
+    expect(getPreferredVideoCodec(codecs, VideoCodec.AV1)).toBeUndefined();
+    expect(getPreferredVideoCodec(codecs, VideoCodec.H265)).toBeUndefined();
+  });
+
+  test('should return undefined for empty codecs list', () => {
+    expect(getPreferredVideoCodec([], VideoCodec.H264)).toBeUndefined();
+    expect(getPreferredVideoCodec([], VideoCodec.AUTO)).toBeUndefined();
+    expect(getPreferredVideoCodec([], VideoCodec.VP8)).toBeUndefined();
+  });
+
+  test('should handle uppercase profile-level-id case-insensitively', () => {
+    const h264HighUpper = createVideoCodec('video/H264', '64002A');
+    const codecs = [h264Baseline, h264HighUpper];
+
+    expect(getPreferredVideoCodec(codecs, VideoCodec.H264)).toBe(h264HighUpper);
+  });
+});
+
+describe('getSimulcastCodec', () => {
+  const h264Baseline = createVideoCodec('video/H264', '42e01f');
+  const h264High = createVideoCodec('video/H264', '640032');
+  const vp8 = createVideoCodec('video/VP8');
+  const vp9 = createVideoCodec('video/VP9');
+
+  const capabilitiesWithAll: RtpCapabilities = {
+    codecs: [vp8, h264Baseline, h264High, vp9],
+    headerExtensions: []
+  };
+
+  const capabilitiesOnlyVp8: RtpCapabilities = {
+    codecs: [vp8],
+    headerExtensions: []
+  };
+
+  const capabilitiesNoVp8: RtpCapabilities = {
+    codecs: [h264High],
+    headerExtensions: []
+  };
+
+  test('should select the preferred codec (e.g. H264 High) if present in router capabilities', () => {
+    const selected = getSimulcastCodec(capabilitiesWithAll, VideoCodec.H264);
+
+    expect(selected).toBe(h264High);
+  });
+
+  test('should fall back to VP8 if preferred codec is not present in router capabilities', () => {
+    const selected = getSimulcastCodec(capabilitiesOnlyVp8, VideoCodec.H264);
+
+    expect(selected).toBe(vp8);
+  });
+
+  test('should select VP8 when VideoCodec.AUTO is preferred', () => {
+    const selected = getSimulcastCodec(capabilitiesWithAll, VideoCodec.AUTO);
+
+    expect(selected).toBe(vp8);
+  });
+
+  test('should select VP8 when preferredCodec is omitted', () => {
+    const selected = getSimulcastCodec(capabilitiesWithAll);
+
+    expect(selected).toBe(vp8);
+  });
+
+  test('should return undefined if neither preferred codec nor VP8 is present in router capabilities', () => {
+    const selected = getSimulcastCodec(capabilitiesNoVp8, VideoCodec.AV1);
+
+    expect(selected).toBeUndefined();
+  });
+
+  test('should handle null or undefined capabilities safely', () => {
+    expect(getSimulcastCodec(null, VideoCodec.H264)).toBeUndefined();
+    expect(getSimulcastCodec(null)).toBeUndefined();
   });
 });

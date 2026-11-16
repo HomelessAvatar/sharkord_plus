@@ -247,12 +247,61 @@ const isOwnProducerEvent = (
   return ownUserId !== undefined && remoteId === ownUserId;
 };
 
+const getPreferredVideoCodec = (
+  codecs: RtpCodecCapability[],
+  preferredCodec?: VideoCodec
+): RtpCodecCapability | undefined => {
+  if (
+    preferredCodec === VideoCodec.H264 ||
+    preferredCodec === VideoCodec.AUTO
+  ) {
+    const h264Codecs = codecs.filter(
+      (c) => c.mimeType.toLowerCase() === VideoCodec.H264.toLowerCase()
+    );
+
+    const highProfile = h264Codecs.find((c) =>
+      c.parameters?.['profile-level-id']
+        ?.toString()
+        .toLowerCase()
+        .startsWith('64')
+    );
+    if (highProfile) return highProfile;
+
+    const mainProfile = h264Codecs.find((c) =>
+      c.parameters?.['profile-level-id']
+        ?.toString()
+        .toLowerCase()
+        .startsWith('4d')
+    );
+    if (mainProfile) return mainProfile;
+
+    return h264Codecs[0];
+  }
+
+  if (preferredCodec) {
+    return codecs.find(
+      (c) => c.mimeType.toLowerCase() === preferredCodec.toLowerCase()
+    );
+  }
+
+  return undefined;
+};
+
 const getSimulcastCodec = (
-  rtpCapabilities: RtpCapabilities | null
-): RtpCodecCapability | undefined =>
-  rtpCapabilities?.codecs?.find(
+  rtpCapabilities: RtpCapabilities | null,
+  preferredCodec?: VideoCodec
+): RtpCodecCapability | undefined => {
+  const codecs = rtpCapabilities?.codecs ?? [];
+
+  if (preferredCodec && preferredCodec !== VideoCodec.AUTO) {
+    const matchingCodec = getPreferredVideoCodec(codecs, preferredCodec);
+    if (matchingCodec) return matchingCodec;
+  }
+
+  return codecs.find(
     (c) => c.mimeType.toLowerCase() === VideoCodec.VP8.toLowerCase()
   );
+};
 
 const getExternalVolumeKey = (pluginId: string, key: string) =>
   `external-${pluginId}-${key}`;
@@ -307,6 +356,7 @@ export {
   getExternalVolumeKey,
   getInitialStreamPaused,
   getOwnedExternalVolumeKeys,
+  getPreferredVideoCodec,
   getRemoteConsumerTypeKey,
   getScreenShareSimulcastEncodings,
   getSimulcastCodec,
