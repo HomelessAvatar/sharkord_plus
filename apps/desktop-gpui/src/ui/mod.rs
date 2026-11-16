@@ -2,6 +2,7 @@
 //! Composes Server Rail, Channel Tree (with docked Voice Bar), and Chat Canvas
 //! according to the Pure Neutral Dark design specification.
 
+pub mod audio_settings;
 pub mod channel_tree;
 pub mod chat_canvas;
 pub mod server_rail;
@@ -13,6 +14,10 @@ use gpui::prelude::*;
 use gpui::*;
 use sharkord_core::types::Message;
 
+pub use audio_settings::{
+    AudioSettingsState, AudioSettingsView, DEFAULT_INPUT_VOLUME, DEFAULT_OUTPUT_VOLUME,
+    DEFAULT_VAD_THRESHOLD,
+};
 pub use channel_tree::{
     channel_icon, compose_channel_tree, CategorizedChannelGroup, ChannelDisplayItem,
     ChannelTreeView,
