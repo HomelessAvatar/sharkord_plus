@@ -87,7 +87,7 @@ const createAudioLinkRules = (options: TAudioLinkRuleOptions = {}) => {
   if (targetProcessId !== undefined && targetProcessId > 0) {
     return {
       include: [{ 'application.process.id': String(targetProcessId) }],
-      exclude: ownAudioNodes,
+      exclude: [...ownAudioNodes, { 'media.class': 'Stream/Input/Audio' }],
       ignore_devices: true,
       mute: false,
       only_speakers: false,

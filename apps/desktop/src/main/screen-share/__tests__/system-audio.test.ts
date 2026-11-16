@@ -26,7 +26,10 @@ describe('createAudioLinkRules', () => {
     });
 
     expect(rules.include).toEqual([{ 'application.process.id': '1234' }]);
-    expect(rules.exclude).toEqual([{ 'application.process.binary': 'sharkord' }]);
+    expect(rules.exclude).toEqual([
+      { 'application.process.binary': 'sharkord' },
+      { 'media.class': 'Stream/Input/Audio' }
+    ]);
     expect(rules.only_speakers).toBe(false);
     expect(rules.only_default_speakers).toBe(false);
     expect(rules.ignore_devices).toBe(true);

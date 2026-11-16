@@ -1,3 +1,4 @@
+import type { TDesktopStartAudioOptions } from '@sharkord/shared';
 import { voiceLogger } from './browser-logger';
 import { getDesktopApi } from './desktop-api';
 import { sleep } from './sleep';
@@ -28,9 +29,9 @@ const findVirtualMicId = async () => {
   return undefined;
 };
 
-const getDesktopSystemAudioTrack = async (options?: {
-  targetProcessId?: number;
-}) => {
+const getDesktopSystemAudioTrack = async (
+  options?: TDesktopStartAudioOptions
+) => {
   const desktopApi = getDesktopApi();
 
   if (!desktopApi) {
