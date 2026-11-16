@@ -27,10 +27,10 @@ jobs:
 
   build-and-publish:
     needs: [ci, e2e]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build project artifacts
         uses: ./.github/actions/build-sharkord
@@ -61,7 +61,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/Sharkord/sharkord
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: v${{ steps.get_version.outputs.version }}
