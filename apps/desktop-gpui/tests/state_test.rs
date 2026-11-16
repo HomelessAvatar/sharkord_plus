@@ -189,3 +189,45 @@ fn test_theme_tokens_match_design() {
     assert_eq!(acc_rgba.a, 1.0);
     assert_eq!(txt_rgba.a, 1.0);
 }
+
+#[test]
+fn test_user_state_mutations() {
+    use sharkord_core::types::User;
+
+    let mut state = AppState::new();
+    let user1 = User {
+        id: 1,
+        name: "Alice".to_string(),
+        identity: Some("alice".to_string()),
+        profile_color: Some("#3b82f6".to_string()),
+        bio: Some("Hello world".to_string()),
+        avatar_id: None,
+        banner_id: None,
+        banned: Some(false),
+        created_at: Some(1000),
+        role_ids: vec![1, 2],
+        status: Some("ONLINE".to_string()),
+    };
+
+    state.current_user = Some(user1.clone());
+    state.add_user(user1.clone());
+
+    assert_eq!(state.users.len(), 1);
+    assert_eq!(state.user_by_id(1).unwrap().name, "Alice");
+
+    // Real-time update simulation
+    let mut updated_user = user1.clone();
+    updated_user.name = "Alice In Wonderland".to_string();
+    updated_user.bio = Some("Updated bio".to_string());
+
+    state.update_user(updated_user);
+
+    assert_eq!(state.users.len(), 1);
+    assert_eq!(state.user_by_id(1).unwrap().name, "Alice In Wonderland");
+    assert_eq!(state.current_user.as_ref().unwrap().name, "Alice In Wonderland");
+    assert_eq!(state.current_user.as_ref().unwrap().bio.as_deref(), Some("Updated bio"));
+
+    state.remove_user(1);
+    assert!(state.users.is_empty());
+    assert_eq!(state.user_by_id(1), None);
+}

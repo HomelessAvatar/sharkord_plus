@@ -66,7 +66,7 @@ const changeUserImage = async (
     await removeFile(previousFileId);
   }
 
-  publishUser(userId, 'update');
+  await publishUser(userId, 'update');
 };
 
 export { changeUserImage, saveReplacementImage };

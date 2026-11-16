@@ -18,6 +18,7 @@ import { getUserSessionsRoute } from './get-user-sessions';
 import { getUsersRoute } from './get-users';
 import { kickRoute } from './kick';
 import { removeRoleRoute } from './remove-role';
+import { syncUsersRoute } from './sync-users';
 import { unbanRoute } from './unban';
 import { updatePasswordRoute } from './update-password';
 import { updateUserRoute } from './update-user';
@@ -27,6 +28,7 @@ export const usersRouter = t.router({
   changeBanner: changeBannerRoute,
   addRole: addRoleRoute,
   removeRole: removeRoleRoute,
+  sync: syncUsersRoute,
   update: updateUserRoute,
   updatePassword: updatePasswordRoute,
   getInfo: getUserInfoRoute,

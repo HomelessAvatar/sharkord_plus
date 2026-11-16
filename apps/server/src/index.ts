@@ -15,6 +15,7 @@ import { loadCrons } from './crons';
 import { loadDb } from './db';
 import { getHost } from './helpers/get-host';
 import { loadRateLimits } from './helpers/rate-limits';
+import { startExternalUsersWatcher } from './helpers/sync-external-users';
 import './helpers/updater';
 import { pluginManager } from './plugins';
 import { enqueueActivityLog } from './queues/activity-log';
@@ -30,6 +31,7 @@ await createServers();
 await loadMediasoup();
 await initVoiceRuntimes();
 await loadCrons();
+startExternalUsersWatcher();
 
 const host = getHost(
   config.server.host,

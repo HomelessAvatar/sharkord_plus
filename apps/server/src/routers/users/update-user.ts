@@ -66,7 +66,7 @@ const updateUserRoute = protectedProcedure
       .returning()
       .get();
 
-    publishUser(updatedUser.id, 'update');
+    await publishUser(updatedUser.id, 'update');
 
     eventBus.emit('user:updated', {
       userId: updatedUser.id,

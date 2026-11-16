@@ -10,6 +10,9 @@ pub enum EventType {
     MessageDeleted,
     UserJoined,
     UserLeft,
+    UserUpdated,
+    UserCreated,
+    UserDeleted,
     VoiceStateUpdated,
     Unknown(String),
 }
@@ -22,6 +25,9 @@ impl EventType {
             EventType::MessageDeleted => "messageDeleted",
             EventType::UserJoined => "userJoined",
             EventType::UserLeft => "userLeft",
+            EventType::UserUpdated => "userUpdated",
+            EventType::UserCreated => "userCreated",
+            EventType::UserDeleted => "userDeleted",
             EventType::VoiceStateUpdated => "voiceStateUpdated",
             EventType::Unknown(s) => s.as_str(),
         }
@@ -36,6 +42,9 @@ impl From<&str> for EventType {
             "messageDeleted" | "messageDelete" => EventType::MessageDeleted,
             "userJoined" | "userJoin" => EventType::UserJoined,
             "userLeft" | "userLeave" => EventType::UserLeft,
+            "userUpdated" | "userUpdate" => EventType::UserUpdated,
+            "userCreated" | "userCreate" => EventType::UserCreated,
+            "userDeleted" | "userDelete" => EventType::UserDeleted,
             "voiceStateUpdated" | "userVoiceStateUpdate" | "voiceChannelStateUpdate" => {
                 EventType::VoiceStateUpdated
             }
@@ -230,4 +239,43 @@ pub fn decode_websocket_frame(text: &str) -> Result<Option<SubscriptionEvent>, S
     }
 
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_event_type_serialization_and_parsing() {
+        assert_eq!(EventType::from("userUpdated"), EventType::UserUpdated);
+        assert_eq!(EventType::from("userUpdate"), EventType::UserUpdated);
+        assert_eq!(EventType::from("userCreated"), EventType::UserCreated);
+        assert_eq!(EventType::from("userCreate"), EventType::UserCreated);
+        assert_eq!(EventType::from("userDeleted"), EventType::UserDeleted);
+        assert_eq!(EventType::from("userDelete"), EventType::UserDeleted);
+        assert_eq!(EventType::UserUpdated.as_str(), "userUpdated");
+    }
+
+    #[test]
+    fn test_decode_user_update_event_frame() {
+        let frame = r#"{
+            "id": "sub-1",
+            "result": {
+                "type": "data",
+                "data": {
+                    "type": "userUpdate",
+                    "data": {
+                        "id": 42,
+                        "name": "UpdatedUser",
+                        "bio": "New bio"
+                    }
+                }
+            }
+        }"#;
+
+        let decoded = decode_websocket_frame(frame).unwrap().unwrap();
+        assert_eq!(decoded.event_type, EventType::UserUpdated);
+        assert_eq!(decoded.id.as_deref(), Some("sub-1"));
+        assert_eq!(decoded.data.get("name").unwrap().as_str(), Some("UpdatedUser"));
+    }
 }
