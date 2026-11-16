@@ -1,3 +1,4 @@
+import { useChannelById } from '@/features/server/channels/hooks';
 import { useVoiceUsersByChannelId } from '@/features/server/hooks';
 import { useOwnUserId } from '@/features/server/users/hooks';
 import {
@@ -5,6 +6,9 @@ import {
   useHideOwnScreenShare,
   useVoiceChannelExternalStreamsList
 } from '@/features/server/voice/hooks';
+import { useMobileDrawer } from '@/screens/server-view/mobile-drawer-context';
+import { IconButton } from '@sharkord/ui';
+import { Menu, Users, Volume2 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { ControlsBar } from './controls-bar';
 import { ExternalStreamCard } from './external-stream-card';
@@ -18,12 +22,14 @@ type TChannelProps = {
 };
 
 const VoiceChannel = memo(({ channelId }: TChannelProps) => {
+  const channel = useChannelById(channelId);
   const voiceUsers = useVoiceUsersByChannelId(channelId);
   const externalStreams = useVoiceChannelExternalStreamsList(channelId);
   const { pinnedCard, pinCard, unpinCard, isPinned } = usePinCardController();
   const hideNonVideoParticipants = useHideNonVideoParticipants();
   const hideOwnScreenShare = useHideOwnScreenShare();
   const ownUserId = useOwnUserId();
+  const { toggleMobileMenu, toggleMobileUsers } = useMobileDrawer();
   const isAnyCardPinned = pinnedCard !== undefined;
 
   const cards = useMemo(() => {
@@ -118,14 +124,36 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   if (voiceUsers.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground text-lg mb-2">
-            No one in the voice channel
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Join the voice channel to start a meeting
-          </p>
+      <div className="flex-1 flex flex-col size-full relative">
+        <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card">
+          <IconButton
+            icon={Menu}
+            size="sm"
+            variant="ghost"
+            className="-ml-1 text-muted-foreground hover:text-foreground"
+            onClick={toggleMobileMenu}
+          />
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            <Volume2 className="w-3.5 h-3.5" />
+            <span className="truncate max-w-40">{channel?.name}</span>
+          </div>
+          <IconButton
+            icon={Users}
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={toggleMobileUsers}
+          />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground text-lg mb-2">
+              No one in the voice channel
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Join the voice channel to start a meeting
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -133,6 +161,26 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   return (
     <div className="flex flex-col size-full relative bg-background overflow-hidden group/voice-stage">
+      <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card shrink-0 z-10">
+        <IconButton
+          icon={Menu}
+          size="sm"
+          variant="ghost"
+          className="-ml-1 text-muted-foreground hover:text-foreground"
+          onClick={toggleMobileMenu}
+        />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+          <Volume2 className="w-3.5 h-3.5" />
+          <span className="truncate max-w-40">{channel?.name}</span>
+        </div>
+        <IconButton
+          icon={Users}
+          size="sm"
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={toggleMobileUsers}
+        />
+      </div>
       <VoiceGrid pinnedCardId={pinnedCard?.id}>{cards}</VoiceGrid>
       <ControlsBar channelId={channelId} />
     </div>

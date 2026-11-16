@@ -14,10 +14,11 @@ import {
 } from '@/features/server/hooks';
 import { useThreadsOpen } from '@/features/server/threads/hooks';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
-import { Alert, AlertDescription } from '@sharkord/ui';
-import { AlertTriangle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Button } from '@sharkord/ui';
+import { Hash, Menu, Users } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMobileDrawer } from './mobile-drawer-context';
 
 type TContentWrapperProps = {
   isDmMode: boolean;
@@ -33,6 +34,7 @@ const ContentWrapper = memo(
     const activeFullscreenPluginId = useActiveFullscreenPluginId();
     const threadsOpen = useThreadsOpen();
     const selectedThread = useSelectedThread();
+    const { openMobileMenu, openMobileUsers } = useMobileDrawer();
 
     const onCloseThread = useCallback(() => setSelectedThread(undefined), []);
 
@@ -115,29 +117,37 @@ const ContentWrapper = memo(
           <div className="flex-col gap-2 h-full w-full hidden lg:flex overflow-auto">
             <PluginSlotRenderer slotId={PluginSlot.HOME_SCREEN} />
           </div>
-          <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center md:hidden">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-2xl font-semibold text-foreground">
+          <div className="flex flex-col items-center justify-center h-full gap-5 p-6 text-center md:hidden">
+            <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
+              <Hash className="w-8 h-8 text-primary" />
+            </div>
+            <div className="flex flex-col gap-1 max-w-xs">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
                 {t('welcomeToServer', { name: serverName })}
               </h2>
+              <p className="text-xs text-muted-foreground">
+                {t('swipeRightForChannels')}
+              </p>
             </div>
-            <Alert variant="destructive" className="max-w-md">
-              <AlertTriangle />
-              <AlertDescription>{t('mobileNotOptimized')}</AlertDescription>
-            </Alert>
-            <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">
-                  <ArrowRight />
-                </span>
+            <div className="flex flex-col gap-2.5 w-full max-w-xs">
+              <Button
+                variant="default"
+                size="default"
+                className="w-full justify-center gap-2 font-medium"
+                onClick={openMobileMenu}
+              >
+                <Menu className="w-4 h-4" />
                 <span>{t('swipeRightForChannels')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">
-                  <ArrowLeft />
-                </span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-center gap-2 text-muted-foreground"
+                onClick={openMobileUsers}
+              >
+                <Users className="w-4 h-4" />
                 <span>{t('swipeLeftForUsers')}</span>
-              </div>
+              </Button>
             </div>
           </div>
         </>

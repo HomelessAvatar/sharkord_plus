@@ -2,9 +2,18 @@ import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
 import { toggleChannelMuted } from '@/features/app/actions';
 import { useIsChannelMuted } from '@/features/app/hooks';
 import { useChannelById } from '@/features/server/channels/hooks';
+import { useMobileDrawer } from '@/screens/server-view/mobile-drawer-context';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
 import { IconButton, Tooltip } from '@sharkord/ui';
-import { BellOff, Hash, MessageCircleMore, Volume2, X } from 'lucide-react';
+import {
+  BellOff,
+  Hash,
+  Menu,
+  MessageCircleMore,
+  Users,
+  Volume2,
+  X
+} from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PinnedMessagesPopover } from './pinned-messages-popover';
@@ -20,6 +29,7 @@ const TextTopbar = memo(
     const { t } = useTranslation();
     const channel = useChannelById(channelId);
     const isMuted = useIsChannelMuted(channelId);
+    const { toggleMobileMenu, toggleMobileUsers } = useMobileDrawer();
 
     const onUnmuteClick = useCallback(() => {
       toggleChannelMuted(channelId);
@@ -45,17 +55,19 @@ const TextTopbar = memo(
     const getIcon = useCallback(() => {
       if (channel?.isDm) {
         return (
-          <MessageCircleMore className="inline-block text-muted-foreground h-4 w-4" />
+          <MessageCircleMore className="inline-block text-muted-foreground h-4 w-4 shrink-0" />
         );
       }
 
       if (channel?.type === ChannelType.TEXT) {
-        return <Hash className="inline-block text-muted-foreground h-4 w-4" />;
+        return (
+          <Hash className="inline-block text-muted-foreground h-4 w-4 shrink-0" />
+        );
       }
 
       if (channel?.type === ChannelType.VOICE) {
         return (
-          <Volume2 className="inline-block text-muted-foreground h-4 w-4" />
+          <Volume2 className="inline-block text-muted-foreground h-4 w-4 shrink-0" />
         );
       }
 
@@ -64,17 +76,24 @@ const TextTopbar = memo(
 
     return (
       <div className="flex h-12 border-b border-border bg-card w-auto overflow-hidden">
-        <div className="flex w-full items-center justify-between px-4">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex w-full items-center justify-between px-3 md:px-4">
+          <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+            <IconButton
+              icon={Menu}
+              size="sm"
+              variant="ghost"
+              className="md:hidden shrink-0 -ml-1 text-muted-foreground hover:text-foreground"
+              onClick={toggleMobileMenu}
+            />
             {getIcon()}
             <span className="font-bold truncate max-w-40">{info.name}</span>
             {info.topic && (
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
                 {info.topic}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2">
             <PluginSlotRenderer
               slotId={PluginSlot.CHANNEL_HEADER}
               props={pluginProps}
@@ -91,6 +110,13 @@ const TextTopbar = memo(
               </Tooltip>
             )}
             <PinnedMessagesPopover onScrollToMessage={onScrollToMessage} />
+            <IconButton
+              icon={Users}
+              size="sm"
+              variant="ghost"
+              className="lg:hidden text-muted-foreground hover:text-foreground"
+              onClick={toggleMobileUsers}
+            />
             {onClose && (
               <IconButton
                 onClick={onClose}
