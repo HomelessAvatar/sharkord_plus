@@ -1,0 +1,109 @@
+# Sharkord Plus: Rust Core & GPUI Desktop Client Design
+
+## 1. Executive Summary
+
+This document specifies the architecture and technical design for:
+1. **`crates/sharkord-core`**: A pure Rust shared client library implementing Sharkord's tRPC JSON-RPC and WebSocket pub/sub protocols. It provides universal platform independence (desktop, mobile, CLI) and strict backwards compatibility with standard vanilla Sharkord servers.
+2. **`apps/desktop-gpui`**: A high-performance, GPU-accelerated desktop application built on Zed's **GPUI** framework and `gpui-component` (GPUI Kit). It implements the **Pure Neutral Dark** design system (`PRODUCT.md` and `DESIGN.md`) with a responsive 3-column spatial layout and near-zero memory footprint (targeting 25-50 MB RAM vs 300+ MB on Electron).
+
+---
+
+## 2. Protocol & Backwards Compatibility Architecture
+
+Sharkord communicates via:
+- **HTTP tRPC:** Batched queries and mutations formatted as `GET /trpc/<route>?batch=1&input=<url-encoded-json>` and `POST /trpc/<route>?batch=1` with body `{"0": { "json": <input> }}`.
+- **WebSocket tRPC Subscriptions:** Real-time event streams (new messages, typing indicators, user joins/leaves, voice states) over `ws://<host>:<port>/trpc`.
+
+### 2.1 Capability Negotiation Matrix
+
+A Sharkord Plus client connects to any Sharkord server (Vanilla v0.0.30+ or Sharkord Plus):
+
+| Feature | Standard Vanilla Server | Sharkord Plus Server |
+|---|---|---|
+| Core Auth & Login | Standard cookie & session token | Standard cookie & session token |
+| Channels & Messages | Standard tRPC query/mutation format | Standard tRPC query/mutation format |
+| Realtime Subscriptions | Standard pub/sub JSON format | Standard pub/sub JSON format |
+| High Profile Codecs | Server selects default baseline | Plus server negotiates High/Main profiles |
+| Isolated Window Audio | Server mixes standard audio | Plus server routes isolated process audio |
+
+**Negotiation Mechanism:**
+Upon connecting, `SharkordClient` fetches public server settings via `others.getPublicSettings`. If extended settings or headers indicate a Sharkord Plus server, advanced features are unlocked; otherwise, the client operates in standard vanilla compatibility mode.
+
+---
+
+## 3. Crate Architecture: `crates/sharkord-core`
+
+```
+crates/sharkord-core/
+├── Cargo.toml
+├── src/
+│   ├── lib.rs              # Public exports
+│   ├── error.rs            # SharkordError enum
+│   ├── types.rs            # Shared models (User, Channel, Message, etc.)
+│   ├── protocol/
+│   │   ├── mod.rs          # tRPC query/mutation encoders & decoders
+│   │   └── events.rs       # WebSocket subscription framing & dispatch
+│   └── client.rs           # SharkordClient lifecycle and API methods
+└── tests/
+    ├── protocol_test.rs    # tRPC serialization & round-trip tests
+    └── client_test.rs      # Client mock & integration tests
+```
+
+### Key Signatures in `sharkord-core`:
+```rust
+pub struct SharkordClient {
+    base_url: String,
+    http_client: reqwest::Client,
+    session_token: Arc<RwLock<Option<String>>>,
+    capabilities: ServerCapabilities,
+}
+
+impl SharkordClient {
+    pub async fn connect(server_url: &str) -> Result<Self, SharkordError>;
+    pub async fn login(&self, identity: &str, password: &str) -> Result<User, SharkordError>;
+    pub async fn get_channels(&self) -> Result<Vec<Channel>, SharkordError>;
+    pub async fn get_messages(&self, channel_id: u32, cursor: Option<u32>) -> Result<Vec<Message>, SharkordError>;
+    pub async fn send_message(&self, channel_id: u32, content: &str) -> Result<Message, SharkordError>;
+    pub async fn subscribe_events(&self) -> Result<EventStream, SharkordError>;
+}
+```
+
+---
+
+## 4. Desktop Client Architecture: `apps/desktop-gpui`
+
+```
+apps/desktop-gpui/
+├── Cargo.toml
+├── src/
+│   ├── main.rs             # Application entrypoint & GPUI window runner
+│   ├── theme.rs            # Pure Neutral Dark tokens & GPUI styles
+│   ├── state.rs            # Reactive app state model (Context / Model)
+│   └── ui/
+│       ├── mod.rs          # Root 3-column workspace view
+│       ├── server_rail.rs  # Left server pill rail & global actions
+│       ├── channel_tree.rs # Channel categories, text/voice channel list
+│       ├── chat_canvas.rs  # Header, message stream, and message composer
+│       └── voice_bar.rs    # Docked voice status & mute/deafen controls
+└── tests/
+    └── ui_state_test.rs    # State management & model unit tests
+```
+
+### Pure Neutral Dark Theme Mapping in GPUI:
+- `bg_base`: `rgb(0x0a, 0x0b, 0x0e)`
+- `bg_surface`: `rgb(0x11, 0x12, 0x16)`
+- `bg_subsurface`: `rgb(0x16, 0x17, 0x1d)`
+- `bg_elevated`: `rgb(0x1c, 0x1e, 0x24)`
+- `border_hairline`: `rgba(0xff, 0xff, 0xff, 0.08)`
+- `text_primary`: `rgb(0xf3, 0xf4, 0xf6)`
+- `text_secondary`: `rgb(0x9c, 0xa3, 0xaf)`
+- `accent`: `rgb(0x3b, 0x82, 0xf6)`
+
+---
+
+## 5. Verification & Testing Strategy
+
+1. **Protocol Tests:** Verify that queries and mutations generated by `sharkord-core` serialize into exact tRPC JSON shapes that vanilla Bun Sharkord servers expect.
+2. **Error Recovery Tests:** Verify graceful handling when a vanilla server lacks a specific Plus endpoint or returns standard error payloads.
+3. **UI Layout & State Tests:** Verify that state updates (incoming message, channel switch, unread counter) trigger immediate re-renders in GPUI without UI thread blocking.
+4. **CI Matrix:** Compile and test with `cargo test --all` and `cargo check --all`.
