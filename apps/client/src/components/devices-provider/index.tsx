@@ -174,12 +174,20 @@ const DevicesProvider = memo(({ children }: TDevicesProviderProps) => {
         )
       );
 
-      setPlaybackDevices(
-        normalizeDevices(
-          allDevices.filter((d) => d.kind === 'audiooutput'),
-          'audiooutput'
-        )
-      );
+      const outputDevices = allDevices.filter((d) => d.kind === 'audiooutput');
+      const normalizedOutputs = normalizeDevices(outputDevices, 'audiooutput');
+
+      if (normalizedOutputs.length === 0) {
+        normalizedOutputs.push({
+          deviceId: 'default',
+          groupId: '',
+          kind: 'audiooutput',
+          label: t('defaultOutput', { defaultValue: 'System Default' }),
+          toJSON: () => ({})
+        } as MediaDeviceInfo);
+      }
+
+      setPlaybackDevices(normalizedOutputs);
 
       setVideoDevices(
         normalizeDevices(

@@ -610,7 +610,9 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
           echoCancellation: devices.echoCancellation,
           noiseSuppression: useStandardNs,
           sampleRate: useDtln ? 16000 : undefined,
-          channelCount: 1
+          channelCount: 1,
+          // @ts-expect-error - Chromium-specific WebRTC constraint to prevent communication audio ducking
+          googDucking: false
         },
         video: false
       };
@@ -733,6 +735,13 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
         localAudioProducer.current = await producerTransport.current.produce({
           track: transmitTrack,
+          encodings: [
+            {
+              priority: 'high',
+              networkPriority: 'high',
+              maxBitrate: 128000
+            }
+          ],
           codecOptions: {
             opusStereo: false,
             opusFec: true,
@@ -1126,10 +1135,16 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
             {
               track: videoTrack,
               codec: screenCodec,
+              encodings: [
+                {
+                  priority: 'low',
+                  networkPriority: 'low'
+                }
+              ],
               codecOptions: {
-                videoGoogleStartBitrate: Math.min(2000, maxBitrateKbps),
+                videoGoogleStartBitrate: Math.min(1000, maxBitrateKbps),
                 videoGoogleMaxBitrate: maxBitrateKbps,
-                videoGoogleMinBitrate: Math.min(200, maxBitrateKbps)
+                videoGoogleMinBitrate: Math.min(100, maxBitrateKbps)
               },
               appData: {
                 kind: StreamKind.SCREEN

@@ -198,6 +198,8 @@ const getScreenShareSimulcastEncodings = (
 
   return [
     {
+      priority: 'low',
+      networkPriority: 'low',
       maxBitrate: Math.min(
         SIMULCAST_SCREEN_LOW_LAYER_MAX_BITRATE,
         Math.round(safeMaxBitrate * SIMULCAST_SCREEN_LOW_LAYER_BITRATE_RATIO)
@@ -206,6 +208,8 @@ const getScreenShareSimulcastEncodings = (
       scaleResolutionDownBy: SIMULCAST_LOW_LAYER_SCALE
     },
     {
+      priority: 'low',
+      networkPriority: 'low',
       maxBitrate: Math.min(
         SIMULCAST_SCREEN_MID_LAYER_MAX_BITRATE,
         Math.round(safeMaxBitrate * SIMULCAST_SCREEN_MID_LAYER_BITRATE_RATIO)
@@ -214,6 +218,8 @@ const getScreenShareSimulcastEncodings = (
       scaleResolutionDownBy: SIMULCAST_MID_LAYER_SCALE
     },
     {
+      priority: 'low',
+      networkPriority: 'low',
       maxBitrate: safeMaxBitrate,
       scaleResolutionDownBy: SIMULCAST_HIGH_LAYER_SCALE
     }

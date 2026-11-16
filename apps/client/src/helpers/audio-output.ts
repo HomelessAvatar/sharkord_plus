@@ -21,22 +21,34 @@ const applyAudioOutputDevice = async (
     return true;
   }
 
-  if (audioElementWithSink.sinkId === playbackId) {
+  // In HTMLMediaElement W3C spec, sinkId === '' denotes the system default audio output device.
+  // If the target is 'default' (or empty) and the element is already targeting default ('default' or ''),
+  // no setSinkId invocation is needed and it avoids triggering browser permission rejections (e.g. in Firefox).
+  const currentSink = audioElementWithSink.sinkId ?? '';
+  const isTargetDefault = playbackId === 'default' || playbackId === '';
+  const isCurrentDefault = currentSink === '' || currentSink === 'default';
+
+  if (currentSink === playbackId || (isTargetDefault && isCurrentDefault)) {
     return true;
   }
 
   try {
-    await audioElementWithSink.setSinkId(playbackId);
+    // W3C spec specifies passing empty string "" to route to the user agent's default output
+    await audioElementWithSink.setSinkId(isTargetDefault ? '' : playbackId);
 
     return true;
   } catch (error) {
     console.warn('Failed to set output device:', error);
 
+    const isNotAllowed =
+      error instanceof DOMException &&
+      (error.name === 'NotAllowedError' || error.name === 'SecurityError');
+
     const now = Date.now();
     const lastWarningAt = lastOutputWarningByDevice.get(playbackId) ?? 0;
     const isOutsideCooldown = now - lastWarningAt > OUTPUT_WARNING_COOLDOWN_MS;
 
-    if (showWarning && isOutsideCooldown) {
+    if (showWarning && isOutsideCooldown && !isTargetDefault && !isNotAllowed) {
       lastOutputWarningByDevice.set(playbackId, now);
       toast.warning(
         'Could not switch to the selected speaker. Using default output.'
