@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::{Channel, Message, ServerSettings, User};
 
+use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
+
 /// Top-level application state for Sharkord desktop.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppState {
@@ -15,6 +17,7 @@ pub struct AppState {
     pub server_settings: Option<ServerSettings>,
     pub left_sidebar_open: bool,
     pub right_sidebar_open: bool,
+    pub voice_bar_state: VoiceBarState,
 }
 
 impl Default for AppState {
@@ -29,6 +32,7 @@ impl Default for AppState {
             server_settings: None,
             left_sidebar_open: true,
             right_sidebar_open: true,
+            voice_bar_state: VoiceBarState::default(),
         }
     }
 }
@@ -114,5 +118,45 @@ impl AppState {
     /// Finds a user by ID.
     pub fn user_by_id(&self, user_id: u64) -> Option<&User> {
         self.users.iter().find(|u| u.id == user_id)
+    }
+
+    /// Connects to a voice channel and updates voice bar state.
+    pub fn connect_voice(&mut self, channel_id: u64, channel_name: String) {
+        self.voice_bar_state.connection = VoiceConnectionState::Connected {
+            channel_id,
+            channel_name,
+            ping_ms: 0,
+        };
+    }
+
+    /// Updates voice ping in milliseconds.
+    pub fn update_voice_ping(&mut self, ping_ms: u32) {
+        if let VoiceConnectionState::Connected {
+            ping_ms: ref mut p, ..
+        } = self.voice_bar_state.connection
+        {
+            *p = ping_ms;
+        }
+    }
+
+    /// Toggles microphone mute. Returns the new muted state.
+    pub fn toggle_voice_mute(&mut self) -> bool {
+        self.voice_bar_state.toggle_mute();
+        self.voice_bar_state.is_muted
+    }
+
+    /// Toggles sound deafen. When deafened, microphone is also muted.
+    /// Returns the new deafened state.
+    pub fn toggle_voice_deafen(&mut self) -> bool {
+        self.voice_bar_state.toggle_deafen();
+        if self.voice_bar_state.is_deafened {
+            self.voice_bar_state.is_muted = true;
+        }
+        self.voice_bar_state.is_deafened
+    }
+
+    /// Disconnects from active voice channel.
+    pub fn disconnect_voice(&mut self) {
+        self.voice_bar_state.disconnect();
     }
 }

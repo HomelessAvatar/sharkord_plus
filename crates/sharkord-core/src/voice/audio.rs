@@ -40,10 +40,7 @@ impl AudioDeviceManager {
 
     /// Lists all available input (recording/microphone) devices.
     pub fn list_input_devices(&self) -> Result<Vec<AudioDevice>, SharkordError> {
-        let default_name = self
-            .host
-            .default_input_device()
-            .and_then(|d| d.name().ok());
+        let default_name = self.host.default_input_device().and_then(|d| d.name().ok());
 
         let devices = self
             .host
@@ -73,10 +70,9 @@ impl AudioDeviceManager {
             .default_output_device()
             .and_then(|d| d.name().ok());
 
-        let devices = self
-            .host
-            .output_devices()
-            .map_err(|e| SharkordError::Network(format!("Failed to query output devices: {}", e)))?;
+        let devices = self.host.output_devices().map_err(|e| {
+            SharkordError::Network(format!("Failed to query output devices: {}", e))
+        })?;
 
         let mut result = Vec::new();
         for dev in devices {

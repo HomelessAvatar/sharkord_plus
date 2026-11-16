@@ -15,7 +15,11 @@ async fn test_voice_session_mute_deafen_lifecycle() {
     assert!(session.is_muted());
 
     // Verify event
-    if let Ok(VoiceEvent::StateUpdated { mic_muted, sound_deafened }) = rx.recv().await {
+    if let Ok(VoiceEvent::StateUpdated {
+        mic_muted,
+        sound_deafened,
+    }) = rx.recv().await
+    {
         assert!(mic_muted);
         assert!(!sound_deafened);
     } else {
@@ -29,7 +33,11 @@ async fn test_voice_session_mute_deafen_lifecycle() {
     assert!(session.is_muted());
 
     // Verify deafen event
-    if let Ok(VoiceEvent::StateUpdated { mic_muted, sound_deafened }) = rx.recv().await {
+    if let Ok(VoiceEvent::StateUpdated {
+        mic_muted,
+        sound_deafened,
+    }) = rx.recv().await
+    {
         assert!(mic_muted);
         assert!(sound_deafened);
     } else {

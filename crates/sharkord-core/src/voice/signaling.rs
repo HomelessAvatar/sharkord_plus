@@ -124,8 +124,7 @@ impl SharkordClient {
         &self,
         options: ProducerOptions,
     ) -> Result<ProduceResponse, SharkordError> {
-        let input = serde_json::to_value(&options)
-            .map_err(SharkordError::Serialization)?;
+        let input = serde_json::to_value(&options).map_err(SharkordError::Serialization)?;
         let body = encode_mutation_body(Some(&input))?;
         let url = format!("{}/trpc/voice.produce", self.base_url());
 

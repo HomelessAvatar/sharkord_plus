@@ -1,6 +1,4 @@
-use sharkord_core::voice::{
-    DtlsParameters, ProducerOptions, VoiceStateInput,
-};
+use sharkord_core::voice::{DtlsParameters, ProducerOptions, VoiceStateInput};
 use sharkord_core::SharkordClient;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};

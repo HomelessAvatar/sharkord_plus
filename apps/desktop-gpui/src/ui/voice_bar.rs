@@ -4,11 +4,12 @@
 
 use gpui::prelude::*;
 use gpui::*;
+use serde::{Deserialize, Serialize};
 
 use crate::theme;
 
 /// Voice connection state for the active voice session.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VoiceConnectionState {
     Disconnected,
     Connecting,
@@ -50,7 +51,7 @@ pub fn voice_action_labels(is_muted: bool, is_deafened: bool) -> (&'static str, 
 }
 
 /// State for the voice bar controls.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VoiceBarState {
     pub connection: VoiceConnectionState,
     pub is_muted: bool,

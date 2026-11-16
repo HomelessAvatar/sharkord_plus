@@ -7,13 +7,31 @@ use tokio::sync::broadcast;
 /// Events emitted during an active voice session.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VoiceEvent {
-    Connected { channel_id: u32, ping_ms: u32 },
+    Connected {
+        channel_id: u32,
+        ping_ms: u32,
+    },
     Disconnected,
-    SpeakingChanged { is_speaking: bool, level: f32 },
-    UserSpeaking { user_id: u32, is_speaking: bool },
-    ParticipantJoined { user_id: u32, channel_id: u32 },
-    ParticipantLeft { user_id: u32, channel_id: u32 },
-    StateUpdated { mic_muted: bool, sound_deafened: bool },
+    SpeakingChanged {
+        is_speaking: bool,
+        level: f32,
+    },
+    UserSpeaking {
+        user_id: u32,
+        is_speaking: bool,
+    },
+    ParticipantJoined {
+        user_id: u32,
+        channel_id: u32,
+    },
+    ParticipantLeft {
+        user_id: u32,
+        channel_id: u32,
+    },
+    StateUpdated {
+        mic_muted: bool,
+        sound_deafened: bool,
+    },
 }
 
 /// Thread-safe voice session controller.
@@ -86,10 +104,9 @@ impl VoiceSession {
     /// Updates local speaking state and broadcasts `SpeakingChanged`.
     pub fn set_speaking(&self, is_speaking: bool, level: f32) {
         self.is_speaking.store(is_speaking, Ordering::SeqCst);
-        let _ = self.event_tx.send(VoiceEvent::SpeakingChanged {
-            is_speaking,
-            level,
-        });
+        let _ = self
+            .event_tx
+            .send(VoiceEvent::SpeakingChanged { is_speaking, level });
     }
 
     /// Dispatches an arbitrary voice event (e.g. participant joined or remote user speaking).
