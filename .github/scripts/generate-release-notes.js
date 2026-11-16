@@ -1,0 +1,114 @@
+#!/usr/bin/env node
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+
+function getGitOutput(command) {
+  try {
+    return execSync(command, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  } catch (e) {
+    return '';
+  }
+}
+
+const currentTag = process.env.GITHUB_REF_NAME || getGitOutput('git describe --tags --exact-match') || 'v0.1.0-alpha.2';
+const repo = process.env.GITHUB_REPOSITORY || 'HomelessAvatar/sharkord_plus';
+
+// Find previous tag
+let prevTag = '';
+try {
+  const tags = getGitOutput('git tag --sort=-creatordate').split('\n').filter(Boolean);
+  const currentIndex = tags.indexOf(currentTag);
+  if (currentIndex >= 0 && currentIndex < tags.length - 1) {
+    prevTag = tags[currentIndex + 1];
+  } else if (tags.length > 1) {
+    prevTag = tags[1];
+  }
+} catch (e) {
+  prevTag = '';
+}
+
+const range = prevTag ? `${prevTag}..HEAD` : 'HEAD~10..HEAD';
+const logOutput = getGitOutput(`git log ${range} --pretty=format:"%H|%h|%s|%an"`);
+
+const commits = logOutput ? logOutput.split('\n').filter(Boolean).map(line => {
+  const [hash, shortHash, subject, author] = line.split('|');
+  return { hash, shortHash, subject, author };
+}) : [];
+
+function formatCommitMessage(msg, repo) {
+  let formatted = msg.trim();
+  // Turn issue references like #989 or (fixes #989) into markdown links
+  formatted = formatted.replace(/#(\d+)/g, `[#$1](https://github.com/${repo}/issues/$1)`);
+  return formatted;
+}
+
+const features = [];
+const fixes = [];
+const infra = [];
+const docs = [];
+const others = [];
+
+for (const commit of commits) {
+  const { hash, shortHash, subject } = commit;
+  const commitUrl = `https://github.com/${repo}/commit/${hash}`;
+  const commitLink = `[\`${shortHash}\`](${commitUrl})`;
+  const formattedMsg = formatCommitMessage(subject, repo);
+
+  const lower = subject.toLowerCase();
+  if (lower.startsWith('fix')) {
+    fixes.push(`* ${commitLink} **${formattedMsg}**`);
+  } else if (lower.startsWith('feat')) {
+    features.push(`* ${commitLink} **${formattedMsg}**`);
+  } else if (lower.startsWith('docs')) {
+    docs.push(`* ${commitLink} ${formattedMsg}`);
+  } else if (lower.startsWith('ci') || lower.startsWith('chore') || lower.startsWith('build') || lower.startsWith('style') || lower.startsWith('perf')) {
+    infra.push(`* ${commitLink} ${formattedMsg}`);
+  } else {
+    others.push(`* ${commitLink} ${formattedMsg}`);
+  }
+}
+
+let body = `## 🦈 Sharkord Plus ${currentTag}\n\n`;
+
+if (features.length > 0) {
+  body += `### ✨ Eklenen Özellikler & Geliştirmeler (Features)\n`;
+  body += features.join('\n') + '\n\n';
+}
+
+if (fixes.length > 0) {
+  body += `### 🐛 Düzeltilen Hatalar (Bug Fixes)\n`;
+  body += fixes.join('\n') + '\n\n';
+}
+
+if (infra.length > 0) {
+  body += `### 🚀 Altyapı, Docker & CI/CD (Infrastructure)\n`;
+  body += infra.join('\n') + '\n\n';
+}
+
+if (docs.length > 0) {
+  body += `### 📚 Dokümantasyon (Documentation)\n`;
+  body += docs.join('\n') + '\n\n';
+}
+
+if (others.length > 0) {
+  body += `### 🔄 Diğer Değişiklikler (Other Changes)\n`;
+  body += others.join('\n') + '\n\n';
+}
+
+body += `### 📦 İndirilebilir Paketler (Native Binaries)\n`;
+body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` veya \`sharkord-gpui-windows-x64.zip\`\n`;
+body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` veya \`sharkord-gpui-linux-x64.tar.gz\`\n`;
+body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n\n`;
+
+body += `### 🐳 Docker İmajı (GHCR / SemVer & WUD Destekli)\n`;
+const semverTag = currentTag.replace(/^v/, '');
+body += `\`\`\`bash\n# SemVer sürümünü çekin (WUD uyumlu):\ndocker pull ghcr.io/${repo.toLowerCase()}:${semverTag}\n\`\`\`\n\n`;
+
+if (prevTag) {
+  body += `**Tam Değişiklik Listesi (Full Changelog):** https://github.com/${repo}/compare/${prevTag}...${currentTag}\n`;
+}
+
+const outputPath = process.argv[2] || 'release-notes.md';
+fs.writeFileSync(outputPath, body, 'utf8');
+console.log(`Generated release notes at ${outputPath}`);
