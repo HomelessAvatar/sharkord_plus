@@ -102,8 +102,7 @@ const updateSettingsRoute = protectedProcedure
 
     publishSettings();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, ...loggedValues } = input;
+    const { password: _password, ...loggedValues } = input;
 
     enqueueActivityLog({
       type: ActivityLogType.EDIT_SERVER_SETTINGS,

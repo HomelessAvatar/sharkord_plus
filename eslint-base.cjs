@@ -16,6 +16,14 @@ module.exports = {
   ignorePatterns: ["data/**", "data-test/**", "node_modules/**", "build/**"],
   rules: {
     allowEmptyCatch: 0,
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+      },
+    ],
     "unused-imports/no-unused-imports": "warn",
     "unused-imports/no-unused-vars": [
       "warn",
