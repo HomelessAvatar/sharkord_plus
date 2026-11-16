@@ -27,10 +27,28 @@ const hardwareEncoders = [
   'videotoolbox',
   'qsv',
   'amf',
-  'mediacodec'
+  'mediacodec',
+  'mediafoundation',
+  'd3d11',
+  'd3d12',
+  'dxva'
 ];
 
 const softwareEncoders = ['libvpx', 'openh264', 'libaom', 'software'];
+
+const isHardwareEncoder = (encoderImplementation: string): boolean | null => {
+  const lowerImpl = encoderImplementation.toLowerCase();
+
+  if (hardwareEncoders.some((hw) => lowerImpl.includes(hw))) {
+    return true;
+  }
+
+  if (softwareEncoders.some((sw) => lowerImpl.includes(sw))) {
+    return false;
+  }
+
+  return null;
+};
 
 const NOISE_SUPPRESSION_LABEL_KEYS: Record<NoiseSuppression, string> = {
   [NoiseSuppression.NONE]: 'settings:noiseSuppressionNone',
@@ -101,16 +119,16 @@ const StatsPopover = memo(({ children }: StatsPopoverProps) => {
   const encoder = useMemo(() => {
     if (!screenShare?.encoderImplementation) return null;
 
-    const lowerImpl = screenShare?.encoderImplementation.toLowerCase();
+    const isHardware = isHardwareEncoder(screenShare.encoderImplementation);
 
-    if (hardwareEncoders.some((hw) => lowerImpl.includes(hw))) {
+    if (isHardware === true) {
       return {
         label: t('gpuEncoder', { encoder: screenShare.encoderImplementation }),
         isHardware: true
       };
     }
 
-    if (softwareEncoders.some((sw) => lowerImpl.includes(sw))) {
+    if (isHardware === false) {
       return {
         label: t('cpuEncoder', { encoder: screenShare.encoderImplementation }),
         isHardware: false
@@ -398,4 +416,4 @@ const StatsPopover = memo(({ children }: StatsPopoverProps) => {
   );
 });
 
-export { StatsPopover };
+export { isHardwareEncoder, StatsPopover };

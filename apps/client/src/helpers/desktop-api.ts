@@ -1,6 +1,10 @@
 import { DESKTOP_BRIDGE_VERSION } from '@sharkord/shared';
 
 const connectDesktop = () => {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
   const entry = window.sharkordDesktop;
 
   if (!entry) {
