@@ -1,6 +1,4 @@
-use sharkord_core::{
-    Capabilities, Channel, ChannelType, Message, Role, ServerSettings, User,
-};
+use sharkord_core::{Capabilities, Channel, ChannelType, Message, Role, ServerSettings, User};
 
 #[test]
 fn test_user_serialization_and_deserialization() {
@@ -53,7 +51,8 @@ fn test_channel_serialization_and_deserialization() {
         "updatedAt": null
     }"##;
 
-    let channel: Channel = serde_json::from_str(text_json).expect("Failed to deserialize text channel");
+    let channel: Channel =
+        serde_json::from_str(text_json).expect("Failed to deserialize text channel");
     assert_eq!(channel.id, 1);
     assert_eq!(channel.name, "general");
     assert_eq!(channel.channel_type, ChannelType::Text);
@@ -70,8 +69,8 @@ fn test_channel_serialization_and_deserialization() {
         "position": 1
     }"##;
 
-    let voice_channel: Channel =
-        serde_json::from_str(voice_json).expect("Failed to deserialize voice channel with defaults");
+    let voice_channel: Channel = serde_json::from_str(voice_json)
+        .expect("Failed to deserialize voice channel with defaults");
     assert_eq!(voice_channel.id, 2);
     assert_eq!(voice_channel.channel_type, ChannelType::Voice);
     assert!(!voice_channel.private);
@@ -81,7 +80,8 @@ fn test_channel_serialization_and_deserialization() {
     assert!(serialized.contains(r#""type":"TEXT""#));
     assert!(serialized.contains(r#""categoryId":10"#));
 
-    let roundtrip: Channel = serde_json::from_str(&serialized).expect("Failed to roundtrip channel");
+    let roundtrip: Channel =
+        serde_json::from_str(&serialized).expect("Failed to roundtrip channel");
     assert_eq!(channel, roundtrip);
 }
 
@@ -109,7 +109,8 @@ fn test_message_serialization_and_deserialization() {
     assert!(serialized.contains(r#""channelId":1"#));
     assert!(serialized.contains(r#""userId":1"#));
 
-    let roundtrip: Message = serde_json::from_str(&serialized).expect("Failed to roundtrip message");
+    let roundtrip: Message =
+        serde_json::from_str(&serialized).expect("Failed to roundtrip message");
     assert_eq!(message, roundtrip);
 }
 
@@ -164,7 +165,10 @@ fn test_server_settings_serialization_and_deserialization() {
         serde_json::from_str(json_data).expect("Failed to deserialize server settings");
     assert_eq!(settings.server_id, "sharkord-main");
     assert_eq!(settings.name, "Main Server");
-    assert_eq!(settings.description.as_deref(), Some("Primary community server"));
+    assert_eq!(
+        settings.description.as_deref(),
+        Some("Primary community server")
+    );
     assert_eq!(settings.allow_new_users, Some(true));
     assert_eq!(settings.storage_quota, Some(10737418240));
 

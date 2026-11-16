@@ -26,3 +26,15 @@ pub enum SharkordError {
     #[error("{0}")]
     Other(String),
 }
+
+impl From<reqwest::Error> for SharkordError {
+    fn from(err: reqwest::Error) -> Self {
+        SharkordError::Network(err.to_string())
+    }
+}
+
+impl From<url::ParseError> for SharkordError {
+    fn from(err: url::ParseError) -> Self {
+        SharkordError::Protocol(format!("Invalid URL: {err}"))
+    }
+}

@@ -55,7 +55,7 @@ pub struct Channel {
     pub updated_at: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Message {
     pub id: u64,
@@ -134,6 +134,14 @@ pub struct ServerSettings {
     pub enable_search: Option<bool>,
     #[serde(default)]
     pub show_welcome_dialog: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_plus: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub high_profile_codecs: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub isolated_window_audio: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_version: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -147,6 +155,43 @@ pub struct Capabilities {
     pub isolated_window_audio: bool,
     #[serde(default)]
     pub server_version: Option<String>,
+}
+
+impl Capabilities {
+    pub fn standard() -> Self {
+        Self {
+            is_plus: false,
+            high_profile_codecs: false,
+            isolated_window_audio: false,
+            server_version: None,
+        }
+    }
+
+    pub fn from_settings(settings: &ServerSettings, is_plus_header: bool) -> Self {
+        let is_plus = is_plus_header
+            || settings.is_plus.unwrap_or(false)
+            || settings
+                .server_version
+                .as_deref()
+                .map(|v| v.to_lowercase().contains("plus"))
+                .unwrap_or(false);
+
+        if is_plus {
+            Self {
+                is_plus: true,
+                high_profile_codecs: settings.high_profile_codecs.unwrap_or(true),
+                isolated_window_audio: settings.isolated_window_audio.unwrap_or(true),
+                server_version: settings.server_version.clone(),
+            }
+        } else {
+            Self {
+                is_plus: false,
+                high_profile_codecs: false,
+                isolated_window_audio: false,
+                server_version: settings.server_version.clone(),
+            }
+        }
+    }
 }
 
 pub type ServerCapabilities = Capabilities;

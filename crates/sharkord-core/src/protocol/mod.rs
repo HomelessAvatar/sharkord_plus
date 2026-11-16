@@ -94,9 +94,8 @@ pub fn decode_trpc_response<T: DeserializeOwned>(json_str: &str) -> Result<T, Sh
     let root: serde_json::Value = serde_json::from_str(json_str)?;
 
     let item = if let Some(arr) = root.as_array() {
-        arr.first().ok_or_else(|| {
-            SharkordError::Protocol("Empty tRPC response array".to_string())
-        })?
+        arr.first()
+            .ok_or_else(|| SharkordError::Protocol("Empty tRPC response array".to_string()))?
     } else if let Some(obj) = root.as_object() {
         if let Some(first) = obj.get("0") {
             first
