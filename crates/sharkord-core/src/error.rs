@@ -11,6 +11,9 @@ pub enum SharkordError {
     #[error("tRPC error ({code}): {message}")]
     Trpc { code: i32, message: String },
 
+    #[error("RPC error ({code}): {message}")]
+    RpcError { code: i32, message: String },
+
     #[error("Network error: {0}")]
     Network(String),
 
