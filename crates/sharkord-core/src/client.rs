@@ -83,8 +83,13 @@ impl SharkordClient {
         }
     }
 
+    /// Exposes internal reqwest client for crate-internal procedure extensions.
+    pub(crate) fn http_client(&self) -> &reqwest::Client {
+        &self.http_client
+    }
+
     /// Helper to inject Authorization and Cookie headers based on active session token.
-    fn auth_headers(&self) -> HeaderMap {
+    pub(crate) fn auth_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         if let Some(token) = self.session_token() {
             if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", token)) {
