@@ -6,16 +6,17 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 
 ## 🚀 Active Development Phases
 
-### Phase 1: Native WebRTC Voice & Audio Engine in Rust 🎙️ *(In Progress)*
+### Phase 1: Native WebRTC Voice & Audio Engine in Rust 🎙️ *(Completed)*
 - **Core Voice Architecture (`crates/sharkord-core`):**
   - Implement Mediasoup SFU client in Rust (tRPC voice signaling for `joinVoice`, `connectTransport`, `produce`, `consume`).
   - Low-latency cross-platform audio capture & playback via `cpal` (WASAPI on Windows, PipeWire/ALSA on Linux, CoreAudio on macOS).
-  - High-fidelity Opus encoder & decoder pipeline with jitter buffer and packet loss concealment.
+  - VAD (Voice Activity Detection) engine with hysteresis threshold and live audio level RMS meter.
+  - Thread-safe `VoiceSession` state coordinator and event broadcasting.
 - **GPUI Desktop Voice Interface (`apps/desktop-gpui`):**
   - Interactive voice channel bar with Connect / Disconnect controls and connection latency stats.
-  - Microphone mute / deafen toggles, Push-to-Talk (PTT) with global hotkey support.
-  - Real-time green speaking indicator ring for active speakers.
-  - Audio input/output device selector and input sensitivity noise gate in Settings.
+  - Microphone mute / deafen toggles and reactive state integration.
+  - Real-time green speaking indicator ring for active speakers and channel roster integration.
+  - Native Audio Settings view with device selection, volume sliders, and live VU meter bar.
 
 ---
 
