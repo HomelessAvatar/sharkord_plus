@@ -100,7 +100,16 @@ const buildBrokenTailFolder = () => {
 };
 
 afterAll(() => {
-  fs.rmSync(workDir, { recursive: true, force: true });
+  try {
+    fs.rmSync(workDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100
+    });
+  } catch {
+    // Windows file locking fallback
+  }
 });
 
 describe('migrations', () => {

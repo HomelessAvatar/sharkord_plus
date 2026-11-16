@@ -32,14 +32,27 @@ function TooltipTrigger({
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
+type TTooltipContentProps = React.ComponentProps<
+  typeof TooltipPrimitive.Content
+> & {
+  container?: HTMLElement | null;
+};
+
 function TooltipContent({
   className,
   sideOffset = 0,
   children,
+  container,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: TTooltipContentProps) {
+  const portalContainer =
+    container ??
+    (typeof document !== 'undefined'
+      ? ((document.fullscreenElement as HTMLElement | null) ?? undefined)
+      : undefined);
+
   return (
-    <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Portal container={portalContainer}>
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}

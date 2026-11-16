@@ -15,14 +15,27 @@ function PopoverTrigger({
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+type TPopoverContentProps = React.ComponentProps<
+  typeof PopoverPrimitive.Content
+> & {
+  container?: HTMLElement | null;
+};
+
 function PopoverContent({
   className,
   align = 'center',
   sideOffset = 4,
+  container,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: TPopoverContentProps) {
+  const portalContainer =
+    container ??
+    (typeof document !== 'undefined'
+      ? ((document.fullscreenElement as HTMLElement | null) ?? undefined)
+      : undefined);
+
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={portalContainer}>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
