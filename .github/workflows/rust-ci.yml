@@ -29,6 +29,7 @@ permissions:
 jobs:
   check-and-test:
     name: Test & Build (${{ matrix.os }})
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -51,7 +52,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libvulkan-dev libx11-dev libx11-xcb-dev libxkbcommon-dev libwayland-dev
+          sudo apt-get install -y libasound2-dev libfontconfig1-dev libvulkan-dev libx11-dev libx11-xcb-dev libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
 
       - name: Check code formatting
         run: cargo fmt --check
