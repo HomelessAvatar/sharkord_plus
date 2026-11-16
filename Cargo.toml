@@ -4,3 +4,6 @@ members = [
     "crates/sharkord-core",
     "apps/desktop-gpui",
 ]
+
+[patch.crates-io]
+xattr = { path = "patches/xattr" }
