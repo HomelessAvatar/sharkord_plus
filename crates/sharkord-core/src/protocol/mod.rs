@@ -1,3 +1,6 @@
+pub mod events;
+pub use events::*;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::error::SharkordError;

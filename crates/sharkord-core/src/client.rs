@@ -1,9 +1,15 @@
 use std::sync::{Arc, RwLock};
 
+use futures_util::{SinkExt, StreamExt};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, COOKIE};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::header::{
+    HeaderValue as WsHeaderValue, AUTHORIZATION as WS_AUTHORIZATION, COOKIE as WS_COOKIE,
+};
 use url::Url;
 
 use crate::error::SharkordError;
+use crate::protocol::events::{decode_websocket_frame, SubscriptionEvent};
 use crate::protocol::{decode_trpc_response, encode_mutation_body, encode_query_params};
 use crate::types::{Capabilities, Channel, Message, ServerSettings, User};
 
@@ -323,5 +329,89 @@ impl SharkordClient {
                 })
             }
         }
+    }
+
+    /// Connects to the WebSocket endpoint and spawns a background listener delivering real-time SubscriptionEvents.
+    pub async fn subscribe_events(
+        &self,
+    ) -> Result<tokio::sync::mpsc::UnboundedReceiver<SubscriptionEvent>, SharkordError> {
+        let ws_scheme = if self.base_url.starts_with("https://") {
+            "wss"
+        } else {
+            "ws"
+        };
+
+        let mut parsed_url = Url::parse(&self.base_url)?;
+        parsed_url
+            .set_scheme(ws_scheme)
+            .map_err(|_| SharkordError::Protocol("Failed to set WebSocket scheme".to_string()))?;
+
+        if parsed_url.path().is_empty() {
+            parsed_url.set_path("/");
+        }
+
+        if let Some(token) = self.session_token() {
+            let mut pairs = parsed_url.query_pairs().into_owned().collect::<Vec<_>>();
+            if !pairs.iter().any(|(k, _)| k == "token") {
+                pairs.push(("token".to_string(), token));
+                parsed_url.query_pairs_mut().clear().extend_pairs(pairs);
+            }
+        }
+
+        let full_url = parsed_url.to_string();
+
+        let mut request = full_url
+            .into_client_request()
+            .map_err(|e| SharkordError::Protocol(format!("Invalid WebSocket request: {e}")))?;
+
+        if let Some(token) = self.session_token() {
+            if let Ok(val) = WsHeaderValue::from_str(&format!("Bearer {token}")) {
+                request.headers_mut().insert(WS_AUTHORIZATION, val);
+            }
+            if let Ok(val) = WsHeaderValue::from_str(&format!("token={token}")) {
+                request.headers_mut().insert(WS_COOKIE, val);
+            }
+        }
+
+        let (ws_stream, _response) = tokio_tungstenite::connect_async(request)
+            .await
+            .map_err(|e| SharkordError::Network(format!("WebSocket connection failed: {e}")))?;
+
+        let (mut write, mut read) = ws_stream.split();
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<SubscriptionEvent>();
+
+        tokio::spawn(async move {
+            while let Some(msg_res) = read.next().await {
+                match msg_res {
+                    Ok(msg) => match msg {
+                        tokio_tungstenite::tungstenite::Message::Text(text) => {
+                            match decode_websocket_frame(&text) {
+                                Ok(Some(event)) => {
+                                    if tx.send(event).is_err() {
+                                        break;
+                                    }
+                                }
+                                Ok(None) => {}
+                                Err(_) => {}
+                            }
+                        }
+                        tokio_tungstenite::tungstenite::Message::Ping(payload) => {
+                            let _ = write
+                                .send(tokio_tungstenite::tungstenite::Message::Pong(payload))
+                                .await;
+                        }
+                        tokio_tungstenite::tungstenite::Message::Close(_) => {
+                            break;
+                        }
+                        _ => {}
+                    },
+                    Err(_) => {
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(rx)
     }
 }
