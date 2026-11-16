@@ -5,6 +5,7 @@ import {
   type TDesktopEntry,
   type TDesktopHotkeyError,
   type TDesktopHotkeyPhase,
+  type TDesktopStartAudioOptions,
   type TNotificationTarget
 } from '@sharkord/shared';
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
@@ -35,7 +36,8 @@ const bridge: TDesktopBridge = {
   setVoiceActive: (active) => {
     ipcRenderer.send(BridgeChannel.SET_VOICE_ACTIVE, active);
   },
-  startSystemAudio: () => ipcRenderer.invoke(BridgeChannel.START_SYSTEM_AUDIO),
+  startSystemAudio: (options?: TDesktopStartAudioOptions) =>
+    ipcRenderer.invoke(BridgeChannel.START_SYSTEM_AUDIO, options),
   stopSystemAudio: () => ipcRenderer.invoke(BridgeChannel.STOP_SYSTEM_AUDIO),
   setHotkeys: (bindings) =>
     ipcRenderer.invoke(BridgeChannel.SET_HOTKEYS, bindings),

@@ -3,6 +3,7 @@ import {
   DESKTOP_MISMATCHES,
   type TDesktopConnectionState,
   type TDesktopMismatch,
+  type TDesktopStartAudioOptions,
   type TDesktopUnreadState
 } from '@sharkord/shared';
 import {
@@ -469,22 +470,29 @@ const createServerViews = (
       getHotkeyCapabilities
     );
 
-    view.webContents.ipc.handle(BridgeChannel.START_SYSTEM_AUDIO, () => {
-      const capturedAt = displayCaptureAt.get(server.id);
+    view.webContents.ipc.handle(
+      BridgeChannel.START_SYSTEM_AUDIO,
+      (_event, options?: TDesktopStartAudioOptions) => {
+        const capturedAt = displayCaptureAt.get(server.id);
 
-      if (
-        capturedAt === undefined ||
-        Date.now() - capturedAt > SYSTEM_AUDIO_WINDOW_MS
-      ) {
-        screenShareLogger.warn('system audio refused outside a capture', {
-          serverId: server.id
-        });
+        if (
+          capturedAt === undefined ||
+          Date.now() - capturedAt > SYSTEM_AUDIO_WINDOW_MS
+        ) {
+          screenShareLogger.warn('system audio refused outside a capture', {
+            serverId: server.id
+          });
 
-        return false;
+          return false;
+        }
+
+        return startSystemAudio(
+          server.id,
+          shouldCaptureAllAudioOutputs(),
+          options?.targetProcessId
+        );
       }
-
-      return startSystemAudio(server.id, shouldCaptureAllAudioOutputs());
-    });
+    );
 
     view.webContents.ipc.on(BridgeChannel.SET_VOICE_ACTIVE, (_event, value) => {
       if (typeof value !== 'boolean') {

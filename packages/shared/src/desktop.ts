@@ -44,6 +44,10 @@ export type TDesktopHotkeyError = {
   reason: TDesktopHotkeyErrorReason;
 };
 
+export type TDesktopStartAudioOptions = {
+  targetProcessId?: number;
+};
+
 export type TDesktopBridge = {
   getServerListVisible: () => Promise<boolean>;
   onServerListVisibleChange: (
@@ -54,7 +58,7 @@ export type TDesktopBridge = {
   setUnreadState: (state: TDesktopUnreadState) => void;
   setConnectionState: (state: TDesktopConnectionState) => void;
   setVoiceActive: (active: boolean) => void;
-  startSystemAudio: () => Promise<boolean>;
+  startSystemAudio: (options?: TDesktopStartAudioOptions) => Promise<boolean>;
   stopSystemAudio: () => Promise<void>;
   showNotification: (notification: TAppNotification) => void;
   setHotkeys: (

@@ -1,5 +1,5 @@
 import type { Node, PatchBay } from '@vencord/venmic';
-import { app } from 'electron';
+import electron from 'electron';
 import { createRequire } from 'module';
 import path from 'path';
 import { createLogger } from '../logs/logger';
@@ -20,7 +20,7 @@ const loadPatchBay = () => {
 
   patchBay = null;
 
-  if (process.platform !== 'linux') {
+  if (process.platform !== 'linux' && process.platform !== 'win32') {
     return patchBay;
   }
 
@@ -49,7 +49,7 @@ const getOwnAudioNodes = (): Node[] => {
     { 'application.process.binary': path.basename(process.execPath) }
   ];
 
-  const metrics = app.getAppMetrics();
+  const metrics = electron.app?.getAppMetrics?.() ?? [];
   const audioService = metrics.find(({ name }) => name === 'Audio Service');
 
   if (audioService) {
@@ -75,7 +75,41 @@ const DEFAULT_SPEAKER_RULES = {
   only_default_speakers: true
 };
 
-const startSystemAudio = (id: string, allOutputs: boolean) => {
+type TAudioLinkRuleOptions = {
+  allOutputs?: boolean;
+  targetProcessId?: number;
+  ownAudioNodes?: Node[];
+};
+
+const createAudioLinkRules = (options: TAudioLinkRuleOptions = {}) => {
+  const { allOutputs = false, targetProcessId, ownAudioNodes = [] } = options;
+
+  if (targetProcessId !== undefined && targetProcessId > 0) {
+    return {
+      include: [{ 'application.process.id': String(targetProcessId) }],
+      exclude: ownAudioNodes,
+      ignore_devices: true,
+      mute: false,
+      only_speakers: false,
+      only_default_speakers: false
+    };
+  }
+
+  const baseRules = allOutputs ? ALL_OUTPUTS_RULES : DEFAULT_SPEAKER_RULES;
+
+  return {
+    ...baseRules,
+    exclude: [...ownAudioNodes, { 'media.class': 'Stream/Input/Audio' }],
+    ignore_devices: true,
+    mute: false
+  };
+};
+
+const startSystemAudio = (
+  id: string,
+  allOutputs: boolean,
+  targetProcessId?: number
+) => {
   const bay = loadPatchBay();
 
   if (!bay) {
@@ -88,17 +122,20 @@ const startSystemAudio = (id: string, allOutputs: boolean) => {
     return false;
   }
 
-  const rules = allOutputs ? ALL_OUTPUTS_RULES : DEFAULT_SPEAKER_RULES;
-
-  const linked = bay.link({
-    ...rules,
-    // recording streams, our own microphone among them, are not system audio
-    exclude: [...getOwnAudioNodes(), { 'media.class': 'Stream/Input/Audio' }],
-    ignore_devices: true,
-    mute: false
+  const rules = createAudioLinkRules({
+    allOutputs,
+    targetProcessId,
+    ownAudioNodes: getOwnAudioNodes()
   });
 
-  logger.info('linked system audio', { serverId: id, allOutputs, linked });
+  const linked = bay.link(rules);
+
+  logger.info('linked system audio', {
+    serverId: id,
+    allOutputs,
+    targetProcessId,
+    linked
+  });
 
   if (linked) {
     ownerId = id;
@@ -119,4 +156,4 @@ const stopSystemAudio = (id: string) => {
   logger.info('unlinked system audio', { serverId: id });
 };
 
-export { startSystemAudio, stopSystemAudio };
+export { createAudioLinkRules, startSystemAudio, stopSystemAudio };

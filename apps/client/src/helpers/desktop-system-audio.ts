@@ -28,7 +28,9 @@ const findVirtualMicId = async () => {
   return undefined;
 };
 
-const getDesktopSystemAudioTrack = async () => {
+const getDesktopSystemAudioTrack = async (options?: {
+  targetProcessId?: number;
+}) => {
   const desktopApi = getDesktopApi();
 
   if (!desktopApi) {
@@ -36,7 +38,7 @@ const getDesktopSystemAudioTrack = async () => {
   }
 
   try {
-    const started = await desktopApi.startSystemAudio();
+    const started = await desktopApi.startSystemAudio(options);
 
     if (!started) {
       return undefined;
