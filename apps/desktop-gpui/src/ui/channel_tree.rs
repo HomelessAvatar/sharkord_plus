@@ -16,12 +16,35 @@ pub fn channel_icon(channel_type: ChannelType) -> &'static str {
     }
 }
 
+/// Display state for a participant in a voice channel roster.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VoiceParticipantDisplay {
+    pub user_id: u64,
+    pub name: String,
+    pub is_speaking: bool,
+    pub is_muted: bool,
+    pub is_deafened: bool,
+}
+
+impl VoiceParticipantDisplay {
+    /// Returns the border color (hex u32) for the speaking indicator ring,
+    /// or None if the participant is not currently speaking.
+    pub fn speaking_border_color(&self) -> Option<u32> {
+        if self.is_speaking {
+            Some(theme::STATUS_ONLINE)
+        } else {
+            None
+        }
+    }
+}
+
 /// Channel item prepared for display in the channel tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChannelDisplayItem {
     pub channel: Channel,
     pub is_active: bool,
     pub has_unread: bool,
+    pub voice_participants: Vec<VoiceParticipantDisplay>,
 }
 
 /// A group of channels under a named category.
@@ -36,6 +59,16 @@ pub fn compose_channel_tree(
     channels: &[Channel],
     active_channel_id: Option<u64>,
 ) -> Vec<CategorizedChannelGroup> {
+    let empty_participants = std::collections::HashMap::new();
+    compose_channel_tree_with_participants(channels, active_channel_id, &empty_participants)
+}
+
+/// Composes channel tree including voice participants for active voice channels.
+pub fn compose_channel_tree_with_participants(
+    channels: &[Channel],
+    active_channel_id: Option<u64>,
+    participants: &std::collections::HashMap<u64, Vec<VoiceParticipantDisplay>>,
+) -> Vec<CategorizedChannelGroup> {
     if channels.is_empty() {
         return Vec::new();
     }
@@ -46,10 +79,12 @@ pub fn compose_channel_tree(
 
     for ch in channels {
         let is_active = active_channel_id == Some(ch.id);
+        let voice_participants = participants.get(&ch.id).cloned().unwrap_or_default();
         let item = ChannelDisplayItem {
             channel: ch.clone(),
             is_active,
             has_unread: false,
+            voice_participants,
         };
 
         match ch.category_id {
@@ -196,40 +231,125 @@ impl ChannelTreeView {
 
                                 div()
                                     .flex()
-                                    .flex_row()
-                                    .items_center()
-                                    .gap_2()
-                                    .px_2()
-                                    .py_1()
-                                    .rounded_md()
-                                    .bg(if is_active {
-                                        theme::bg_elevated()
-                                    } else {
-                                        theme::bg_subsurface()
-                                    })
-                                    .text_color(if is_active {
-                                        theme::text_primary()
-                                    } else {
-                                        theme::text_secondary()
-                                    })
+                                    .flex_col()
+                                    .w_full()
                                     .child(
                                         div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap_2()
+                                            .px_2()
+                                            .py_1()
+                                            .rounded_md()
+                                            .bg(if is_active {
+                                                theme::bg_elevated()
+                                            } else {
+                                                theme::bg_subsurface()
+                                            })
                                             .text_color(if is_active {
                                                 theme::text_primary()
                                             } else {
-                                                theme::text_muted()
+                                                theme::text_secondary()
                                             })
-                                            .child(icon),
+                                            .child(
+                                                div()
+                                                    .text_color(if is_active {
+                                                        theme::text_primary()
+                                                    } else {
+                                                        theme::text_muted()
+                                                    })
+                                                    .child(icon),
+                                            )
+                                            .child(
+                                                div()
+                                                    .font_weight(if is_active {
+                                                        gpui::FontWeight::MEDIUM
+                                                    } else {
+                                                        gpui::FontWeight::NORMAL
+                                                    })
+                                                    .child(item.channel.name.clone()),
+                                            ),
                                     )
-                                    .child(
+                                    // Voice participants list under active voice channel
+                                    .children(item.voice_participants.iter().map(|p| {
+                                        let border_color = p.speaking_border_color();
+
                                         div()
-                                            .font_weight(if is_active {
-                                                gpui::FontWeight::MEDIUM
-                                            } else {
-                                                gpui::FontWeight::NORMAL
-                                            })
-                                            .child(item.channel.name.clone()),
-                                    )
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .justify_between()
+                                            .pl_6()
+                                            .pr_2()
+                                            .py_1()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .flex_row()
+                                                    .items_center()
+                                                    .gap_2()
+                                                    // Participant avatar with speaking indicator ring
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_center()
+                                                            .w(px(20.0))
+                                                            .h(px(20.0))
+                                                            .rounded_full()
+                                                            .bg(theme::bg_surface_4())
+                                                            .border_2()
+                                                            .border_color(
+                                                                if let Some(c) = border_color {
+                                                                    rgb(c)
+                                                                } else {
+                                                                    rgba(0x00000000)
+                                                                },
+                                                            )
+                                                            .text_xs()
+                                                            .text_color(theme::text_primary())
+                                                            .child(
+                                                                p.name
+                                                                    .chars()
+                                                                    .next()
+                                                                    .unwrap_or('?')
+                                                                    .to_string(),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(theme::text_primary())
+                                                            .child(p.name.clone()),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .flex_row()
+                                                    .items_center()
+                                                    .gap_1()
+                                                    .children(if p.is_deafened {
+                                                        Some(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(theme::status_dnd())
+                                                                .child("🎧"),
+                                                        )
+                                                    } else if p.is_muted {
+                                                        Some(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(theme::status_dnd())
+                                                                .child("🔇"),
+                                                        )
+                                                    } else {
+                                                        None
+                                                    }),
+                                            )
+                                    }))
                             }))
                     })),
             )
