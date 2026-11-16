@@ -42,7 +42,7 @@ The only self-hosted communication suite combining a rich Bun/tRPC server with a
 
 ## Evidence on Hand
 
-- Existing codebase: Monorepo with Bun workspaces (`apps/server`, `apps/client`, `apps/desktop`, `packages/*`).
+- Existing codebase: Monorepo with Bun & Cargo workspaces (`apps/server`, `apps/client`, `apps/desktop-gpui`, `crates/*`, `packages/*`). Electron has been completely removed in favor of native Rust GPUI.
 - Completed fixes: Hardware encoding across codecs (Issue #942) and isolated window audio sharing (Issue #925).
 - Rust toolchain: `cargo 1.100.0` and `rustc 1.100.0` installed.
 

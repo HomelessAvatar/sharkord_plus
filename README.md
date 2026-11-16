@@ -69,12 +69,11 @@ sharkord_plus/
 ├── apps/
 │   ├── client/           # Web client (React + Vite + Redux Toolkit + Tailwind)
 │   ├── server/           # Backend (Bun + tRPC + Drizzle SQLite + Mediasoup SFU)
-│   ├── desktop/          # Legacy Electron wrapper with hardware acceleration flags
-│   └── desktop-gpui/     # Pure Native Rust + GPUI Desktop application
+│   └── desktop-gpui/     # Pure Native Rust + GPUI Desktop application (No Electron)
 ├── crates/
 │   └── sharkord-core/    # Core Rust SDK (Models, tRPC client, WebSockets, Capabilities)
 ├── packages/
-│   ├── shared/           # Types, enums, permissions shared across client, server, desktop
+│   ├── shared/           # Types, enums, permissions shared across client, server, native
 │   ├── ui/               # Presentational UI components (Radix UI + Tailwind)
 │   └── plugin-sdk/       # Public API surface for plugin developers
 ├── docs/                 # Architecture, design guidelines, and upstream sync docs

@@ -20,10 +20,7 @@ const flatten = (obj: any, prefix = ''): Record<string, string> =>
 
 const cwd = process.cwd();
 const projectRoot = path.join(cwd, '..', '..');
-const i18nPaths = [
-  path.join(projectRoot, 'apps', 'client', 'src', 'i18n'),
-  path.join(projectRoot, 'apps', 'desktop', 'src', 'i18n')
-];
+const i18nPaths = [path.join(projectRoot, 'apps', 'client', 'src', 'i18n')];
 
 const missingTranslationsReport: {
   locale: string;
