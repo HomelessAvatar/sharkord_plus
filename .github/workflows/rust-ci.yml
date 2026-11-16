@@ -5,6 +5,8 @@ on:
     branches:
       - development
       - main
+    tags:
+      - 'v*'
     paths:
       - 'crates/**'
       - 'apps/desktop-gpui/**'
@@ -24,7 +26,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   check-and-test:
@@ -86,3 +88,42 @@ jobs:
         with:
           name: sharkord-gpui-macos
           path: target/release/desktop-gpui
+
+  publish-release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p dist-release
+          cp release-artifacts/sharkord-gpui-windows/desktop-gpui.exe dist-release/sharkord-gpui-windows-x64.exe
+          cp release-artifacts/sharkord-gpui-linux/desktop-gpui dist-release/sharkord-gpui-linux-x64
+          chmod +x dist-release/sharkord-gpui-linux-x64
+          cp release-artifacts/sharkord-gpui-macos/desktop-gpui dist-release/sharkord-gpui-macos-arm64
+          chmod +x dist-release/sharkord-gpui-macos-arm64
+
+          cd dist-release
+          zip sharkord-gpui-windows-x64.zip sharkord-gpui-windows-x64.exe
+          zip sharkord-gpui-macos-arm64.zip sharkord-gpui-macos-arm64
+          tar -czvf sharkord-gpui-linux-x64.tar.gz sharkord-gpui-linux-x64
+          ls -la
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Sharkord Plus ${{ github.ref_name }}
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            dist-release/*
