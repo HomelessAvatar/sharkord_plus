@@ -87,14 +87,6 @@ const defaultRouterOptions: RouterOptions<AppData> = {
     },
     {
       kind: 'video',
-      mimeType: 'video/H265',
-      clockRate: 90000,
-      parameters: {
-        'x-google-start-bitrate': 2000
-      }
-    },
-    {
-      kind: 'video',
       mimeType: 'video/AV1',
       clockRate: 90000,
       parameters: {

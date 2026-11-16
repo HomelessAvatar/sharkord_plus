@@ -51,7 +51,12 @@ const MEDIASOUP_PATH = path.resolve(DATA_PATH, 'mediasoup');
 const CONFIG_INI_PATH = path.resolve(DATA_PATH, 'config.ini');
 const PLUGINS_PATH = path.join(DATA_PATH, 'plugins');
 const PLUGINS_DATA_PATH = path.join(DATA_PATH, 'plugin-data');
-const SRC_MIGRATIONS_PATH = path.join(process.cwd(), 'src', 'db', 'migrations');
+const SRC_MIGRATIONS_PATH = path.resolve(
+  import.meta.dir,
+  '..',
+  'db',
+  'migrations'
+);
 
 export {
   BACKUPS_PATH,

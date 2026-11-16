@@ -569,15 +569,17 @@ describe('VoiceRuntime server mute', () => {
 });
 
 describe('defaultRouterOptions', () => {
-  test('should include video/H265 and prioritize H264 High profile in defaultRouterOptions', () => {
-    const h265 = defaultRouterOptions.mediaCodecs?.find(
-      (c) => c.mimeType === 'video/H265'
+  test('should prioritize H264 High profile over Constrained Baseline in defaultRouterOptions', () => {
+    const av1 = defaultRouterOptions.mediaCodecs?.find(
+      (c) => c.mimeType === 'video/AV1'
     );
-    expect(h265).toBeDefined();
+    expect(av1).toBeDefined();
 
     const h264Codecs = defaultRouterOptions.mediaCodecs?.filter(
       (c) => c.mimeType === 'video/H264'
     );
     expect(h264Codecs?.[0]?.parameters?.['profile-level-id']).toBe('640032');
+    expect(h264Codecs?.[1]?.parameters?.['profile-level-id']).toBe('4d0032');
+    expect(h264Codecs?.[2]?.parameters?.['profile-level-id']).toBe('42e01f');
   });
 });
