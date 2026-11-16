@@ -224,8 +224,14 @@ fn test_user_state_mutations() {
 
     assert_eq!(state.users.len(), 1);
     assert_eq!(state.user_by_id(1).unwrap().name, "Alice In Wonderland");
-    assert_eq!(state.current_user.as_ref().unwrap().name, "Alice In Wonderland");
-    assert_eq!(state.current_user.as_ref().unwrap().bio.as_deref(), Some("Updated bio"));
+    assert_eq!(
+        state.current_user.as_ref().unwrap().name,
+        "Alice In Wonderland"
+    );
+    assert_eq!(
+        state.current_user.as_ref().unwrap().bio.as_deref(),
+        Some("Updated bio")
+    );
 
     state.remove_user(1);
     assert!(state.users.is_empty());

@@ -276,6 +276,9 @@ mod tests {
         let decoded = decode_websocket_frame(frame).unwrap().unwrap();
         assert_eq!(decoded.event_type, EventType::UserUpdated);
         assert_eq!(decoded.id.as_deref(), Some("sub-1"));
-        assert_eq!(decoded.data.get("name").unwrap().as_str(), Some("UpdatedUser"));
+        assert_eq!(
+            decoded.data.get("name").unwrap().as_str(),
+            Some("UpdatedUser")
+        );
     }
 }
