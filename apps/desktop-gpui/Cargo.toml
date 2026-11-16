@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 sharkord-core = { path = "../../crates/sharkord-core" }
 gpui = "0.2"
-gpui-component = "0.10"
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

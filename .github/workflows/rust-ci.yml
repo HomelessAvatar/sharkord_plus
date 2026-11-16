@@ -1,0 +1,87 @@
+name: Rust Core & GPUI Desktop CI
+
+on:
+  push:
+    branches:
+      - development
+      - main
+    paths:
+      - 'crates/**'
+      - 'apps/desktop-gpui/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/rust-ci.yml'
+  pull_request:
+    branches:
+      - development
+      - main
+    paths:
+      - 'crates/**'
+      - 'apps/desktop-gpui/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/rust-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-and-test:
+    name: Test & Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libvulkan-dev libx11-dev libx11-xcb-dev libxkbcommon-dev libwayland-dev
+
+      - name: Check code formatting
+        run: cargo fmt --check
+
+      - name: Run Clippy linter
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run all Rust tests
+        run: cargo test --all
+
+      - name: Build release binaries
+        run: cargo build --release -p desktop-gpui -p sharkord-core
+
+      - name: Upload desktop binary (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharkord-gpui-windows
+          path: target/release/desktop-gpui.exe
+
+      - name: Upload desktop binary (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharkord-gpui-linux
+          path: target/release/desktop-gpui
+
+      - name: Upload desktop binary (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharkord-gpui-macos
+          path: target/release/desktop-gpui
