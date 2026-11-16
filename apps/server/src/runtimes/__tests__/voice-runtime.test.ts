@@ -3,7 +3,11 @@ import { describe, expect, test } from 'bun:test';
 import type { Consumer, Producer } from 'mediasoup/types';
 import { eventBus } from '../../plugins/event-bus';
 import { pubsub } from '../../utils/pubsub';
-import { EXTERNAL_STREAM_ID_BASE, VoiceRuntime } from '../voice';
+import {
+  defaultRouterOptions,
+  EXTERNAL_STREAM_ID_BASE,
+  VoiceRuntime
+} from '../voice';
 
 type TCloseHandler = () => void;
 
@@ -561,5 +565,19 @@ describe('VoiceRuntime server mute', () => {
       micMuted: true,
       serverMuted: true
     });
+  });
+});
+
+describe('defaultRouterOptions', () => {
+  test('should include video/H265 and prioritize H264 High profile in defaultRouterOptions', () => {
+    const h265 = defaultRouterOptions.mediaCodecs?.find(
+      (c) => c.mimeType === 'video/H265'
+    );
+    expect(h265).toBeDefined();
+
+    const h264Codecs = defaultRouterOptions.mediaCodecs?.filter(
+      (c) => c.mimeType === 'video/H264'
+    );
+    expect(h264Codecs?.[0]?.parameters?.['profile-level-id']).toBe('640032');
   });
 });

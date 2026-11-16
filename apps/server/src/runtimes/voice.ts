@@ -58,17 +58,6 @@ const defaultRouterOptions: RouterOptions<AppData> = {
       clockRate: 90000,
       parameters: {
         'packetization-mode': 1,
-        'profile-level-id': '42e01f',
-        'level-asymmetry-allowed': 1,
-        'x-google-start-bitrate': 2000
-      }
-    },
-    {
-      kind: 'video',
-      mimeType: 'video/H264',
-      clockRate: 90000,
-      parameters: {
-        'packetization-mode': 1,
         'profile-level-id': '640032',
         'level-asymmetry-allowed': 1,
         'x-google-start-bitrate': 2000
@@ -82,6 +71,25 @@ const defaultRouterOptions: RouterOptions<AppData> = {
         'packetization-mode': 1,
         'profile-level-id': '4d0032',
         'level-asymmetry-allowed': 1,
+        'x-google-start-bitrate': 2000
+      }
+    },
+    {
+      kind: 'video',
+      mimeType: 'video/H264',
+      clockRate: 90000,
+      parameters: {
+        'packetization-mode': 1,
+        'profile-level-id': '42e01f',
+        'level-asymmetry-allowed': 1,
+        'x-google-start-bitrate': 2000
+      }
+    },
+    {
+      kind: 'video',
+      mimeType: 'video/H265',
+      clockRate: 90000,
+      parameters: {
         'x-google-start-bitrate': 2000
       }
     },
@@ -1209,4 +1217,4 @@ class VoiceRuntime {
   };
 }
 
-export { EXTERNAL_STREAM_ID_BASE, VoiceRuntime };
+export { defaultRouterOptions, EXTERNAL_STREAM_ID_BASE, VoiceRuntime };
