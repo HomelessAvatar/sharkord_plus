@@ -101,7 +101,7 @@ docker run -d \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name sharkord-plus \
-  ghcr.io/homelessavatar/sharkord_plus:latest
+  ghcr.io/homelessavatar/sharkord_plus:0.1.1
 ```
 
 > [!WARNING]
@@ -144,11 +144,11 @@ cargo test --all
 
 Sharkord Plus follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
-* **Format:** `vMAJOR.MINOR.PATCH` (e.g. `v1.0.0`)
+* **Format:** `vMAJOR.MINOR.PATCH` (e.g. `v0.1.1`)
 * **Upstream Compatibility Matrix:**
   | Sharkord Plus Version | Compatible Sharkord Upstream Server |
   |-----------------------|-------------------------------------|
-  | `v1.0.x`              | `v0.0.31`+ (and backward compatible to `0.0.28`) |
+  | `v0.1.x`              | `v0.0.31`+ (and backward compatible to `0.0.28`) |
 
 Because Sharkord Plus implements automatic **Capability Negotiation**, our desktop and web clients gracefully detect whether they are connected to a vanilla Sharkord server or a Sharkord Plus server, enabling standard features on vanilla instances and unlocking enhanced codecs, per-window audio, and server capabilities when available.
 

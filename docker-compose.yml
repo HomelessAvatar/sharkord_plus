@@ -1,31 +1,29 @@
 services:
   sharkord-plus:
-    # SemVer versiyonu (WUD - What's Up Docker ile otomatik güncellemeye uygundur)
-    image: ghcr.io/homelessavatar/sharkord_plus:0.1.0-alpha.2
+    # SemVer release image (fully compatible with What's Up Docker / WUD automated updates)
+    image: ghcr.io/homelessavatar/sharkord_plus:0.1.1
     container_name: sharkord-plus
     restart: unless-stopped
     labels:
-      # What's Up Docker (WUD) etiketleri
+      # What's Up Docker (WUD) watch & update labels
       - "wud.watch=true"
       - "wud.tag.include=^\\d+\\.\\d+\\.\\d+.*$"
       - "wud.link.template=https://github.com/HomelessAvatar/sharkord_plus/releases/tag/v$${major}.$${minor}.$${patch}"
-    # Yerel olarak kaynak koddan derlemek isterseniz aşağıdaki satırları açabilirsiniz:
+    # Optional: Uncomment if you want to build locally from source instead of pulling from GHCR
     # build:
     #   context: .
     #   dockerfile: Dockerfile
-    container_name: sharkord-plus
-    restart: unless-stopped
     ports:
-      # HTTP / WebSocket (tRPC & Web Client)
+      # HTTP / WebSocket (tRPC API & Web Client)
       - "4991:4991/tcp"
-      # Mediasoup Voice / Screen Share WebRTC SFU port range
+      # Mediasoup Voice & Screen Share WebRTC SFU port range
       - "40000-40050:40000-40050/udp"
       - "40000-40050:40000-40050/tcp"
     environment:
       - PUID=1000
       - PGID=1000
-      # VPS dış IP adresiniz veya DDNS alan adınız (Ses/video WebRTC bağlantıları için zorunlu)
+      # VPS external public IP or DDNS hostname (Required for WebRTC voice & video ICE candidates)
       # - SHARKORD_WEBRTC_ANNOUNCED_ADDRESS=203.0.113.195
     volumes:
-      # Mevcut Sharkord veri klasörünüz (db.sqlite, uploads, logs)
+      # Persistent Sharkord data directory (db.sqlite, uploads, logs)
       - ./data:/home/bun/.config/sharkord

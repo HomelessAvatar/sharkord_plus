@@ -1,41 +1,43 @@
-# Ana Depodaki (Upstream) Güncellemeleri Selektif Olarak Dahil Etme Rehberi
+# Upstream Synchronization Guide
 
-Evet, kesinlikle dahil edebilirsiniz! Projeyi forkladıktan sonra git remote yapımız otomatik olarak şu şekilde yapılandırıldı:
+Sharkord Plus is designed to maintain 100% backward compatibility with upstream [Sharkord](https://github.com/Sharkord/sharkord). When new features, security updates, or bug fixes are merged into the upstream repository, they can be selectively incorporated into Sharkord Plus.
 
-- **origin** -> `https://github.com/HomelessAvatar/sharkord_plus.git` (Sizin reponuz)
-- **upstream** -> `https://github.com/Sharkord/sharkord.git` (Orijinal Sharkord reposu)
+The repository's git remote structure is configured as follows:
+
+- **origin** -> `https://github.com/HomelessAvatar/sharkord_plus.git` (Sharkord Plus repository)
+- **upstream** -> `https://github.com/Sharkord/sharkord.git` (Official Sharkord repository)
 
 ---
 
-## Nasıl Güncelleme Alınır?
+## Synchronization Workflow
 
-Ana projeye (`upstream`) yeni özellikler veya hata düzeltmeleri (bug fix) geldiğinde bunları projenize selektif olarak almak için şu adımları izleyebilirsiniz:
+To fetch and selectively integrate upstream changes:
 
-### 1. Upstream Değişikliklerini Çekin
+### 1. Fetch Upstream Branches
 ```bash
 git fetch upstream
 ```
 
-### 2. Gelen Yeni Değişiklikleri İnceleyin
+### 2. Inspect Recent Upstream Changes
 ```bash
-# Son commit'leri listeleyin
+# View the latest commits on upstream's development branch
 git log upstream/development --oneline -n 20
 
-# Belirli bir commit'in içeriğini görmek için
+# View details of a specific commit
 git show <commit-hash>
 ```
 
-### 3. Tek Bir Düzeltmeyi / Commit'i Projenize Dahil Edin (Cherry-pick)
-Ana projedeki sadece belirli bir bug fix veya özelliği almak istiyorsanız:
+### 3. Cherry-Pick Specific Fixes or Features
+To adopt a single bug fix or enhancement without pulling unintended upstream changes:
 ```bash
 git cherry-pick <commit-hash>
 ```
-*Eğer çakışma (conflict) çıkarsa çözüp `git cherry-pick --continue` demeniz yeterlidir.*
+*If merge conflicts arise, resolve them, verify with `bun run magic` / `cargo test --all`, and run `git cherry-pick --continue`.*
 
-### 4. Belli Bir Dalı veya Özelliği Birleştirmek (Merge)
-Ana projedeki bir dalı doğrudan projenize katmak isterseniz:
+### 4. Merge an Upstream Branch (Full Synchronization)
+To perform a complete branch merge:
 ```bash
 git merge upstream/development
 ```
 
-Böylece **Sharkord Plus** tamamen bağımsız kalırken, ana depodaki dilediğiniz geliştirmeyi projenizi bozmadan tek tek seçip alabilirsiniz.
+This workflow ensures Sharkord Plus stays independent, modular, and performant while effortlessly benefiting from upstream innovations.

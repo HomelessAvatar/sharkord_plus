@@ -72,41 +72,41 @@ for (const commit of commits) {
 let body = `## 🦈 Sharkord Plus ${currentTag}\n\n`;
 
 if (features.length > 0) {
-  body += `### ✨ Eklenen Özellikler & Geliştirmeler (Features)\n`;
+  body += `### ✨ Features & Enhancements\n`;
   body += features.join('\n') + '\n\n';
 }
 
 if (fixes.length > 0) {
-  body += `### 🐛 Düzeltilen Hatalar (Bug Fixes)\n`;
+  body += `### 🐛 Bug Fixes\n`;
   body += fixes.join('\n') + '\n\n';
 }
 
 if (infra.length > 0) {
-  body += `### 🚀 Altyapı, Docker & CI/CD (Infrastructure)\n`;
+  body += `### 🚀 Infrastructure, Docker & CI/CD\n`;
   body += infra.join('\n') + '\n\n';
 }
 
 if (docs.length > 0) {
-  body += `### 📚 Dokümantasyon (Documentation)\n`;
+  body += `### 📚 Documentation\n`;
   body += docs.join('\n') + '\n\n';
 }
 
 if (others.length > 0) {
-  body += `### 🔄 Diğer Değişiklikler (Other Changes)\n`;
+  body += `### 🔄 Other Changes\n`;
   body += others.join('\n') + '\n\n';
 }
 
-body += `### 📦 İndirilebilir Paketler (Native Binaries)\n`;
-body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` veya \`sharkord-gpui-windows-x64.zip\`\n`;
-body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` veya \`sharkord-gpui-linux-x64.tar.gz\`\n`;
+body += `### 📦 Downloadable Assets (Native Binaries)\n`;
+body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` or \`sharkord-gpui-windows-x64.zip\`\n`;
+body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` or \`sharkord-gpui-linux-x64.tar.gz\`\n`;
 body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n\n`;
 
-body += `### 🐳 Docker İmajı (GHCR / SemVer & WUD Destekli)\n`;
+body += `### 🐳 Docker Image (GHCR / SemVer & WUD Ready)\n`;
 const semverTag = currentTag.replace(/^v/, '');
-body += `\`\`\`bash\n# SemVer sürümünü çekin (WUD uyumlu):\ndocker pull ghcr.io/${repo.toLowerCase()}:${semverTag}\n\`\`\`\n\n`;
+body += `\`\`\`bash\n# Pull the SemVer release (WUD compatible):\ndocker pull ghcr.io/${repo.toLowerCase()}:${semverTag}\n\`\`\`\n\n`;
 
 if (prevTag) {
-  body += `**Tam Değişiklik Listesi (Full Changelog):** https://github.com/${repo}/compare/${prevTag}...${currentTag}\n`;
+  body += `**Full Changelog:** https://github.com/${repo}/compare/${prevTag}...${currentTag}\n`;
 }
 
 const outputPath = process.argv[2] || 'release-notes.md';

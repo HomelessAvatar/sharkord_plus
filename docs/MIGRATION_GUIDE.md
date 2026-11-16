@@ -1,145 +1,149 @@
-# Standart Sharkord'dan Sharkord Plus'a Geçiş Rehberi (VPS Migration Guide)
+# Migrating from Vanilla Sharkord to Sharkord Plus (VPS Migration Guide)
 
-Bu doküman, mevcut bir VPS sunucusunda çalışan standart (vanilla) **Sharkord** sunucunuzu, hiçbir veri kaybı yaşamadan ve kesintisiz şekilde **Sharkord Plus** sürümüne nasıl yükselteceğinizi adım adım açıklar.
-
----
-
-## 🎯 1. Neden Sharkord Plus'a Geçmelisiniz?
-
-Sharkord Plus sunucusu, standart Sharkord mimarisini bozmadan üzerine aşağıdaki kritik iyileştirmeleri ekler:
-
-* **100% Geriye Dönük Veri Uyumluluğu:** Mevcut `db.sqlite` veritabanınız, kullanıcı hesapları, şifreler, roller, sunucu ayarları, mesaj geçmişi ve `uploads/` dizinindeki tüm dosyalar aynen korunur.
-* **Canlı Veritabanı Senkronizasyonu (`PRAGMA data_version`):** Dışarıdan bir topluluk web sitesi, bot veya script SQLite veritabanındaki kullanıcı bilgilerini güncellediğinde, sunucu bunu anında algılar ve tüm bağlı istemcilere (Web ve Masaüstü) anlık `USER_UPDATE` olayı yayınlar.
-* **Anlık Webhook Senkronizasyonu:** `trpc.users.sync` endpoint'i ile admin panelleri veya harici sistemler tek çağrıyla kullanıcı profil değişikliklerini anında istemcilere yansıtabilir.
-* **Gelişmiş Ses & Ekran Paylaşımı Önceliği (WebRTC Pacer):** Ekran paylaşımı açıldığında video paketlerinin ses paketlerini ezmesi ve seste takılma/kesilme yaşanması (`high` audio priority / `low` video priority) engellenmiştir.
-* **Tam Ekran Menü ve Panel Desteği:** Tam ekran ekran paylaşımı sırasında ses kontrolleri, kullanıcı panelleri ve menülerin donması / görünmez olması sorunu çözülmüştür.
-* **Pure Native GPUI İstemci Desteği:** 120 FPS GPU hızlandırmalı, ultra hafif (35 MB RAM) yerel Rust masaüstü istemcimizle tam uyumludur.
+This guide provides step-by-step instructions for upgrading an existing standard (vanilla) **Sharkord** VPS installation to **Sharkord Plus** with **zero data loss** and minimal downtime.
 
 ---
 
-## 🛡️ 2. Ön Hazırlık: Veri Yedekleme (Backup)
+## 🎯 1. Why Upgrade to Sharkord Plus?
 
-Geçiş işlemine başlamadan önce mevcut veri klasörünüzü mutlaka yedekleyin.
+Sharkord Plus is an enhanced, production-ready distribution built upon the upstream Sharkord architecture, introducing key enhancements:
 
-Mevcut Sharkord kurulumunuzun veri dizinine gidin (genellikle `./data` veya `/home/bun/.config/sharkord` ya da `~/.config/sharkord`):
+* **100% Backward Data Compatibility:** Your existing SQLite database (`db.sqlite`), user accounts, password hashes, server permissions, channel structure, chat history, and `uploads/` directory remain fully intact without destructive migrations.
+* **Live Database & Webhook Synchronization:** When an external community portal, bot, or script modifies user records in SQLite, Sharkord Plus detects the change via `PRAGMA data_version` and immediately broadcasts realtime `USER_UPDATE` events to all connected web and desktop clients. A dedicated `trpc.users.sync` endpoint is also available for instant webhook triggers.
+* **Audio & Screen Share Priority (WebRTC Pacer):** Prevents video packets from starving audio bandwidth during high-bitrate screen sharing (`high` audio priority / `low` video priority), resolving choppy or frozen voice communication.
+* **Full-Screen Window Overlays:** Resolves UI clipping and frozen controls during full-screen video and screen share sessions.
+* **Pure Native GPUI Desktop Client:** Seamlessly integrates with our ultra-lightweight (35 MB RAM, 120 FPS GPU-accelerated) native Rust desktop application (`apps/desktop-gpui`), completely free of Electron overhead.
+* **Automated Container Updates:** Official multi-arch Docker images on GitHub Container Registry (GHCR) with native What's Up Docker (WUD) labels and Semantic Versioning (SemVer) tags.
+
+---
+
+## 🛡️ 2. Step 1: Create a Full Backup
+
+Before performing any upgrade, create a complete backup of your persistent data directory (typically `./data` or `/home/bun/.config/sharkord` or `~/.config/sharkord`):
 
 ```bash
-# 1. Sharkord çalışma dizinine gidin
-cd /opt/sharkord   # kendi kurulum dizininizi yazın
+# 1. Navigate to your existing Sharkord directory
+cd /opt/sharkord   # Replace with your actual installation directory
 
-# 2. Servisi geçici olarak durdurun
+# 2. Stop the running service
 docker compose down
-# veya systemd kullanıyorsanız:
+# Or if running via systemd:
 # sudo systemctl stop sharkord
 
-# 3. Veri dizininin zaman damgalı tam bir yedeğini alın
+# 3. Create a timestamped compressed archive of the data directory
 tar -czvf sharkord_backup_$(date +%Y%m%d_%H%M%S).tar.gz ./data
 
-# Alternatif olarak klasörü kopyalayın:
+# Alternatively, create a direct directory copy:
 cp -r ./data ./data_backup_$(date +%Y%m%d)
 ```
 
 > [!TIP]
-> SQLite çalışırken canlı yedek almak isterseniz `sqlite3 ./data/db.sqlite ".backup ./data/db_backup.sqlite"` komutunu da çalıştırabilirsiniz.
+> If you wish to capture an online SQLite backup while the server is active, you can run:
+> ```bash
+> sqlite3 ./data/db.sqlite ".backup ./data/db_backup.sqlite"
+> ```
 
 ---
 
-## 🚀 3. Geçiş Yöntemleri
+## 🚀 3. Step 2: Choose Your Deployment Method
 
-Kullandığınız altyapıya göre aşağıdaki 3 yöntemden birini seçin:
+Select the method matching your VPS environment:
 
 ---
 
-### Yöntem A: Docker / Docker Compose (Önerilen En Yaygın Yöntem)
+### Method A: Docker / Docker Compose (Recommended)
 
-Mevcut Sharkord sunucunuz Docker Compose ile çalışıyorsa geçiş işlemi yalnızca birkaç dakikanızı alır.
+If your existing server runs via Docker Compose, upgrading takes less than two minutes.
 
-#### 1. Proje Deposunu Güncelleyin veya Klonlayın
+#### 1. Clone the Sharkord Plus Repository or Update Compose
 ```bash
-# Mevcut dizinden Sharkord Plus reposuna geçin:
+# Navigate to your deployment root
 cd /opt
 
-# Sharkord Plus'ı klonlayın (veya mevcut repoda remote'u güncelleyin)
+# Clone the Sharkord Plus repository
 git clone https://github.com/HomelessAvatar/sharkord_plus.git sharkord-plus
 cd sharkord-plus
 
-# Eski veri klasörünüzü yeni konuma taşıyın/kopyalayın
+# Copy your existing vanilla Sharkord data directory
 cp -r /opt/sharkord/data ./data
 ```
 
-#### 2. `docker-compose.yml` Dosyasını Kontrol Edin
-Depo kökünde yer alan `docker-compose.yml` dosyası hazır olarak gelmektedir:
+#### 2. Review `docker-compose.yml`
+The repository includes a production-ready `docker-compose.yml`:
 
 ```yaml
 services:
   sharkord-plus:
-    # SemVer sürümü (WUD - What's Up Docker ile otomatik güncellemeye uygundur)
-    image: ghcr.io/homelessavatar/sharkord_plus:0.1.0-alpha.2
+    # SemVer release image (fully compatible with What's Up Docker / WUD automated updates)
+    image: ghcr.io/homelessavatar/sharkord_plus:0.1.1
     container_name: sharkord-plus
     restart: unless-stopped
     labels:
-      # What's Up Docker (WUD) otomatik güncelleme etiketleri:
+      # What's Up Docker (WUD) watch & update labels
       - "wud.watch=true"
       - "wud.tag.include=^\\d+\\.\\d+\\.\\d+.*$"
       - "wud.link.template=https://github.com/HomelessAvatar/sharkord_plus/releases/tag/v$${major}.$${minor}.$${patch}"
     ports:
+      # HTTP / WebSocket (tRPC API & Web Client)
       - "4991:4991/tcp"
+      # Mediasoup Voice & Screen Share WebRTC SFU port range
       - "40000-40050:40000-40050/udp"
       - "40000-40050:40000-40050/tcp"
     environment:
       - PUID=1000
       - PGID=1000
-      # VPS dış IP adresiniz (WebRTC ses/video bağlantıları için gereklidir)
+      # VPS external public IP or DDNS hostname (Required for WebRTC voice & video ICE candidates)
       # - SHARKORD_WEBRTC_ANNOUNCED_ADDRESS=203.0.113.195
     volumes:
+      # Persistent Sharkord data directory (db.sqlite, uploads, logs)
       - ./data:/home/bun/.config/sharkord
 ```
 
-#### 3. İmajı Çekin ve Başlatın (VPS'te derlemeye gerek kalmadan)
+#### 3. Pull Image and Start the Container
 ```bash
-# GitHub Container Registry'den hazır imajı çekin ve başlatın
+# Pull the pre-built multi-arch image from GHCR
 docker compose pull
+
+# Start in detached mode
 docker compose up -d
 ```
-*(İsteğe bağlı: Sunucuyu kendi makinenizde derlemek isterseniz `docker compose up -d --build` komutunu da kullanabilirsiniz.)*
-```
 
-#### 4. Logları Kontrol Edin
+#### 4. Verify Server Logs
 ```bash
 docker compose logs -f
 ```
-Loglarda veritabanı migrasyonlarının tamamlandığını ve sunucunun `4991` portunda dinlemeye başladığını görmelisiniz.
+You should see database migrations check passing without errors and the server listening on port `4991`.
 
 ---
 
-### Yöntem B: Bare-Metal / Systemd ile Doğrudan VPS Üzerinde Çalıştırma
+### Method B: Bare-Metal / Systemd Service
 
-Eğer sunucunuzda doğrudan Bun kuruluysa ve Sharkord bir `systemd` servisi olarak çalışıyorsa:
+If your VPS runs Sharkord directly with Bun as a systemd service:
 
-#### 1. Servisi Durdurun
+#### 1. Stop the Existing Service
 ```bash
 sudo systemctl stop sharkord
 ```
 
-#### 2. Plus Sürümünü Klonlayın ve Bağımlılıkları Kurun
+#### 2. Clone the Plus Repository and Install Dependencies
 ```bash
 cd /opt
 git clone https://github.com/HomelessAvatar/sharkord_plus.git sharkord-plus
 cd sharkord-plus
 
-# Bun ile bağımlılıkları yükleyin
+# Install workspace dependencies with Bun
 bun install
 ```
 
-#### 3. Web İstemcisini ve Sunucuyu Derleyin (Production Build)
+#### 3. Build Web Client and Server
 ```bash
 cd apps/server
 bun run build
 ```
-Derleme sonucu `apps/server/build/out/sharkord-linux-x64` ikili dosyası üretilir.
+The compiled single-file binary will be generated at `apps/server/build/out/sharkord-linux-x64`.
 
-#### 4. Systemd Servis Dosyasını Güncelleyin
-`/etc/systemd/system/sharkord.service` dosyanızı düzenleyin:
+#### 4. Update the Systemd Service Unit
+Edit `/etc/systemd/system/sharkord.service`:
 
 ```ini
 [Unit]
@@ -150,17 +154,17 @@ After=network.target
 Type=simple
 User=bun
 WorkingDirectory=/opt/sharkord-plus
-# Veri dizini ortam değişkeni (eski data dizininizin yolu)
+# Path to your existing persistent data folder
 Environment=SHARKORD_DATA_PATH=/opt/sharkord-plus/data
 Environment=SHARKORD_ENV=production
 Environment=PORT=4991
-# İsteğe bağlı: WebRTC dış IP adresiniz
+# Optional: External public IP for WebRTC SFU
 # Environment=SHARKORD_WEBRTC_ANNOUNCED_ADDRESS=203.0.113.195
 
-# Derlenmiş tek binary ile çalıştırma:
+# Run using the compiled standalone binary:
 ExecStart=/opt/sharkord-plus/apps/server/build/out/sharkord-linux-x64
 
-# Veya Bun ile doğrudan kaynak koddan çalıştırma:
+# Or run directly with Bun:
 # ExecStart=/usr/local/bin/bun /opt/sharkord-plus/apps/server/src/index.ts
 
 Restart=always
@@ -170,7 +174,7 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-#### 5. Servisi Başlatın ve Durumu Kontrol Edin
+#### 5. Reload and Restart
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl start sharkord
@@ -180,33 +184,33 @@ journalctl -u sharkord -f
 
 ---
 
-### Yöntem C: Bağımsız İkili Dosya (Standalone Linux Binary) ile Geçiş
+### Method C: Standalone Linux Executable Binary
 
-Herhangi bir derleme aracı veya Docker kurmadan, hazır Linux binary'sini kullanmak için:
+To run without Docker or compiling locally:
 
 ```bash
-# 1. Eski servisi durdurun
+# 1. Stop existing service
 sudo systemctl stop sharkord
 
-# 2. GitHub Releases üzerinden en güncel sharkord-linux-x64 dosyasını indirin
+# 2. Download the latest compiled release binary
 cd /opt/sharkord
 wget -O sharkord-plus https://github.com/HomelessAvatar/sharkord_plus/releases/latest/download/sharkord-linux-x64
 chmod +x sharkord-plus
 
-# 3. İzinleri ayarlayın
+# 3. Set file permissions
 chown bun:bun sharkord-plus
 
-# 4. Servisin ExecStart yolunu yeni dosyaya yönlendirip başlatın
+# 4. Point systemd ExecStart to the new binary and restart
 sudo systemctl restart sharkord
 ```
 
 ---
 
-## 🌐 4. Tersine Proxy (Reverse Proxy) & Ağ Yapılandırması
+## 🌐 4. Reverse Proxy & Network Configuration
 
-Sharkord Plus; HTTP, tRPC ve WebRTC protokollerini kullanır.
+Sharkord Plus utilizes HTTP, tRPC, WebSocket subscriptions, and WebRTC SFU media streams.
 
-### Nginx Yapılandırması (Örnek `/etc/nginx/sites-available/sharkord.conf`)
+### Nginx Configuration (`/etc/nginx/sites-available/sharkord.conf`)
 
 ```nginx
 map $http_upgrade $connection_upgrade {
@@ -215,16 +219,16 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-    server_name sharkord.alanadiniz.com;
+    server_name sharkord.yourdomain.com;
 
-    # Dosya yüklemeleri için boyut sınırı
+    # Maximum file upload size
     client_max_body_size 100M;
 
     location / {
         proxy_pass http://127.0.0.1:4991;
         proxy_http_version 1.1;
 
-        # WebSocket & tRPC realtime subscriptions için zorunlu başlıklar
+        # WebSocket & tRPC realtime subscriptions headers
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
 
@@ -233,30 +237,29 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # Zaman aşımı ayarları (uzun süreli WebSocket bağlantıları için)
+        # Keepalive timeouts for persistent WebSocket connections
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
     }
 
     listen 443 ssl http2;
-    # SSL sertifika yollarınız (Certbot vb.)
-    ssl_certificate /etc/letsencrypt/live/sharkord.alanadiniz.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/sharkord.alanadiniz.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/sharkord.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/sharkord.yourdomain.com/privkey.pem;
 }
 ```
 
-### Güvenlik Duvarı (UFW) Ayarları
-Ses ve ekran paylaşımı paketlerinin sunucuya doğrudan UDP üzerinden ulaşabilmesi gerekir:
+### Firewall (UFW) Rules
+Ensure Mediasoup WebRTC media ports are open to the internet:
 
 ```bash
-# Web ve Reverse Proxy portları
+# Standard web ports
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 
-# Eğer doğrudan porttan bağlanıyorsanız
+# Direct HTTP port (if not using reverse proxy)
 sudo ufw allow 4991/tcp
 
-# Mediasoup WebRTC Ses ve Video Port Aralığı (ÖNEMLİ!)
+# Mediasoup Voice & Screen Share WebRTC SFU port range (CRITICAL)
 sudo ufw allow 40000:40050/udp
 sudo ufw allow 40000:40050/tcp
 
@@ -265,58 +268,58 @@ sudo ufw reload
 
 ---
 
-## ✅ 5. Geçiş Sonrası Doğrulama ve Testler
+## ✅ 5. Verification & Testing
 
-Geçiş tamamlandıktan sonra aşağıdaki kontrolleri yaparak sistemin kusursuz çalıştığından emin olun:
+Verify that all subsystems operate as expected after migration:
 
-### 1. Servis Sağlık Kontrolü
+### 1. Healthcheck Endpoint
 ```bash
 curl -I http://localhost:4991/healthz
-# HTTP/1.1 200 OK dönmelidir
+# Should return: HTTP/1.1 200 OK
 ```
 
-### 2. Canlı Kullanıcı Senkronizasyonunun Test Edilmesi
-Sharkord Plus'ın yeni `trpc.users.sync` özelliğini test etmek için:
+### 2. Live Profile Sync Test
+To test the real-time user sync mechanism:
 ```bash
-# Admin yetkisine sahip bir oturum ile kullanıcı senkronizasyonunu tetikleyin:
+# Send an authenticated user sync trigger
 curl -X POST http://localhost:4991/trpc/users.sync \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
-Tüm bağlı masaüstü ve web kullanıcılarında profillerin anında yenilendiğini gözlemleyebilirsiniz.
+Connected web and desktop clients should update instantly without requiring a page refresh.
 
-### 3. Ses ve Ekran Paylaşımı
-* Web veya GPUI Desktop istemcisi ile ses kanalına katılın.
-* Ekran paylaşımı açın ve ses paketlerinin kesilmeden, pacer önceliğiyle aktığını teyit edin.
+### 3. Voice & Screen Sharing Test
+* Connect to a voice channel via Web or Native GPUI Desktop client.
+* Start a screen share session at 1080p 60 FPS; confirm audio transmission remains fluid with zero packet drop due to the WebRTC pacer priority engine.
 
 ---
 
-## 🔄 6. Sorun Giderme ve Geri Alma (Rollback Planı)
+## 🔄 6. Rollback Plan
 
-Eğer herhangi bir sebeple orijinal Sharkord sürümüne geri dönmek isterseniz:
+If you need to revert to your previous vanilla Sharkord installation for any reason:
 
-1. **Plus servisini durdurun:**
+1. **Stop the Plus service:**
    ```bash
    docker compose down
-   # veya: sudo systemctl stop sharkord
+   # Or: sudo systemctl stop sharkord
    ```
 
-2. **Yedeğinizi geri yükleyin:**
+2. **Restore your database and uploads backup:**
    ```bash
    rm -rf ./data
    cp -r ./data_backup_YYYYMMDD ./data
    ```
 
-3. **Eski Sharkord imajını veya servisini yeniden başlatın:**
+3. **Restart the original Sharkord container or service:**
    ```bash
    cd /opt/sharkord
    docker compose up -d
-   # veya: sudo systemctl start sharkord
+   # Or: sudo systemctl start sharkord
    ```
 
-Tüm verileriniz ve ayarlarınız önceki haline eksiksiz dönecektir.
+Your server will resume running on standard vanilla Sharkord with complete data continuity.
 
 ---
 
-## 💬 Destek ve Katkı
-Geçiş sırasında herhangi bir soru veya sorunla karşılaşırsanız [GitHub Issues](https://github.com/HomelessAvatar/sharkord_plus/issues) üzerinden bize ulaşabilirsiniz.
+## 💬 Support & Contribution
+For inquiries, bug reports, or feature requests, visit [GitHub Issues](https://github.com/HomelessAvatar/sharkord_plus/issues).
