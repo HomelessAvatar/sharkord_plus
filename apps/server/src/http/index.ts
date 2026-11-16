@@ -117,6 +117,7 @@ const createHttpServer = async (
         res.setHeader('X-Frame-Options', 'DENY');
         res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
         res.setHeader('X-Sharkord-Version', SERVER_VERSION);
+        res.setHeader('X-Sharkord-Distribution', 'Sharkord Plus');
 
         const info = getWsInfo(undefined, req);
         const url = getRequestUrl(req);

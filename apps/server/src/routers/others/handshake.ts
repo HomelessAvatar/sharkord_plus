@@ -17,7 +17,9 @@ const handshakeRoute = publicProcedure.query(async ({ ctx }) => {
   return {
     handshakeHash,
     hasPassword: shouldAskForPassword,
-    serverVersion: SERVER_VERSION
+    serverVersion: SERVER_VERSION,
+    isPlus: true,
+    distribution: 'plus'
   };
 });
 
