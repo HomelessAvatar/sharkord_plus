@@ -84,6 +84,14 @@ sharkord_plus/
 
 ## 🚀 Getting Started
 
+### 🔄 Migrating from Vanilla Sharkord?
+
+Already running a standard vanilla Sharkord server on your VPS? You can upgrade to **Sharkord Plus** with **zero data loss**, preserving all users, messages, and uploaded files.
+
+👉 **Follow the step-by-step migration guide: [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)**
+
+---
+
 ### 1. Running the Server (Docker)
 
 ```bash

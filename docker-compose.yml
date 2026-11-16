@@ -1,0 +1,22 @@
+services:
+  sharkord-plus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: homelessavatar/sharkord_plus:latest
+    container_name: sharkord-plus
+    restart: unless-stopped
+    ports:
+      # HTTP / WebSocket (tRPC & Web Client)
+      - "4991:4991/tcp"
+      # Mediasoup Voice / Screen Share WebRTC SFU port range
+      - "40000-40050:40000-40050/udp"
+      - "40000-40050:40000-40050/tcp"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      # VPS dış IP adresiniz veya DDNS alan adınız (Ses/video WebRTC bağlantıları için zorunlu)
+      # - SHARKORD_WEBRTC_ANNOUNCED_ADDRESS=203.0.113.195
+    volumes:
+      # Mevcut Sharkord veri klasörünüz (db.sqlite, uploads, logs)
+      - ./data:/home/bun/.config/sharkord
