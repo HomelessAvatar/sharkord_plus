@@ -1,9 +1,11 @@
 services:
   sharkord-plus:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: homelessavatar/sharkord_plus:latest
+    # GitHub Container Registry (GHCR) üzerinden otomatik derlenen imaj
+    image: ghcr.io/homelessavatar/sharkord_plus:latest
+    # Yerel olarak kaynak koddan derlemek isterseniz aşağıdaki satırları açabilirsiniz:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     container_name: sharkord-plus
     restart: unless-stopped
     ports:

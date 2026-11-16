@@ -73,10 +73,8 @@ Depo kökünde yer alan `docker-compose.yml` dosyası hazır olarak gelmektedir:
 ```yaml
 services:
   sharkord-plus:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: homelessavatar/sharkord_plus:latest
+    # GitHub Actions tarafından otomatik derlenen resmi imaj
+    image: ghcr.io/homelessavatar/sharkord_plus:latest
     container_name: sharkord-plus
     restart: unless-stopped
     ports:
@@ -92,9 +90,13 @@ services:
       - ./data:/home/bun/.config/sharkord
 ```
 
-#### 3. İmajı Derleyin ve Başlatın
+#### 3. İmajı Çekin ve Başlatın (VPS'te derlemeye gerek kalmadan)
 ```bash
-docker compose up -d --build
+# GitHub Container Registry'den hazır imajı çekin ve başlatın
+docker compose pull
+docker compose up -d
+```
+*(İsteğe bağlı: Sunucuyu kendi makinenizde derlemek isterseniz `docker compose up -d --build` komutunu da kullanabilirsiniz.)*
 ```
 
 #### 4. Logları Kontrol Edin

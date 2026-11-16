@@ -98,9 +98,10 @@ Already running a standard vanilla Sharkord server on your VPS? You can upgrade 
 docker run -d \
   -p 4991:4991/tcp \
   -p 40000-40050:40000-40050/udp \
+  -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name sharkord-plus \
-  homelessavatar/sharkord_plus:latest
+  ghcr.io/homelessavatar/sharkord_plus:latest
 ```
 
 > [!WARNING]
