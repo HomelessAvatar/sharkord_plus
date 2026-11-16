@@ -1,18 +1,41 @@
-import { app } from 'electron';
+import electron from 'electron';
 
-// va-api encode and decode on linux, checked against the feature names in electron's chromium
-const HARDWARE_VIDEO_CODECS = [
+const LINUX_HARDWARE_VIDEO_CODECS = [
   'AcceleratedVideoEncoder',
   'AcceleratedVideoDecodeLinuxGL',
   'AcceleratedVideoDecodeLinuxZeroCopyGL',
   'VaapiIgnoreDriverChecks'
 ];
 
-const enableChromiumFeatures = () => {
-  app.commandLine.appendSwitch(
-    'enable-features',
-    HARDWARE_VIDEO_CODECS.join(',')
-  );
+const WINDOWS_HARDWARE_VIDEO_CODECS = [
+  'AcceleratedVideoEncoder',
+  'MediaFoundationVideoEncodeAccelerator',
+  'D3D11VideoDecoder',
+  'PlatformHEVCDecoderSupport'
+];
+
+const DEFAULT_HARDWARE_VIDEO_CODECS = ['AcceleratedVideoEncoder'];
+
+const getHardwareVideoFeatureList = (platform: NodeJS.Platform): string[] => {
+  switch (platform) {
+    case 'win32':
+      return [...WINDOWS_HARDWARE_VIDEO_CODECS];
+    case 'linux':
+      return [...LINUX_HARDWARE_VIDEO_CODECS];
+    default:
+      return [...DEFAULT_HARDWARE_VIDEO_CODECS];
+  }
 };
 
-export { enableChromiumFeatures };
+const enableChromiumFeatures = () => {
+  const features = getHardwareVideoFeatureList(process.platform);
+
+  if (features.length === 0) {
+    return;
+  }
+
+  // default import so that tests can load the file without an electron runtime
+  electron.app.commandLine.appendSwitch('enable-features', features.join(','));
+};
+
+export { enableChromiumFeatures, getHardwareVideoFeatureList };
