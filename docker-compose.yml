@@ -1,7 +1,14 @@
 services:
   sharkord-plus:
-    # GitHub Container Registry (GHCR) üzerinden otomatik derlenen imaj
-    image: ghcr.io/homelessavatar/sharkord_plus:latest
+    # SemVer versiyonu (WUD - What's Up Docker ile otomatik güncellemeye uygundur)
+    image: ghcr.io/homelessavatar/sharkord_plus:0.1.0-alpha.2
+    container_name: sharkord-plus
+    restart: unless-stopped
+    labels:
+      # What's Up Docker (WUD) etiketleri
+      - "wud.watch=true"
+      - "wud.tag.include=^\\d+\\.\\d+\\.\\d+.*$"
+      - "wud.link.template=https://github.com/HomelessAvatar/sharkord_plus/releases/tag/v$${major}.$${minor}.$${patch}"
     # Yerel olarak kaynak koddan derlemek isterseniz aşağıdaki satırları açabilirsiniz:
     # build:
     #   context: .

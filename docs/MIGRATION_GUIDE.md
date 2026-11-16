@@ -73,10 +73,15 @@ Depo kökünde yer alan `docker-compose.yml` dosyası hazır olarak gelmektedir:
 ```yaml
 services:
   sharkord-plus:
-    # GitHub Actions tarafından otomatik derlenen resmi imaj
-    image: ghcr.io/homelessavatar/sharkord_plus:latest
+    # SemVer sürümü (WUD - What's Up Docker ile otomatik güncellemeye uygundur)
+    image: ghcr.io/homelessavatar/sharkord_plus:0.1.0-alpha.2
     container_name: sharkord-plus
     restart: unless-stopped
+    labels:
+      # What's Up Docker (WUD) otomatik güncelleme etiketleri:
+      - "wud.watch=true"
+      - "wud.tag.include=^\\d+\\.\\d+\\.\\d+.*$"
+      - "wud.link.template=https://github.com/HomelessAvatar/sharkord_plus/releases/tag/v$${major}.$${minor}.$${patch}"
     ports:
       - "4991:4991/tcp"
       - "40000-40050:40000-40050/udp"

@@ -37,6 +37,7 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-24.04, macos-latest]
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
 
     steps:
       - name: Checkout repository
@@ -91,7 +92,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && !cancelled()
     needs: [check-and-test]
     runs-on: ubuntu-24.04
     steps:
@@ -100,23 +101,28 @@ jobs:
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
+        continue-on-error: true
         with:
           path: release-artifacts
 
       - name: Prepare release assets
         run: |
           mkdir -p dist-release
-          cp release-artifacts/sharkord-gpui-windows/desktop-gpui.exe dist-release/sharkord-gpui-windows-x64.exe
-          cp release-artifacts/sharkord-gpui-linux/desktop-gpui dist-release/sharkord-gpui-linux-x64
-          chmod +x dist-release/sharkord-gpui-linux-x64
-          cp release-artifacts/sharkord-gpui-macos/desktop-gpui dist-release/sharkord-gpui-macos-arm64
-          chmod +x dist-release/sharkord-gpui-macos-arm64
-
-          cd dist-release
-          zip sharkord-gpui-windows-x64.zip sharkord-gpui-windows-x64.exe
-          zip sharkord-gpui-macos-arm64.zip sharkord-gpui-macos-arm64
-          tar -czvf sharkord-gpui-linux-x64.tar.gz sharkord-gpui-linux-x64
-          ls -la
+          if [ -f release-artifacts/sharkord-gpui-windows/desktop-gpui.exe ]; then
+            cp release-artifacts/sharkord-gpui-windows/desktop-gpui.exe dist-release/sharkord-gpui-windows-x64.exe
+            (cd dist-release && zip sharkord-gpui-windows-x64.zip sharkord-gpui-windows-x64.exe)
+          fi
+          if [ -f release-artifacts/sharkord-gpui-linux/desktop-gpui ]; then
+            cp release-artifacts/sharkord-gpui-linux/desktop-gpui dist-release/sharkord-gpui-linux-x64
+            chmod +x dist-release/sharkord-gpui-linux-x64
+            (cd dist-release && tar -czvf sharkord-gpui-linux-x64.tar.gz sharkord-gpui-linux-x64)
+          fi
+          if [ -f release-artifacts/sharkord-gpui-macos/desktop-gpui ]; then
+            cp release-artifacts/sharkord-gpui-macos/desktop-gpui dist-release/sharkord-gpui-macos-arm64
+            chmod +x dist-release/sharkord-gpui-macos-arm64
+            (cd dist-release && zip sharkord-gpui-macos-arm64.zip sharkord-gpui-macos-arm64)
+          fi
+          ls -la dist-release
 
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v3

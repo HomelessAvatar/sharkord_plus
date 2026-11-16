@@ -72,12 +72,16 @@ jobs:
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
+            type=semver,pattern=v{{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' || startsWith(github.ref, 'refs/tags/v') }}
           labels: |
             org.opencontainers.image.title=Sharkord Plus
             org.opencontainers.image.description=Sharkord Plus Self-Hosted Server
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            wud.watch=true
+            wud.tag.include=^\d+\.\d+\.\d+.*$
+            wud.link.template=https://github.com/${{ github.repository }}/releases/tag/v$${major}.$${minor}.$${patch}
 
       - name: Build and push multi-arch Docker image
         uses: docker/build-push-action@v7
