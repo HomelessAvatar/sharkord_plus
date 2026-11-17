@@ -33,6 +33,12 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 - Isolated per-window audio loopback capture.
 - Picture-in-Picture (`PipPlayerView`) floating mini player docked in bottom-right corner during text channel navigation.
 
+#### Step 1.4: Desktop UX Polish & Discord Parity Views ✅ *(Completed)*
+- Dynamic Center View Switcher (`CenterStageView`): Segmented tab controls ("Chat" vs "Voice Stage") in the channel header for seamless switching between text messaging and voice stage grid when connected to voice.
+- Right-Hand Member List Sidebar Drawer (`MemberList`): 240px collapsible roster grouping channel members by status (Online, Idle, DND, Offline) with role tags, avatar indicators, and member count headers.
+- Discord-Grade Empty States & Welcome Cards (`EmptyStates`): Channel welcome header cards (hashtag badge, channel title, topic description, creation date, action shortcuts) and animated voice stage waiting placeholders ("It's quiet in here...").
+- Raycast-Style Quick Switcher Modal (`QuickSwitcherModal`): `Ctrl+K` / `Cmd+K` global quick switcher overlay with search input, keyboard up/down navigation, quick channel/DM switching, and visual channel type badges.
+
 ---
 
 ### Phase 2: Desktop Packaging, Installers & Auto-Updater 📦
