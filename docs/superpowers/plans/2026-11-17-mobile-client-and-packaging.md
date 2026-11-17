@@ -108,22 +108,22 @@ crates/sharkord-mobile/
 - Create: `apps/mobile/lib/core/theme/theme.dart`
 - Create: `apps/mobile/test/theme_test.dart`
 
-- [ ] **Step 2.1: Write failing test for Pure Neutral Dark Theme**
+- [x] **Step 2.1: Write failing test for Pure Neutral Dark Theme**
   Write `apps/mobile/test/theme_test.dart` asserting exact hex codes (`background: #0a0b0e`, `sidebar: #111216`, `surface: #16171d`, `card: #1c1e24`, `primary: #3b82f6`, `speaking: #22c55e`).
 
-- [ ] **Step 2.2: Create `apps/mobile/pubspec.yaml`**
+- [x] **Step 2.2: Create `apps/mobile/pubspec.yaml`**
   Define dependencies: `flutter_riverpod`, `http`, `open_filex`, `package_info_plus`, `url_launcher`, `path_provider`, `flutter_webrtc`.
 
-- [ ] **Step 2.3: Implement `colors.dart` and `theme.dart`**
+- [x] **Step 2.3: Implement `colors.dart` and `theme.dart`**
   Implement constant tokens and `SharkordTheme.darkTheme`.
 
-- [ ] **Step 2.4: Implement `main.dart`**
+- [x] **Step 2.4: Implement `main.dart`**
   Initialize `ProviderScope` and base MaterialApp.
 
-- [ ] **Step 2.5: Run tests and verify**
+- [x] **Step 2.5: Run tests and verify**
   Run `flutter test test/theme_test.dart`.
 
-- [ ] **Step 2.6: Commit changes**
+- [x] **Step 2.6: Commit changes**
   Commit with message `feat(mobile): scaffold Flutter client with Pure Neutral Dark theme`.
 
 ---
