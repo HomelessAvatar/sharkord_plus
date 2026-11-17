@@ -7,6 +7,7 @@ pub mod channel_tree;
 pub mod chat_canvas;
 pub mod server_rail;
 pub mod voice_bar;
+pub mod voice_stage;
 
 use std::collections::HashMap;
 
@@ -30,6 +31,7 @@ pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
     VoiceBarView, VoiceConnectionState,
 };
+pub use voice_stage::{calculate_grid_columns, VoiceStageCard, VoiceStageView};
 
 use crate::state::AppState;
 use crate::theme;
