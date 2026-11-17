@@ -214,10 +214,51 @@ jobs:
           path: dist-mobile/*
           if-no-files-found: warn
 
+  build-mobile-ios:
+    name: Build Mobile (iOS Sideload IPA)
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+    runs-on: macos-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Build iOS unsigned bundle
+        run: |
+          cd apps/mobile
+          flutter pub get
+          flutter build ios --release --no-codesign
+
+      - name: Package Sideloadable IPA
+        run: |
+          mkdir -p dist-ios/Payload
+          cp -r apps/mobile/build/ios/iphoneos/Runner.app dist-ios/Payload/
+          (cd dist-ios && zip -r sharkord-mobile-ios-unsigned.ipa Payload)
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            cp dist-ios/sharkord-mobile-ios-unsigned.ipa "dist-ios/sharkord-mobile-ios-${{ github.ref_name }}-unsigned.ipa"
+          fi
+          ls -la dist-ios
+
+      - name: Upload mobile artifacts (iOS)
+        uses: actions/upload-artifact@v7
+        with:
+          name: sharkord-mobile-ios
+          path: dist-ios/*
+          if-no-files-found: warn
+
   publish-release:
     name: Publish GitHub Release
     if: always() && !cancelled() && startsWith(github.ref, 'refs/tags/v')
-    needs: [check-and-test, build-macos, build-mobile-android]
+    needs: [check-and-test, build-macos, build-mobile-android, build-mobile-ios]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository

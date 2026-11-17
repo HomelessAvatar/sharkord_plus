@@ -99,7 +99,9 @@ if (others.length > 0) {
 body += `### 📦 Downloadable Assets (Native Binaries)\n`;
 body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` or \`sharkord-gpui-windows-x64.zip\`\n`;
 body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` or \`sharkord-gpui-linux-x64.tar.gz\`\n`;
-body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n\n`;
+body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n`;
+body += `* **Android:** \`sharkord-mobile-android.apk\`\n`;
+body += `* **iOS (Sideload / AltStore / TrollStore / Sideloadly):** \`sharkord-mobile-ios-unsigned.ipa\`\n\n`;
 
 body += `### 🐳 Docker Image (GHCR / SemVer & WUD Ready)\n`;
 const semverTag = currentTag.replace(/^v/, '');
