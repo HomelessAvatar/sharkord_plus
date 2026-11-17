@@ -78,15 +78,15 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          cargo packager --release -p desktop-gpui --formats wix || cargo packager --release --config apps/desktop-gpui/packager.toml --formats wix || (cd apps/desktop-gpui && cargo packager --release --formats wix) || true
           mkdir -p target/packages-windows
-          find . -type f \( -name "*.msi" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/release/desktop-gpui.exe" ! -path "./target/packages-*/*" -exec cp {} target/packages-windows/ \; || true
+          find . -type f \( -name "*.msi" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/packages-*/*" -exec cp {} target/packages-windows/ \; || true
           ls -la target/packages-windows
 
       - name: Package desktop application (Linux)
         if: runner.os == 'Linux'
         run: |
-          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          cargo packager --release -p desktop-gpui --formats appimage,deb || cargo packager --release --config apps/desktop-gpui/packager.toml --formats appimage,deb || (cd apps/desktop-gpui && cargo packager --release --formats appimage,deb) || true
           mkdir -p target/packages-linux
           find . -type f \( -name "*.AppImage" -o -name "*.deb" \) ! -path "./target/debug/*" ! -path "./target/packages-*/*" -exec cp {} target/packages-linux/ \; || true
           ls -la target/packages-linux
@@ -140,7 +140,7 @@ jobs:
 
       - name: Package desktop application (macOS)
         run: |
-          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          cargo packager --release -p desktop-gpui --formats dmg,app || cargo packager --release --config apps/desktop-gpui/packager.toml --formats dmg,app || (cd apps/desktop-gpui && cargo packager --release --formats dmg,app) || true
           mkdir -p target/packages-macos
           PACKAGES_DIR="$(pwd)/target/packages-macos"
           find . -type f \( -name "*.dmg" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/packages-*/*" -exec cp {} "$PACKAGES_DIR/" \; || true

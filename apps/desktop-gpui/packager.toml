@@ -15,7 +15,7 @@ icons = [
     "assets/icons/icon.png",
 ]
 
-formats = ["msi", "zip", "dmg", "app", "appimage", "deb"]
+formats = ["default"]
 
 binaries = [
     { path = "desktop-gpui", main = true },
