@@ -27,6 +27,12 @@ To enable users to communicate seamlessly on mobile, Sharkord Plus requires a **
 - **Background Voice & Hardware Integration:**
   - **Android:** Foreground Service with persistent audio notification (`android.permission.FOREGROUND_SERVICE_MICROPHONE`).
   - **iOS:** Background audio execution mode with `AVAudioSessionCategoryPlayAndRecord` and Bluetooth/speaker routing.
+- **In-App Updater & Update Checking:**
+  - Automatic update checking on startup and manual check via user settings.
+  - Semantic version comparison against GitHub Releases API or server manifest.
+  - **Android In-App Updater:** Automated APK download with real-time progress bar and native package installer launch intent (`ACTION_VIEW`).
+  - **iOS In-App Updater:** Changelog and version notification modal directing user to release/download page or App Store/TestFlight via `url_launcher`.
+- **Unified Release Pipeline:** Automated packaging of desktop binaries (Windows `.exe`/`.msi`/`.zip`, Linux `.AppImage`/`.deb`/`.tar.gz`, macOS `.dmg`/`.zip`) AND mobile deliverables (Android `.apk`, iOS `.ipa`/archive) attached to GitHub Releases assets.
 - **Design System Parity:** Strict adherence to Pure Neutral Dark tokens (`#0a0b0e`, `#111216`, `#16171d`, `#1c1e24`, `#3b82f6`, `#22c55e`).
 
 ### Non-Goals
@@ -128,6 +134,35 @@ apps/mobile/
 - **iOS:**
   - Background Modes: `audio`, `voip`.
   - Audio session setup with `AVAudioSessionCategoryPlayAndRecord` and `allowBluetooth`.
+
+### 5.5 Mobile In-App Update Engine & Updater Mechanism
+- **Update Check Service (`update_service.dart`):**
+  - Invoked automatically on application startup (with cooldown/debounce) and manually via `SettingsScreen`.
+  - Queries GitHub Releases API: `GET https://api.github.com/repos/HomelessAvatar/sharkord_plus/releases/latest`.
+  - Compares the remote SemVer tag against the local app version obtained via `package_info_plus`.
+  - Matches platform-specific binary assets:
+    - **Android:** Looks for assets ending in `.apk` (e.g. `sharkord-mobile-android-v0.2.0.apk`).
+    - **iOS:** Captures the GitHub release notes and browser download / TestFlight URL.
+- **Android In-App Auto-Updater:**
+  - Displays Discord-style modal sheet: "Update Available" with release version, formatted changelog, and "Download & Install" button.
+  - Streaming download using `http` / `dio` with real-time percentage progress bar and byte count.
+  - Saves file to application cache directory (`getTemporaryDirectory()` via `path_provider`).
+  - Launches native Android package installer via platform Intent (`ACTION_VIEW`, `application/vnd.android.package-archive` with `FLAG_GRANT_READ_URI_PERMISSION`) through `open_filex`.
+  - Prompts for `REQUEST_INSTALL_PACKAGES` permission on Android 8.0+ if not previously authorized.
+- **iOS Update Workflow:**
+  - In compliance with Apple App Store review guidelines and iOS sandbox security restrictions, native binary self-replacement is prohibited.
+  - Displays "Update Available" modal with new release highlights.
+  - Clicking "Update" uses `url_launcher` to navigate directly to the official release download / TestFlight link in the mobile browser.
+
+### 5.6 CI/CD Release Packaging Pipeline (Desktop + Mobile)
+- **Root Cause Fix for Missing Desktop Assets:**
+  - Correct `packager.toml` TOML tables (`[deb]` instead of invalid `[linux]`).
+  - Fix artifact stage directory structures so upload and download steps preserve expected filenames.
+  - Update `Prepare release assets` step in `.github/workflows/rust-ci.yml` using recursive discovery to guarantee that all built `.msi`, `.zip`, `.exe`, `.AppImage`, `.deb`, and `.dmg` files are copied to `dist-release/`.
+- **Mobile Packaging Pipeline:**
+  - **Android:** GitHub Actions step runs `flutter build apk --release` (or builds debug/release APK), copies `build/app/outputs/flutter-apk/app-release.apk` to `dist-release/sharkord-mobile-android-v${VERSION}.apk`.
+  - **iOS:** Xcode / Flutter workflow produces archive or unsigned `.ipa` for sideloading/testing.
+  - All artifacts (Windows, Linux, macOS, Android, iOS) are verified via `ls -la dist-release` before `action-gh-release` attaches them to the GitHub release.
 
 ---
 

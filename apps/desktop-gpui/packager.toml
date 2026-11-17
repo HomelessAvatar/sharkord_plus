@@ -27,5 +27,5 @@ digest_algorithm = "sha256"
 [macos]
 minimum_system_version = "11.0"
 
-[linux]
+[deb]
 section = "net"

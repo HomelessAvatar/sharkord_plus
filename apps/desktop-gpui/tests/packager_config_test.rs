@@ -65,4 +65,14 @@ fn test_packager_configuration_file_validity() {
         icns_data.starts_with(b"icns"),
         "icon.icns must have valid ICNS magic bytes"
     );
+
+    // Verify valid packager sections
+    assert!(
+        content.contains("[deb]"),
+        "packager.toml should configure deb packages under [deb]"
+    );
+    assert!(
+        !content.contains("[linux]"),
+        "packager.toml must not use invalid [linux] table"
+    );
 }
