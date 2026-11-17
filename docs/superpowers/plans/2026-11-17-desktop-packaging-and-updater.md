@@ -319,24 +319,30 @@ git commit -m "ci: integrate multi-platform cargo-packager installers into relea
 
 ---
 
-### Task 5: End-to-End Test Suite, Verification & Roadmap Update
+### Task 5: End-to-End Test Suite, Verification, Version Bump & Roadmap Update
 
 **Files:**
+- Modify: `package.json`
+- Modify: `apps/desktop-gpui/Cargo.toml`
+- Modify: `crates/sharkord-core/Cargo.toml`
 - Modify: `ROADMAP.md`
 
-- [ ] **Step 1: Run complete cargo test suite across all workspace crates**
+- [ ] **Step 1: Bump version to `0.2.0` across workspace manifests**
+Update version from `0.1.1` to `0.2.0` in `package.json`, `apps/desktop-gpui/Cargo.toml`, and `crates/sharkord-core/Cargo.toml`.
+
+- [ ] **Step 2: Run complete cargo test suite across all workspace crates**
 Run: `& "$HOME\.cargo\bin\cargo.exe" test --all`
 Expected: 100% pass rate.
 
-- [ ] **Step 2: Run formatting and clippy checks**
+- [ ] **Step 3: Run formatting and clippy checks**
 Run: `& "$HOME\.cargo\bin\cargo.exe" fmt --check`
 Run: `& "$HOME\.cargo\bin\cargo.exe" clippy --all-targets -- -D warnings`
 Expected: 0 warnings.
 
-- [ ] **Step 3: Run monorepo type checks and linting (`bun run magic`)**
+- [ ] **Step 4: Run monorepo type checks and linting (`bun run magic`)**
 Run: `& "$HOME\.bun\bin\bun.exe" run magic`
 Expected: Clean pass across all 7 packages.
 
-- [ ] **Step 4: Update `ROADMAP.md` marking Phase 2 complete and commit**
+- [ ] **Step 5: Update `ROADMAP.md` marking Phase 2 complete and commit**
 Mark Phase 2: Desktop Packaging, Installers & Auto-Updater ✅ (Completed) with detailed items.
-Commit message: `docs: mark Phase 2 desktop packaging and auto-updater complete in roadmap`
+Commit message: `chore: bump version to 0.2.0 and mark Phase 2 complete in roadmap`
