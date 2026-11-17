@@ -5,6 +5,7 @@
 pub mod audio_settings;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod member_list;
 pub mod pip_player;
 pub mod server_rail;
 pub mod source_picker;
@@ -30,6 +31,9 @@ pub use channel_tree::{
 };
 pub use chat_canvas::{
     format_message_timestamp, group_messages_for_feed, ChatCanvasView, MessageFeedGroup,
+};
+pub use member_list::{
+    compose_member_groups, status_indicator_color, CategorizedMemberGroup, MemberListSidebarView,
 };
 pub use pip_player::{PipPlayerState, PipPlayerView};
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
@@ -67,6 +71,7 @@ pub struct WorkspaceView {
     pub channel_tree: ChannelTreeView,
     pub chat_canvas: ChatCanvasView,
     pub voice_stage: VoiceStageView,
+    pub member_list: MemberListSidebarView,
     pub active_center_view: ActiveContentView,
 }
 
@@ -91,6 +96,7 @@ impl WorkspaceView {
             channel_tree: ChannelTreeView::default(),
             chat_canvas: ChatCanvasView::default(),
             voice_stage: VoiceStageView::default(),
+            member_list: MemberListSidebarView::default(),
             active_center_view,
         };
 
@@ -180,6 +186,9 @@ impl WorkspaceView {
             _ => (0, String::new()),
         };
         self.voice_stage = VoiceStageView::new(voice_ch_id, voice_ch_name, Vec::new());
+
+        // 5. Sync Member List
+        self.member_list = MemberListSidebarView::new(&self.state.users);
     }
 
     /// Selects a channel by ID, auto-switches center view mode based on channel type,
@@ -257,6 +266,11 @@ impl WorkspaceView {
     pub fn disconnect_voice(&mut self) {
         self.voice_bar.disconnect();
     }
+
+    /// Toggles the visibility of the right-hand member list sidebar drawer.
+    pub fn toggle_right_sidebar(&mut self) {
+        self.state.toggle_right_sidebar();
+    }
 }
 
 impl Render for WorkspaceView {
@@ -313,6 +327,11 @@ impl Render for WorkspaceView {
                     .overflow_hidden()
                     .child(center_element),
             );
+
+        // Column 4: Right-hand Member List Sidebar Drawer (240px fixed, conditionally rendered)
+        if self.state.right_sidebar_open {
+            root = root.child(self.member_list.render_element());
+        }
 
         if let Some(ref pip) = self.state.active_pip_player {
             if pip.is_visible {
