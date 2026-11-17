@@ -178,19 +178,19 @@ crates/sharkord-mobile/
 - Create: `apps/mobile/lib/providers/message_provider.dart`
 - Create: `apps/mobile/lib/providers/voice_provider.dart`
 
-- [ ] **Step 4.1: Write failing test for `crates/sharkord-mobile`**
+- [x] **Step 4.1: Write failing test for `crates/sharkord-mobile`**
   Create `crates/sharkord-mobile/tests/bridge_test.rs` verifying client initialization and type mappings.
 
-- [ ] **Step 4.2: Implement `crates/sharkord-mobile`**
+- [x] **Step 4.2: Implement `crates/sharkord-mobile`**
   Wrap `sharkord-core` types, client configuration, and export clean FFI bridge methods. Add crate to root `Cargo.toml`.
 
-- [ ] **Step 4.3: Implement Dart data models and Riverpod providers**
+- [x] **Step 4.3: Implement Dart data models and Riverpod providers**
   Create `User`, `Channel`, `Message`, and providers with state management and optimistic updates.
 
-- [ ] **Step 4.4: Run Rust and Dart tests**
+- [x] **Step 4.4: Run Rust and Dart tests**
   Run `cargo test -p sharkord-mobile` and `flutter test`.
 
-- [ ] **Step 4.5: Commit changes**
+- [x] **Step 4.5: Commit changes**
   Commit with message `feat(mobile): implement Rust mobile bridge crate and Riverpod state providers`.
 
 ---

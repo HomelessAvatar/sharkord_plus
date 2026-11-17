@@ -1,0 +1,13 @@
+[package]
+name = "sharkord-mobile"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+sharkord-core = { path = "../sharkord-core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
