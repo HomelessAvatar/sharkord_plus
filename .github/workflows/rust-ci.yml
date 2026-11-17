@@ -31,7 +31,7 @@ permissions:
 jobs:
   check-and-test:
     name: Test & Build (${{ matrix.os }})
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -54,7 +54,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libfontconfig1-dev libvulkan-dev libx11-dev libx11-xcb-dev libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev
+          sudo apt-get install -y libasound2-dev libfontconfig1-dev libvulkan-dev libx11-dev libx11-xcb-dev libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev patchelf file
+          sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2 || true
+
+      - name: Install cargo-packager
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-packager
 
       - name: Check code formatting
         run: cargo fmt --check
@@ -68,24 +74,47 @@ jobs:
       - name: Build release binaries
         run: cargo build --release -p desktop-gpui -p sharkord-core
 
-      - name: Upload desktop binary (Windows)
+      - name: Package desktop application (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          mkdir -p target/packages-windows
+          find . -type f \( -name "*.msi" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/release/desktop-gpui.exe" -exec cp {} target/packages-windows/ \; || true
+          ls -la target/packages-windows
+
+      - name: Package desktop application (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          mkdir -p target/packages-linux
+          find . -type f \( -name "*.AppImage" -o -name "*.deb" \) ! -path "./target/debug/*" -exec cp {} target/packages-linux/ \; || true
+          ls -la target/packages-linux
+
+      - name: Upload desktop artifacts (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:
           name: sharkord-gpui-windows
-          path: target/release/desktop-gpui.exe
+          path: |
+            target/release/desktop-gpui.exe
+            target/packages-windows/*
+          if-no-files-found: warn
 
-      - name: Upload desktop binary (Linux)
+      - name: Upload desktop artifacts (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
           name: sharkord-gpui-linux
-          path: target/release/desktop-gpui
+          path: |
+            target/release/desktop-gpui
+            target/packages-linux/*
+          if-no-files-found: warn
 
   build-macos:
     name: Build (macos-latest)
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 25
+    timeout-minutes: 30
     runs-on: macos-latest
     continue-on-error: true
 
@@ -101,14 +130,35 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
 
+      - name: Install cargo-packager
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-packager
+
       - name: Build release binaries
         run: cargo build --release -p desktop-gpui -p sharkord-core
 
-      - name: Upload desktop binary (macOS)
+      - name: Package desktop application (macOS)
+        run: |
+          cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
+          mkdir -p target/packages-macos
+          find . -type f \( -name "*.dmg" -o -name "*.zip" \) ! -path "./target/debug/*" -exec cp {} target/packages-macos/ \; || true
+          for app_path in $(find . -type d -name "*.app" ! -path "*/build/*" ! -path "*/target/debug/*"); do
+            app_name=$(basename "$app_path" .app)
+            if [ ! -f "target/packages-macos/${app_name}.zip" ]; then
+              (cd "$(dirname "$app_path")" && zip -r "../../target/packages-macos/${app_name}-macos.zip" "$(basename "$app_path")")
+            fi
+          done
+          ls -la target/packages-macos
+
+      - name: Upload desktop artifacts (macOS)
         uses: actions/upload-artifact@v7
         with:
           name: sharkord-gpui-macos
-          path: target/release/desktop-gpui
+          path: |
+            target/release/desktop-gpui
+            target/packages-macos/*
+          if-no-files-found: warn
 
   publish-release:
     name: Publish GitHub Release
@@ -147,6 +197,8 @@ jobs:
             chmod +x dist-release/sharkord-gpui-macos-arm64
             (cd dist-release && zip sharkord-gpui-macos-arm64.zip sharkord-gpui-macos-arm64)
           fi
+          find release-artifacts -type f \( -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" \) -exec cp {} dist-release/ \;
+          find dist-release -type f \( -name "*.AppImage" -o -name "*-linux-*" -o -name "*-macos-*" \) -exec chmod +x {} \;
           ls -la dist-release
 
       - name: Create or update GitHub Release
