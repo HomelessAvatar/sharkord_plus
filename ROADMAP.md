@@ -6,7 +6,7 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 
 ## 🚀 Active Development Phases
 
-### Phase 1: Native WebRTC Voice, Video & Screen Share in Rust 🎙️ *(In Progress)*
+### Phase 1: Native WebRTC Voice, Video & Screen Share in Rust 🎙️ *(Completed)*
 
 #### Step 1.1: Core Audio Engine & Docked Voice Controls ✅ *(Completed)*
 - **Core Voice Architecture (`crates/sharkord-core`):**
@@ -27,11 +27,11 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 - Discord-style interactive Voice Stage / Grid View with responsive cards and speaking animations.
 - Participant context menu with live volume adjustment and mute toggles.
 
-#### Step 1.3: Screen Sharing, GPU Video Render & PiP Mode 🎥 *(In Progress)*
-- Screen / Window source selection modal with resolution (720p/1080p) & framerate (30/60 FPS) toggles.
-- GPU-accelerated video texture rendering in GPUI (DirectX 12 / Vulkan / Metal).
+#### Step 1.3: Screen Sharing, GPU Video Render & PiP Mode ✅ *(Completed)*
+- Screen / Window source selection modal with resolution (720p/1080p/1440p) & framerate (15/30/60 FPS) toggles.
+- GPU-accelerated video texture rendering in GPUI (`VideoTileView`) with letterboxed 16:9 viewport and live stream telemetry popover.
 - Isolated per-window audio loopback capture.
-- Picture-in-Picture (PiP) floating mini player during text channel browsing.
+- Picture-in-Picture (`PipPlayerView`) floating mini player docked in bottom-right corner during text channel navigation.
 
 ---
 
