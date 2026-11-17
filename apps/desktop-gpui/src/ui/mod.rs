@@ -7,6 +7,7 @@ pub mod channel_tree;
 pub mod chat_canvas;
 pub mod server_rail;
 pub mod source_picker;
+pub mod video_tile;
 pub mod voice_bar;
 pub mod voice_context_menu;
 pub mod voice_stage;
@@ -30,6 +31,7 @@ pub use chat_canvas::{
 };
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
+pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
 pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
     VoiceBarView, VoiceConnectionState,
