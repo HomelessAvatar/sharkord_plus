@@ -20,13 +20,14 @@ This document outlines the official development roadmap for **Sharkord Plus**.
   - Real-time green speaking indicator ring for active speakers and channel roster integration.
   - Native Audio Settings view with device selection, volume sliders, and live VU meter bar.
 
-#### Step 1.2: Voice Quality, Advanced Controls & Voice Grid View 🛠️ *(In Progress)*
+#### Step 1.2: Voice Quality, Advanced Controls & Voice Grid View ✅ *(Completed)*
 - Per-user volume gain routing (0% - 200%) and local mute ("Mute for me").
 - Noise Gate DSP filter with smooth attack and release curves.
 - Push-to-Talk (PTT) input mode and keybind transmission gating.
 - Discord-style interactive Voice Stage / Grid View with responsive cards and speaking animations.
+- Participant context menu with live volume adjustment and mute toggles.
 
-#### Step 1.3: Screen Sharing, GPU Video Render & PiP Mode 🎥 *(Planned)*
+#### Step 1.3: Screen Sharing, GPU Video Render & PiP Mode 🎥 *(In Progress)*
 - Screen / Window source selection modal with resolution (720p/1080p) & framerate (30/60 FPS) toggles.
 - GPU-accelerated video texture rendering in GPUI (DirectX 12 / Vulkan / Metal).
 - Isolated per-window audio loopback capture.
