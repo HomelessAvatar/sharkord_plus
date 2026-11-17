@@ -7,6 +7,7 @@ use sharkord_core::types::{Channel, Message, ServerSettings, User};
 
 use crate::ui::pip_player::PipPlayerState;
 use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
+use crate::ui::ActiveContentView;
 
 /// Top-level application state for Sharkord desktop.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -24,6 +25,7 @@ pub struct AppState {
     pub user_volumes: HashMap<u64, f32>,
     pub local_muted_users: HashSet<u64>,
     pub active_pip_player: Option<PipPlayerState>,
+    pub active_center_view: ActiveContentView,
 }
 
 impl Default for AppState {
@@ -42,6 +44,7 @@ impl Default for AppState {
             user_volumes: HashMap::new(),
             local_muted_users: HashSet::new(),
             active_pip_player: None,
+            active_center_view: ActiveContentView::default(),
         }
     }
 }
@@ -203,5 +206,10 @@ impl AppState {
     /// Closes the active Picture-in-Picture player.
     pub fn close_pip_player(&mut self) {
         self.active_pip_player = None;
+    }
+
+    /// Sets the active center content view.
+    pub fn set_center_view(&mut self, view: ActiveContentView) {
+        self.active_center_view = view;
     }
 }

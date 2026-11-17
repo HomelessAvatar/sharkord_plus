@@ -17,6 +17,7 @@ use std::collections::HashMap;
 
 use gpui::prelude::*;
 use gpui::*;
+use serde::{Deserialize, Serialize};
 use sharkord_core::types::Message;
 
 pub use audio_settings::{
@@ -44,6 +45,15 @@ pub use voice_stage::{calculate_grid_columns, VoiceStageCard, VoiceStageView};
 use crate::state::AppState;
 use crate::theme;
 
+/// Active center content canvas view mode in `WorkspaceView`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ActiveContentView {
+    #[default]
+    Chat,
+    VoiceStage,
+    ScreenShare,
+}
+
 /// Root workspace view composing the 3-column layout:
 /// 1. Server rail (72px fixed, bg_surface)
 /// 2. Channel sidebar (240px fixed, bg_subsurface) with docked voice controls at bottom
@@ -56,6 +66,8 @@ pub struct WorkspaceView {
     pub server_rail: ServerRailView,
     pub channel_tree: ChannelTreeView,
     pub chat_canvas: ChatCanvasView,
+    pub voice_stage: VoiceStageView,
+    pub active_center_view: ActiveContentView,
 }
 
 impl WorkspaceView {
@@ -64,6 +76,13 @@ impl WorkspaceView {
         let voice_bar = VoiceBarState::new();
         let message_draft = String::new();
 
+        let active_center_view = match state.active_channel() {
+            Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
+                ActiveContentView::VoiceStage
+            }
+            _ => state.active_center_view,
+        };
+
         let mut workspace = Self {
             state,
             voice_bar,
@@ -71,6 +90,8 @@ impl WorkspaceView {
             server_rail: ServerRailView::default(),
             channel_tree: ChannelTreeView::default(),
             chat_canvas: ChatCanvasView::default(),
+            voice_stage: VoiceStageView::default(),
+            active_center_view,
         };
 
         workspace.sync_views();
@@ -150,12 +171,43 @@ impl WorkspaceView {
             &users_map,
             &self.message_draft,
         );
+
+        // 4. Sync Voice Stage
+        let (voice_ch_id, voice_ch_name) = match self.state.active_channel() {
+            Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
+                (ch.id, ch.name.clone())
+            }
+            _ => (0, String::new()),
+        };
+        self.voice_stage = VoiceStageView::new(voice_ch_id, voice_ch_name, Vec::new());
     }
 
-    /// Selects a channel by ID and refreshes child views.
+    /// Selects a channel by ID, auto-switches center view mode based on channel type,
+    /// and refreshes child views.
     pub fn select_channel(&mut self, channel_id: u64) {
         self.state.select_channel(channel_id);
+        if let Some(ch) = self.state.active_channel() {
+            if ch.channel_type == sharkord_core::types::ChannelType::Voice {
+                self.active_center_view = ActiveContentView::VoiceStage;
+            } else {
+                self.active_center_view = ActiveContentView::Chat;
+            }
+        } else {
+            self.active_center_view = ActiveContentView::Chat;
+        }
+        self.state.set_center_view(self.active_center_view);
         self.sync_views();
+    }
+
+    /// Sets the active center content view mode.
+    pub fn set_center_view(&mut self, view: ActiveContentView) {
+        self.active_center_view = view;
+        self.state.set_center_view(view);
+    }
+
+    /// Returns the currently active center content view mode.
+    pub fn active_center_view(&self) -> ActiveContentView {
+        self.active_center_view
     }
 
     /// Updates the draft text in the composer.
@@ -211,6 +263,24 @@ impl Render for WorkspaceView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let voice_bar_view = VoiceBarView::new(self.voice_bar.clone());
 
+        let center_element: AnyElement = match self.active_center_view {
+            ActiveContentView::Chat => self.chat_canvas.render_element().into_any_element(),
+            ActiveContentView::VoiceStage => self.voice_stage.render_element().into_any_element(),
+            ActiveContentView::ScreenShare => {
+                let tile_state = VideoTileState::new(0, "Screen Share".to_string());
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .h_full()
+                    .items_center()
+                    .justify_center()
+                    .bg(theme::bg_base())
+                    .child(VideoTileView::new(tile_state).render_element())
+                    .into_any_element()
+            }
+        };
+
         let mut root = div()
             .relative()
             .flex()
@@ -233,8 +303,16 @@ impl Render for WorkspaceView {
                     .child(self.channel_tree.render_element())
                     .child(voice_bar_view.render_element()),
             )
-            // Column 3: Primary Chat Canvas (Flex 1)
-            .child(self.chat_canvas.render_element());
+            // Column 3: Dynamic Center Content Canvas (Chat, VoiceStage, or ScreenShare)
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .h_full()
+                    .overflow_hidden()
+                    .child(center_element),
+            );
 
         if let Some(ref pip) = self.state.active_pip_player {
             if pip.is_visible {

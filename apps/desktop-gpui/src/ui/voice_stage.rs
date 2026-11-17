@@ -107,7 +107,7 @@ impl VoiceStageCard {
 }
 
 /// Voice Stage view component representing the primary voice channel stage room.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct VoiceStageView {
     pub channel_id: u64,
     pub channel_name: String,
