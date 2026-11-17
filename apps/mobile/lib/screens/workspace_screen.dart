@@ -35,8 +35,10 @@ class WorkspaceScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedChannel = ref.watch(selectedChannelProvider);
+    final channelState = ref.watch(channelProvider);
     final isVoiceConnected = ref.watch(isVoiceConnectedProvider);
-    final channelName = selectedChannel?.name ?? 'general';
+    final channelName = selectedChannel?.name ??
+        (channelState.channels.isEmpty ? 'No Channel' : 'general');
 
     return Scaffold(
       backgroundColor: SharkordColors.background,

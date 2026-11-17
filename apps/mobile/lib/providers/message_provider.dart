@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sharkord_mobile/models/message.dart';
 import 'package:sharkord_mobile/models/user.dart';
+import 'package:sharkord_mobile/providers/auth_provider.dart';
 
 /// State of chat messages indexed by channel ID.
 @immutable
@@ -52,7 +53,9 @@ class MessageState {
 
 /// Notifier managing message history, optimistic sends, and incoming events.
 class MessageNotifier extends StateNotifier<MessageState> {
-  MessageNotifier() : super(const MessageState());
+  final Ref? _ref;
+
+  MessageNotifier([this._ref]) : super(const MessageState());
 
   /// Sets message list for a specific channel.
   void setMessages(String channelId, List<Message> messages) {
@@ -77,7 +80,7 @@ class MessageNotifier extends StateNotifier<MessageState> {
     state = state.copyWith(messagesByChannel: updated);
   }
 
-  /// Sends a message with optimistic UI rendering.
+  /// Sends a message with optimistic UI rendering and live socket propagation.
   Future<Message> sendMessage({
     required String channelId,
     required String content,
@@ -103,11 +106,19 @@ class MessageNotifier extends StateNotifier<MessageState> {
     addMessage(optimisticMessage);
 
     try {
-      // Simulate network / bridge latency
-      await Future<void>.delayed(const Duration(milliseconds: 15));
+      final session = _ref?.read(socketSessionProvider);
+      final numericChannelId = int.tryParse(channelId);
 
-      final confirmedId = 'msg_${DateTime.now().millisecondsSinceEpoch}';
-      final confirmedMessage = optimisticMessage.copyWith(id: confirmedId);
+      Message confirmedMessage;
+      if (session != null && numericChannelId != null) {
+        // Send through real WebSocket session
+        confirmedMessage = await session.sendMessage(numericChannelId, cleanContent);
+      } else {
+        // Fallback simulation for offline / testing
+        await Future<void>.delayed(const Duration(milliseconds: 15));
+        final confirmedId = 'msg_${DateTime.now().millisecondsSinceEpoch}';
+        confirmedMessage = optimisticMessage.copyWith(id: confirmedId);
+      }
 
       // Replace optimistic message with confirmed server message
       final updated = Map<String, List<Message>>.from(state.messagesByChannel);
@@ -125,7 +136,6 @@ class MessageNotifier extends StateNotifier<MessageState> {
 
       return confirmedMessage;
     } catch (e) {
-      // On failure, keep error or handle rollback if desired
       state = state.copyWith(error: e.toString());
       rethrow;
     }
@@ -156,7 +166,7 @@ class MessageNotifier extends StateNotifier<MessageState> {
 /// Provider for message state.
 final messageProvider =
     StateNotifierProvider<MessageNotifier, MessageState>((ref) {
-  return MessageNotifier();
+  return MessageNotifier(ref);
 });
 
 /// Family provider for observing messages of a specific channel.

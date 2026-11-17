@@ -4,6 +4,8 @@ import 'package:sharkord_mobile/core/theme/colors.dart';
 import 'package:sharkord_mobile/models/channel.dart';
 import 'package:sharkord_mobile/providers/auth_provider.dart';
 import 'package:sharkord_mobile/providers/channel_provider.dart';
+import 'package:sharkord_mobile/providers/message_provider.dart';
+import 'package:sharkord_mobile/providers/server_provider.dart';
 import 'package:sharkord_mobile/providers/voice_provider.dart';
 
 /// Left Drawer featuring Server Rail and categorized Channel Tree.
@@ -15,6 +17,7 @@ class ChannelDrawer extends ConsumerWidget {
     final channelState = ref.watch(channelProvider);
     final voiceState = ref.watch(voiceProvider);
     final currentUser = ref.watch(currentUserProvider);
+    final serverName = ref.watch(serverNameProvider);
 
     // Group channels by category
     final textChannels = channelState.textChannels;
@@ -129,10 +132,10 @@ class ChannelDrawer extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Sharkord Server',
-                            style: TextStyle(
+                            serverName,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: SharkordColors.textPrimary,
@@ -141,7 +144,7 @@ class ChannelDrawer extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Icon(
+                        const Icon(
                           Icons.keyboard_arrow_down_rounded,
                           color: SharkordColors.textMuted,
                         ),
@@ -157,6 +160,31 @@ class ChannelDrawer extends ConsumerWidget {
                         horizontal: 8,
                       ),
                       children: [
+                        if (textChannels.isEmpty && voiceChannels.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.tag_rounded,
+                                  color: SharkordColors.textMuted,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  channelState.isLoading
+                                      ? 'Loading channels...'
+                                      : 'No channels available',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: SharkordColors.textMuted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         // Text Channels Category
                         if (textChannels.isNotEmpty) ...[
                           _buildCategoryHeader('TEXT CHANNELS'),
@@ -388,6 +416,13 @@ class ChannelDrawer extends ConsumerWidget {
                   .selectVoiceChannel(channel.id);
             } else {
               ref.read(channelProvider.notifier).selectChannel(channel.id);
+              final session = ref.read(socketSessionProvider);
+              if (session != null) {
+                final numericId = channel.numericId;
+                session.fetchMessages(numericId).then((msgs) {
+                  ref.read(messageProvider.notifier).setMessages(channel.id, msgs);
+                }).catchError((_) {});
+              }
               Navigator.of(context).pop();
             }
           },

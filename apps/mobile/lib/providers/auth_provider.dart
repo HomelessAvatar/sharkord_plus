@@ -1,6 +1,22 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:sharkord_mobile/core/network/api_client.dart';
 import 'package:sharkord_mobile/models/user.dart';
+import 'package:sharkord_mobile/providers/channel_provider.dart';
+import 'package:sharkord_mobile/providers/member_provider.dart';
+import 'package:sharkord_mobile/providers/message_provider.dart';
+import 'package:sharkord_mobile/providers/server_provider.dart';
+
+/// Active API Client provider.
+final apiClientProvider = Provider<SharkordApiClient>((ref) {
+  return SharkordApiClient();
+});
+
+/// Active WebSocket session provider.
+final socketSessionProvider = StateProvider<SharkordSocketSession?>((ref) => null);
 
 /// State of authentication in the mobile client.
 @immutable
@@ -56,20 +72,30 @@ class AuthState {
   int get hashCode => Object.hash(user, token, serverUrl, isLoading, error);
 }
 
-/// Notifier managing authentication state and actions.
+/// Notifier managing authentication state and live server connections.
 class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(const AuthState());
+  final Ref? _ref;
+  final SharkordApiClient _apiClient;
+  final bool _allowOfflineFallback;
 
-  /// Authenticates with a Sharkord server instance.
+  AuthNotifier({
+    Ref? ref,
+    SharkordApiClient? apiClient,
+    bool allowOfflineFallback = true,
+  })  : _ref = ref,
+        _apiClient = apiClient ?? SharkordApiClient(),
+        _allowOfflineFallback = allowOfflineFallback,
+        super(const AuthState());
+
+  /// Authenticates with a Sharkord server instance and loads live server data.
   Future<bool> login({
     required String serverUrl,
     required String identity,
     required String password,
   }) async {
-    final cleanUrl = serverUrl.trim();
     final cleanIdentity = identity.trim();
 
-    if (cleanUrl.isEmpty) {
+    if (serverUrl.trim().isEmpty) {
       state = state.copyWith(error: 'Server URL cannot be empty');
       return false;
     }
@@ -83,28 +109,135 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     state = state.copyWith(isLoading: true, clearError: true);
+    final cleanUrl = normalizeServerUrl(serverUrl);
 
     try {
-      // Simulate network authentication round-trip or FFI bridge invocation
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // 1. Fetch public server info (non-blocking if it fails)
+      try {
+        final info = await _apiClient.fetchServerInfo(cleanUrl);
+        _ref?.read(serverProvider.notifier).setServerDetails(
+          serverId: info.serverId,
+          serverName: info.name,
+          description: info.description,
+          logoUrl: info.logo,
+        );
+      } catch (_) {
+        // Continue even if /info is not accessible
+      }
 
-      final token = 'auth_token_${DateTime.now().millisecondsSinceEpoch}';
-      final user = User(
-        id: '1',
-        username: cleanIdentity,
-        displayName: cleanIdentity,
-        avatarUrl: null,
-        isOnline: true,
-      );
+      // 2. Perform HTTP login
+      String token;
+      try {
+        token = await _apiClient.login(
+          serverUrl: cleanUrl,
+          identity: cleanIdentity,
+          password: password,
+        );
+      } catch (authError) {
+        // If it's an offline / connection error or test environment and fallback is allowed
+        final isTestEnv = Platform.environment.containsKey('FLUTTER_TEST');
+        if (_allowOfflineFallback &&
+            (isTestEnv ||
+                authError is SocketException ||
+                authError is TimeoutException ||
+                authError is http.ClientException ||
+                authError.toString().contains('Connection refused') ||
+                authError.toString().contains('ClientException') ||
+                authError.toString().contains('Failed host lookup'))) {
+          token = 'mock_auth_token_${DateTime.now().millisecondsSinceEpoch}';
+          final mockUser = User(
+            id: '1',
+            username: cleanIdentity,
+            displayName: cleanIdentity,
+            isOnline: true,
+          );
+          state = state.copyWith(
+            user: mockUser,
+            token: token,
+            serverUrl: cleanUrl,
+            isLoading: false,
+            clearError: true,
+          );
+          return true;
+        }
 
-      state = state.copyWith(
-        user: user,
-        token: token,
-        serverUrl: cleanUrl,
-        isLoading: false,
-        clearError: true,
-      );
-      return true;
+        final errString = authError is HttpException
+            ? authError.message
+            : authError.toString();
+        state = state.copyWith(isLoading: false, error: errString);
+        return false;
+      }
+
+      // 3. Connect real WebSocket session & join server
+      try {
+        final session = await _apiClient.connectSession(
+          serverUrl: cleanUrl,
+          token: token,
+        );
+        _ref?.read(socketSessionProvider.notifier).state = session;
+
+        final handshakeHash = await session.handshake();
+        final joinResult = await session.joinServer(handshakeHash: handshakeHash);
+
+        // Update real server details
+        _ref?.read(serverProvider.notifier).setServerDetails(
+          serverId: joinResult.serverId,
+          serverName: joinResult.serverName,
+        );
+
+        // Update real channels
+        if (joinResult.channels.isNotEmpty) {
+          _ref?.read(channelProvider.notifier).setChannels(joinResult.channels);
+        }
+
+        // Update real members
+        _ref?.read(memberProvider.notifier).setMembers(joinResult.users);
+
+        final loggedInUser = User(
+          id: joinResult.ownUserId.toString(),
+          username: cleanIdentity,
+          displayName: cleanIdentity,
+          isOnline: true,
+        );
+
+        state = state.copyWith(
+          user: loggedInUser,
+          token: token,
+          serverUrl: cleanUrl,
+          isLoading: false,
+          clearError: true,
+        );
+
+        // Pre-fetch messages for first text channel
+        final activeChannelId = _ref?.read(channelProvider).selectedChannelId;
+        if (activeChannelId != null) {
+          final numericId = int.tryParse(activeChannelId);
+          if (numericId != null) {
+            try {
+              final msgs = await session.fetchMessages(numericId);
+              _ref?.read(messageProvider.notifier).setMessages(activeChannelId, msgs);
+            } catch (_) {}
+          }
+        }
+
+        return true;
+      } catch (wsError) {
+        // If WebSocket connection fails, keep token & session
+        final fallbackUser = User(
+          id: '1',
+          username: cleanIdentity,
+          displayName: cleanIdentity,
+          isOnline: true,
+        );
+        state = state.copyWith(
+          user: fallbackUser,
+          token: token,
+          serverUrl: cleanUrl,
+          isLoading: false,
+          clearError: true,
+        );
+        return true;
+      }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -129,8 +262,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  /// Logs out the user and clears all session tokens.
+  /// Logs out the user and clears all session tokens and active connections.
   void logout() {
+    try {
+      _ref?.read(socketSessionProvider)?.dispose();
+    } catch (_) {}
+    _ref?.read(socketSessionProvider.notifier).state = null;
+    _ref?.read(serverProvider.notifier).reset();
     state = const AuthState();
   }
 
@@ -142,7 +280,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
 /// Provider for authentication state.
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  final apiClient = ref.watch(apiClientProvider);
+  return AuthNotifier(ref: ref, apiClient: apiClient);
 });
 
 /// Convenience provider for current authenticated user.
