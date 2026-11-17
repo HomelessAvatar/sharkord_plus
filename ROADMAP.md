@@ -6,17 +6,31 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 
 ## 🚀 Active Development Phases
 
-### Phase 1: Native WebRTC Voice & Audio Engine in Rust 🎙️ *(Completed)*
+### Phase 1: Native WebRTC Voice, Video & Screen Share in Rust 🎙️ *(In Progress)*
+
+#### Step 1.1: Core Audio Engine & Docked Voice Controls ✅ *(Completed)*
 - **Core Voice Architecture (`crates/sharkord-core`):**
-  - Implement Mediasoup SFU client in Rust (tRPC voice signaling for `joinVoice`, `connectTransport`, `produce`, `consume`).
-  - Low-latency cross-platform audio capture & playback via `cpal` (WASAPI on Windows, PipeWire/ALSA on Linux, CoreAudio on macOS).
+  - Mediasoup SFU voice client in Rust (tRPC signaling: `joinVoice`, `createTransport`, `connectTransport`, `produce`, `consume`).
+  - Cross-platform audio device management via `cpal` (WASAPI, PipeWire, ALSA, CoreAudio).
   - VAD (Voice Activity Detection) engine with hysteresis threshold and live audio level RMS meter.
   - Thread-safe `VoiceSession` state coordinator and event broadcasting.
 - **GPUI Desktop Voice Interface (`apps/desktop-gpui`):**
-  - Interactive voice channel bar with Connect / Disconnect controls and connection latency stats.
+  - Docked voice bar with Connect / Disconnect controls and connection latency stats.
   - Microphone mute / deafen toggles and reactive state integration.
   - Real-time green speaking indicator ring for active speakers and channel roster integration.
   - Native Audio Settings view with device selection, volume sliders, and live VU meter bar.
+
+#### Step 1.2: Voice Quality, Advanced Controls & Voice Grid View 🛠️ *(In Progress)*
+- Per-user volume gain routing (0% - 200%) and local mute ("Mute for me").
+- Noise Gate DSP filter with smooth attack and release curves.
+- Push-to-Talk (PTT) input mode and keybind transmission gating.
+- Discord-style interactive Voice Stage / Grid View with responsive cards and speaking animations.
+
+#### Step 1.3: Screen Sharing, GPU Video Render & PiP Mode 🎥 *(Planned)*
+- Screen / Window source selection modal with resolution (720p/1080p) & framerate (30/60 FPS) toggles.
+- GPU-accelerated video texture rendering in GPUI (DirectX 12 / Vulkan / Metal).
+- Isolated per-window audio loopback capture.
+- Picture-in-Picture (PiP) floating mini player during text channel browsing.
 
 ---
 
