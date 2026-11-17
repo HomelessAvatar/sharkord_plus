@@ -106,6 +106,77 @@ impl VoiceStageCard {
     }
 }
 
+/// Empty stage placeholder displayed when no participants are active in the voice stage room.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmptyStagePlaceholder {
+    pub channel_name: String,
+}
+
+impl EmptyStagePlaceholder {
+    pub fn new(channel_name: impl Into<String>) -> Self {
+        Self {
+            channel_name: channel_name.into(),
+        }
+    }
+
+    /// Returns the headline for the empty stage placeholder.
+    pub fn headline(&self) -> String {
+        "It's quiet in here...".to_string()
+    }
+
+    /// Returns the subtext helper message.
+    pub fn subtext(&self) -> String {
+        "Share an invite link or invite friends to join!".to_string()
+    }
+
+    /// Renders the friendly empty stage placeholder element centered on the stage.
+    pub fn render_element(&self) -> impl IntoElement {
+        div()
+            .id("empty_stage_placeholder")
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .p_8()
+            .gap_3()
+            .child(
+                // Large stage icon circle
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(72.0))
+                    .h(px(72.0))
+                    .rounded_full()
+                    .bg(theme::bg_surface_4())
+                    .text_3xl()
+                    .child("🎙️"),
+            )
+            .child(
+                // Headline
+                div()
+                    .text_lg()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(theme::text_primary())
+                    .child(self.headline()),
+            )
+            .child(
+                // Helper subtext
+                div()
+                    .text_sm()
+                    .text_color(theme::text_muted())
+                    .child(self.subtext()),
+            )
+    }
+}
+
+/// Helper function to create an empty stage placeholder.
+pub fn render_empty_stage_placeholder(channel_name: &str) -> EmptyStagePlaceholder {
+    EmptyStagePlaceholder {
+        channel_name: channel_name.to_string(),
+    }
+}
+
 /// Voice Stage view component representing the primary voice channel stage room.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct VoiceStageView {
@@ -176,8 +247,17 @@ impl VoiceStageView {
                             .child(format!("{} in call", self.participants.len())),
                     ),
             )
-            // Center Stage Grid
-            .child(
+            // Center Stage Grid or Empty Stage Placeholder
+            .child(if self.participants.is_empty() {
+                div()
+                    .id("voice_stage_empty")
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w_full()
+                    .flex_1()
+                    .child(render_empty_stage_placeholder(&self.channel_name).render_element())
+            } else {
                 div()
                     .id("voice_stage_grid")
                     .flex()
@@ -197,8 +277,8 @@ impl VoiceStageView {
                                 _ => px(180.0),
                             })
                             .child(p.render_card())
-                    })),
-            )
+                    }))
+            })
     }
 }
 

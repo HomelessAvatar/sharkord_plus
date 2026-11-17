@@ -30,7 +30,8 @@ pub use channel_tree::{
     ChannelTreeView,
 };
 pub use chat_canvas::{
-    format_message_timestamp, group_messages_for_feed, ChatCanvasView, MessageFeedGroup,
+    format_message_timestamp, group_messages_for_feed, render_channel_welcome_card,
+    ChannelWelcomeCard, ChatCanvasView, MessageFeedGroup,
 };
 pub use member_list::{
     compose_member_groups, status_indicator_color, CategorizedMemberGroup, MemberListSidebarView,
@@ -44,7 +45,10 @@ pub use voice_bar::{
     VoiceBarView, VoiceConnectionState,
 };
 pub use voice_context_menu::{VoiceParticipantMenuState, VoiceParticipantMenuView};
-pub use voice_stage::{calculate_grid_columns, VoiceStageCard, VoiceStageView};
+pub use voice_stage::{
+    calculate_grid_columns, render_empty_stage_placeholder, EmptyStagePlaceholder, VoiceStageCard,
+    VoiceStageView,
+};
 
 use crate::state::AppState;
 use crate::theme;

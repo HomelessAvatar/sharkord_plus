@@ -81,6 +81,92 @@ pub fn group_messages_for_feed(
     groups
 }
 
+/// Discord-style Welcome Card displayed when a channel has no messages yet or at the beginning of the history.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChannelWelcomeCard {
+    pub channel_name: String,
+    pub topic: Option<String>,
+}
+
+impl ChannelWelcomeCard {
+    pub fn new(channel_name: impl Into<String>, topic: Option<String>) -> Self {
+        Self {
+            channel_name: channel_name.into(),
+            topic,
+        }
+    }
+
+    /// Returns the headline title for the welcome card.
+    pub fn title_text(&self) -> String {
+        format!("Welcome to #{}!", self.channel_name)
+    }
+
+    /// Returns helper explanatory text for the welcome card.
+    pub fn helper_description(&self) -> String {
+        match &self.topic {
+            Some(topic) if !topic.trim().is_empty() => {
+                format!(
+                    "This is the start of the #{} channel. Topic: {}",
+                    self.channel_name,
+                    topic.trim()
+                )
+            }
+            _ => format!(
+                "This is the start of the #{} channel. Send a message to start the conversation!",
+                self.channel_name
+            ),
+        }
+    }
+
+    /// Renders the Discord-style Welcome Card with a large `#` circle, bold headline, and helper text.
+    pub fn render_element(&self) -> impl IntoElement {
+        div()
+            .id("channel_welcome_card")
+            .flex()
+            .flex_col()
+            .gap_2()
+            .py_6()
+            .child(
+                // Large # icon circle
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(64.0))
+                    .h(px(64.0))
+                    .rounded_full()
+                    .bg(theme::bg_surface_4())
+                    .text_3xl()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(theme::text_primary())
+                    .child("#"),
+            )
+            .child(
+                // Bold channel welcome headline
+                div()
+                    .text_2xl()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(theme::text_primary())
+                    .child(self.title_text()),
+            )
+            .child(
+                // Explanatory helper text
+                div()
+                    .text_sm()
+                    .text_color(theme::text_muted())
+                    .child(self.helper_description()),
+            )
+    }
+}
+
+/// Helper function to create a channel welcome card.
+pub fn render_channel_welcome_card(channel_name: &str, topic: Option<&str>) -> ChannelWelcomeCard {
+    ChannelWelcomeCard {
+        channel_name: channel_name.to_string(),
+        topic: topic.map(|t| t.to_string()),
+    }
+}
+
 /// Chat Canvas view state.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChatCanvasView {
@@ -192,7 +278,22 @@ impl ChatCanvasView {
                     ),
             )
             // 2. Message History Stream
-            .child(
+            .child(if self.groups.is_empty() {
+                div()
+                    .id("chat_message_history")
+                    .flex()
+                    .flex_col()
+                    .p_4()
+                    .flex_1()
+                    .overflow_y_scroll()
+                    .child(
+                        render_channel_welcome_card(
+                            &self.channel_name,
+                            self.channel_topic.as_deref(),
+                        )
+                        .render_element(),
+                    )
+            } else {
                 div()
                     .id("chat_message_history")
                     .flex()
@@ -259,8 +360,8 @@ impl ChatCanvasView {
                                             .child(msg.content.clone().unwrap_or_default())
                                     })),
                             )
-                    })),
-            )
+                    }))
+            })
             // 3. Bottom Composer Input Bar
             .child(
                 div().p_4().bg(theme::bg_base()).child(
