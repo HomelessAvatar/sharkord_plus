@@ -1,0 +1,31 @@
+product_name = "Sharkord Plus"
+identifier = "com.homelessavatar.sharkord"
+version = "0.1.1"
+authors = ["HomelessAvatar"]
+description = "High-performance Discord-alternative chat, voice, and video client in Rust & GPUI."
+long_description = "A fast, lightweight, and modern desktop client for Sharkord built with Rust and GPUI."
+homepage = "https://github.com/HomelessAvatar/sharkord_plus"
+copyright = "Copyright 2026 HomelessAvatar"
+category = "Chat"
+
+icons = [
+    "assets/icons/icon.ico",
+    "assets/icons/icon.icns",
+    "assets/icons/128x128.png",
+    "assets/icons/icon.png",
+]
+
+formats = ["msi", "zip", "dmg", "app", "appimage", "deb"]
+
+binaries = [
+    { path = "desktop-gpui", main = true },
+]
+
+[windows]
+digest_algorithm = "sha256"
+
+[macos]
+minimum_system_version = "11.0"
+
+[linux]
+section = "net"
