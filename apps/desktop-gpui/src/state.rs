@@ -26,6 +26,7 @@ pub struct AppState {
     pub local_muted_users: HashSet<u64>,
     pub active_pip_player: Option<PipPlayerState>,
     pub active_center_view: ActiveContentView,
+    pub is_quick_switcher_open: bool,
 }
 
 impl Default for AppState {
@@ -45,6 +46,7 @@ impl Default for AppState {
             local_muted_users: HashSet::new(),
             active_pip_player: None,
             active_center_view: ActiveContentView::default(),
+            is_quick_switcher_open: false,
         }
     }
 }
@@ -96,6 +98,11 @@ impl AppState {
     /// Toggles the right sidebar visibility.
     pub fn toggle_right_sidebar(&mut self) {
         self.right_sidebar_open = !self.right_sidebar_open;
+    }
+
+    /// Toggles the quick switcher modal open state.
+    pub fn toggle_quick_switcher(&mut self) {
+        self.is_quick_switcher_open = !self.is_quick_switcher_open;
     }
 
     /// Adds a user or updates if already present.

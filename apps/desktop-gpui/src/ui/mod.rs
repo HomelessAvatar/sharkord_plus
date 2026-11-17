@@ -7,6 +7,7 @@ pub mod channel_tree;
 pub mod chat_canvas;
 pub mod member_list;
 pub mod pip_player;
+pub mod quick_switcher;
 pub mod server_rail;
 pub mod source_picker;
 pub mod video_tile;
@@ -37,6 +38,7 @@ pub use member_list::{
     compose_member_groups, status_indicator_color, CategorizedMemberGroup, MemberListSidebarView,
 };
 pub use pip_player::{PipPlayerState, PipPlayerView};
+pub use quick_switcher::{QuickSwitcherItem, QuickSwitcherState, QuickSwitcherView};
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
@@ -76,6 +78,7 @@ pub struct WorkspaceView {
     pub chat_canvas: ChatCanvasView,
     pub voice_stage: VoiceStageView,
     pub member_list: MemberListSidebarView,
+    pub quick_switcher: QuickSwitcherState,
     pub active_center_view: ActiveContentView,
 }
 
@@ -84,6 +87,7 @@ impl WorkspaceView {
     pub fn new(state: AppState) -> Self {
         let voice_bar = VoiceBarState::new();
         let message_draft = String::new();
+        let quick_switcher = QuickSwitcherState::new(&state.channels);
 
         let active_center_view = match state.active_channel() {
             Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
@@ -101,6 +105,7 @@ impl WorkspaceView {
             chat_canvas: ChatCanvasView::default(),
             voice_stage: VoiceStageView::default(),
             member_list: MemberListSidebarView::default(),
+            quick_switcher,
             active_center_view,
         };
 
@@ -193,6 +198,9 @@ impl WorkspaceView {
 
         // 5. Sync Member List
         self.member_list = MemberListSidebarView::new(&self.state.users);
+
+        // 6. Sync Quick Switcher
+        self.quick_switcher.set_channels(&self.state.channels);
     }
 
     /// Selects a channel by ID, auto-switches center view mode based on channel type,
@@ -275,6 +283,11 @@ impl WorkspaceView {
     pub fn toggle_right_sidebar(&mut self) {
         self.state.toggle_right_sidebar();
     }
+
+    /// Toggles the quick switcher command palette modal dialog.
+    pub fn toggle_quick_switcher(&mut self) {
+        self.state.toggle_quick_switcher();
+    }
 }
 
 impl Render for WorkspaceView {
@@ -341,6 +354,10 @@ impl Render for WorkspaceView {
             if pip.is_visible {
                 root = root.child(PipPlayerView::new(pip.clone()).render_element());
             }
+        }
+
+        if self.state.is_quick_switcher_open {
+            root = root.child(QuickSwitcherView::new(self.quick_switcher.clone()).render_element());
         }
 
         root
