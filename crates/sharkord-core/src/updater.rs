@@ -95,13 +95,19 @@ pub fn is_newer_version(current: &str, remote: &str) -> bool {
 }
 
 fn matches_os(name_lower: &str, os_lower: &str) -> bool {
-    if os_lower.contains("win") {
-        name_lower.contains("windows") || name_lower.contains("win") || name_lower.ends_with(".msi")
-    } else if os_lower.contains("mac") || os_lower.contains("darwin") || os_lower.contains("osx") {
+    if os_lower.contains("mac")
+        || os_lower.contains("darwin")
+        || os_lower.contains("osx")
+        || os_lower.contains("apple")
+    {
         name_lower.contains("macos")
             || name_lower.contains("darwin")
             || name_lower.contains("mac")
             || name_lower.ends_with(".dmg")
+    } else if os_lower == "windows" || os_lower.starts_with("win") {
+        name_lower.contains("windows")
+            || (name_lower.contains("win") && !name_lower.contains("darwin"))
+            || name_lower.ends_with(".msi")
     } else if os_lower.contains("linux") {
         name_lower.contains("linux")
             || name_lower.ends_with(".appimage")
@@ -146,10 +152,14 @@ pub fn find_platform_asset<'a>(
     let os_lower = os.to_lowercase();
     let arch_lower = arch.to_lowercase();
 
-    let preferred_extensions: &[&str] = if os_lower.contains("win") {
-        &[".msi", ".zip"]
-    } else if os_lower.contains("mac") || os_lower.contains("darwin") || os_lower.contains("osx") {
+    let preferred_extensions: &[&str] = if os_lower.contains("mac")
+        || os_lower.contains("darwin")
+        || os_lower.contains("osx")
+        || os_lower.contains("apple")
+    {
         &[".dmg", ".zip", ".tar.gz"]
+    } else if os_lower == "windows" || os_lower.starts_with("win") {
+        &[".msi", ".zip"]
     } else if os_lower.contains("linux") {
         &[".appimage", ".deb", ".tar.gz"]
     } else {
@@ -210,6 +220,7 @@ impl UpdaterClient {
     ) -> Self {
         let client = reqwest::Client::builder()
             .user_agent("sharkord-updater")
+            .timeout(std::time::Duration::from_secs(10))
             .build()
             .unwrap_or_default();
 
@@ -241,7 +252,7 @@ impl UpdaterClient {
         }
         let mut release: ReleaseInfo = resp.json().await?;
         if release.version.is_empty() {
-            release.version = release.tag_name.trim_start_matches('v').to_string();
+            release.version = release.tag_name.trim_start_matches(['v', 'V']).to_string();
         }
         Ok(release)
     }

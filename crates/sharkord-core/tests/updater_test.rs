@@ -47,6 +47,12 @@ fn test_platform_asset_precedence_matching() {
                 content_type: "application/x-apple-diskimage".to_string(),
             },
             ReleaseAsset {
+                name: "sharkord-plus-darwin-x86_64.dmg".to_string(),
+                size: 18_500_000,
+                browser_download_url: "https://example.com/mac-x64.dmg".to_string(),
+                content_type: "application/x-apple-diskimage".to_string(),
+            },
+            ReleaseAsset {
                 name: "sharkord-plus-linux-x86_64.AppImage".to_string(),
                 size: 20_000_000,
                 browser_download_url: "https://example.com/linux.AppImage".to_string(),
@@ -69,9 +75,45 @@ fn test_platform_asset_precedence_matching() {
     let mac_asset = find_platform_asset(&release, "macos", "aarch64").unwrap();
     assert_eq!(mac_asset.name, "sharkord-plus-macos-aarch64.dmg");
 
+    // macOS / Darwin preference and substring collision check (darwin vs win)
+    let darwin_arm_asset = find_platform_asset(&release, "darwin", "aarch64").unwrap();
+    assert_eq!(darwin_arm_asset.name, "sharkord-plus-macos-aarch64.dmg");
+
+    let darwin_x64_asset = find_platform_asset(&release, "darwin", "x86_64").unwrap();
+    assert_eq!(darwin_x64_asset.name, "sharkord-plus-darwin-x86_64.dmg");
+
     // Linux preference: .AppImage over .deb
     let linux_asset = find_platform_asset(&release, "linux", "x86_64").unwrap();
     assert_eq!(linux_asset.name, "sharkord-plus-linux-x86_64.AppImage");
+}
+
+#[test]
+fn test_darwin_win_substring_collision() {
+    let release = ReleaseInfo {
+        tag_name: "v0.2.0".to_string(),
+        version: "0.2.0".to_string(),
+        name: "Sharkord Plus 0.2.0".to_string(),
+        body: "".to_string(),
+        published_at: "".to_string(),
+        assets: vec![
+            ReleaseAsset {
+                name: "sharkord-plus-windows-x64.msi".to_string(),
+                size: 10_000,
+                browser_download_url: "https://example.com/win.msi".to_string(),
+                content_type: "".to_string(),
+            },
+            ReleaseAsset {
+                name: "sharkord-plus-darwin-x64.tar.gz".to_string(),
+                size: 10_000,
+                browser_download_url: "https://example.com/darwin.tar.gz".to_string(),
+                content_type: "".to_string(),
+            },
+        ],
+    };
+
+    let asset = find_platform_asset(&release, "darwin", "x86_64").unwrap();
+    assert_eq!(asset.name, "sharkord-plus-darwin-x64.tar.gz");
+    assert_ne!(asset.name, "sharkord-plus-windows-x64.msi");
 }
 
 #[test]
