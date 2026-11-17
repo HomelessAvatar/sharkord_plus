@@ -1,5 +1,7 @@
 //! Application state management for the Sharkord GPUI desktop client.
 
+use std::collections::{HashMap, HashSet};
+
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::{Channel, Message, ServerSettings, User};
 
@@ -18,6 +20,8 @@ pub struct AppState {
     pub left_sidebar_open: bool,
     pub right_sidebar_open: bool,
     pub voice_bar_state: VoiceBarState,
+    pub user_volumes: HashMap<u64, f32>,
+    pub local_muted_users: HashSet<u64>,
 }
 
 impl Default for AppState {
@@ -33,6 +37,8 @@ impl Default for AppState {
             left_sidebar_open: true,
             right_sidebar_open: true,
             voice_bar_state: VoiceBarState::default(),
+            user_volumes: HashMap::new(),
+            local_muted_users: HashSet::new(),
         }
     }
 }
@@ -158,5 +164,31 @@ impl AppState {
     /// Disconnects from active voice channel.
     pub fn disconnect_voice(&mut self) {
         self.voice_bar_state.disconnect();
+    }
+
+    /// Sets the volume multiplier for a specific user (clamped between 0.0 and 2.0).
+    pub fn set_user_volume(&mut self, user_id: u64, volume: f32) {
+        self.user_volumes.insert(user_id, volume.clamp(0.0, 2.0));
+    }
+
+    /// Gets the volume multiplier for a specific user (defaults to 1.0).
+    pub fn get_user_volume(&self, user_id: u64) -> f32 {
+        self.user_volumes.get(&user_id).copied().unwrap_or(1.0)
+    }
+
+    /// Toggles local mute for a specific user. Returns the new muted state.
+    pub fn toggle_local_mute(&mut self, user_id: u64) -> bool {
+        if self.local_muted_users.contains(&user_id) {
+            self.local_muted_users.remove(&user_id);
+            false
+        } else {
+            self.local_muted_users.insert(user_id);
+            true
+        }
+    }
+
+    /// Returns whether a specific user is locally muted.
+    pub fn is_local_muted(&self, user_id: u64) -> bool {
+        self.local_muted_users.contains(&user_id)
     }
 }
