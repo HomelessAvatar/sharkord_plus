@@ -232,16 +232,16 @@ crates/sharkord-mobile/
 **Files:**
 - Modify: `.github/workflows/rust-ci.yml`
 
-- [ ] **Step 6.1: Add `build-mobile-android` job to `.github/workflows/rust-ci.yml`**
+- [x] **Step 6.1: Add `build-mobile-android` job to `.github/workflows/rust-ci.yml`**
   Set up Java 17 and Flutter stable, run `flutter pub get` and `flutter build apk --release`, copy output to `dist-mobile/sharkord-mobile-android.apk`, and upload artifact `sharkord-mobile-android`.
 
-- [ ] **Step 6.2: Include mobile artifacts in `publish-release`**
+- [x] **Step 6.2: Include mobile artifacts in `publish-release`**
   Add `build-mobile-android` to `needs: [check-and-test, build-macos, build-mobile-android]` and ensure `dist-release` includes the Android APK.
 
-- [ ] **Step 6.3: Verify entire workspace build and formatting**
+- [x] **Step 6.3: Verify entire workspace build and formatting**
   Run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --all`.
 
-- [ ] **Step 6.4: Commit all changes**
+- [x] **Step 6.4: Commit all changes**
   Commit with message `ci: integrate Android APK packaging into release pipeline`.
 
 - [ ] **Step 6.5: Push to remote and trigger release**
