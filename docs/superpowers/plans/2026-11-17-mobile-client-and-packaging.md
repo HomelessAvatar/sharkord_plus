@@ -138,28 +138,28 @@ crates/sharkord-mobile/
 - Create: `apps/mobile/lib/widgets/update_dialog.dart`
 - Create: `apps/mobile/test/update_service_test.dart`
 
-- [ ] **Step 3.1: Write failing tests for update models and SemVer parser**
+- [x] **Step 3.1: Write failing tests for update models and SemVer parser**
   Write tests in `apps/mobile/test/update_service_test.dart` testing `SemVer.isNewer("0.2.0", "0.2.1")`, asset matching for Android `.apk`, and iOS release redirect.
 
-- [ ] **Step 3.2: Implement `update_model.dart`**
+- [x] **Step 3.2: Implement `update_model.dart`**
   Implement `ReleaseInfo`, `ReleaseAsset`, and `SemVer` comparator.
 
-- [ ] **Step 3.3: Implement `update_service.dart`**
+- [x] **Step 3.3: Implement `update_service.dart`**
   Implement GitHub Releases API client with HTTP client mocking support.
 
-- [ ] **Step 3.4: Implement `android_updater.dart`**
+- [x] **Step 3.4: Implement `android_updater.dart`**
   Implement streaming APK download with progress callback and `OpenFilex.open()` package installation trigger.
 
-- [ ] **Step 3.5: Implement `ios_updater.dart`**
+- [x] **Step 3.5: Implement `ios_updater.dart`**
   Implement launch URL handler opening TestFlight / GitHub release page.
 
-- [ ] **Step 3.6: Implement `update_dialog.dart`**
+- [x] **Step 3.6: Implement `update_dialog.dart`**
   Discord-grade dialog showing release notes, current vs target version, progress bar during download, and "Install" button.
 
-- [ ] **Step 3.7: Run tests and verify**
+- [x] **Step 3.7: Run tests and verify**
   Run `flutter test test/update_service_test.dart`.
 
-- [ ] **Step 3.8: Commit changes**
+- [x] **Step 3.8: Commit changes**
   Commit with message `feat(mobile): implement in-app update checker and auto-updater for Android and iOS`.
 
 ---
