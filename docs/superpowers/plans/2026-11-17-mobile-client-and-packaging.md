@@ -207,22 +207,22 @@ crates/sharkord-mobile/
 - Create: `apps/mobile/lib/widgets/voice_stage_sheet.dart`
 - Create: `apps/mobile/test/widget_test.dart`
 
-- [ ] **Step 5.1: Write failing widget test for workspace screen**
+- [x] **Step 5.1: Write failing widget test for workspace screen**
   Test drawer opening, channel selection, voice bar appearance when connected, and voice stage bottom sheet.
 
-- [ ] **Step 5.2: Implement `workspace_screen.dart` and drawers**
+- [x] **Step 5.2: Implement `workspace_screen.dart` and drawers**
   Build three-pane layout: Left Drawer (`channel_drawer.dart`), Center Canvas (`chat_canvas.dart`), Right Drawer (`member_drawer.dart`).
 
-- [ ] **Step 5.3: Implement `voice_bar.dart` and `voice_stage_sheet.dart`**
+- [x] **Step 5.3: Implement `voice_bar.dart` and `voice_stage_sheet.dart`**
   Docked mini voice bar pinned to bottom; voice stage sheet showing participant cards and green speaking indicators.
 
-- [ ] **Step 5.4: Implement `login_screen.dart`**
+- [x] **Step 5.4: Implement `login_screen.dart`**
   Clean login form with server URL, email/password, and validation.
 
-- [ ] **Step 5.5: Run widget tests**
+- [x] **Step 5.5: Run widget tests**
   Run `flutter test test/widget_test.dart`.
 
-- [ ] **Step 5.6: Commit changes**
+- [x] **Step 5.6: Commit changes**
   Commit with message `feat(mobile): implement Discord-grade three-pane navigation and voice stage UI`.
 
 ---
