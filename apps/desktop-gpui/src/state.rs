@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::{Channel, Message, ServerSettings, User};
+use sharkord_core::updater::UpdateStatus;
 
 use crate::ui::pip_player::PipPlayerState;
 use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
@@ -27,6 +28,8 @@ pub struct AppState {
     pub active_pip_player: Option<PipPlayerState>,
     pub active_center_view: ActiveContentView,
     pub is_quick_switcher_open: bool,
+    pub update_status: UpdateStatus,
+    pub is_update_modal_open: bool,
 }
 
 impl Default for AppState {
@@ -47,6 +50,8 @@ impl Default for AppState {
             active_pip_player: None,
             active_center_view: ActiveContentView::default(),
             is_quick_switcher_open: false,
+            update_status: UpdateStatus::Idle,
+            is_update_modal_open: false,
         }
     }
 }
@@ -218,5 +223,15 @@ impl AppState {
     /// Sets the active center content view.
     pub fn set_center_view(&mut self, view: ActiveContentView) {
         self.active_center_view = view;
+    }
+
+    /// Toggles the in-app update modal dialog open state.
+    pub fn toggle_update_modal(&mut self) {
+        self.is_update_modal_open = !self.is_update_modal_open;
+    }
+
+    /// Sets the current application update status.
+    pub fn set_update_status(&mut self, status: UpdateStatus) {
+        self.update_status = status;
     }
 }

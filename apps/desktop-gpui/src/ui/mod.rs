@@ -10,6 +10,7 @@ pub mod pip_player;
 pub mod quick_switcher;
 pub mod server_rail;
 pub mod source_picker;
+pub mod updater_modal;
 pub mod video_tile;
 pub mod voice_bar;
 pub mod voice_context_menu;
@@ -41,6 +42,7 @@ pub use pip_player::{PipPlayerState, PipPlayerView};
 pub use quick_switcher::{QuickSwitcherItem, QuickSwitcherState, QuickSwitcherView};
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
+pub use updater_modal::{UpdaterBadgeView, UpdaterModalView};
 pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
 pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
@@ -288,6 +290,11 @@ impl WorkspaceView {
     pub fn toggle_quick_switcher(&mut self) {
         self.state.toggle_quick_switcher();
     }
+
+    /// Toggles the in-app update modal dialog open state.
+    pub fn toggle_update_modal(&mut self) {
+        self.state.toggle_update_modal();
+    }
 }
 
 impl Render for WorkspaceView {
@@ -358,6 +365,10 @@ impl Render for WorkspaceView {
 
         if self.state.is_quick_switcher_open {
             root = root.child(QuickSwitcherView::new(self.quick_switcher.clone()).render_element());
+        }
+
+        if self.state.is_update_modal_open {
+            root = root.child(UpdaterModalView::new(&self.state.update_status).render_element());
         }
 
         root
