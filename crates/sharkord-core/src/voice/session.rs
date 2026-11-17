@@ -1,8 +1,17 @@
 //! Coordinates voice session state, mute/deafen status, and event distribution.
 
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::sync::broadcast;
+
+/// Input transmission mode for local audio.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InputMode {
+    #[default]
+    VoiceActivity,
+    PushToTalk,
+}
 
 /// Events emitted during an active voice session.
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +50,10 @@ pub struct VoiceSession {
     mic_muted: Arc<AtomicBool>,
     sound_deafened: Arc<AtomicBool>,
     is_speaking: Arc<AtomicBool>,
+    user_volumes: Arc<RwLock<HashMap<u32, f32>>>,
+    local_mutes: Arc<RwLock<HashSet<u32>>>,
+    input_mode: Arc<RwLock<InputMode>>,
+    is_ptt_active: Arc<AtomicBool>,
     event_tx: broadcast::Sender<VoiceEvent>,
 }
 
@@ -52,6 +65,10 @@ impl VoiceSession {
             mic_muted: Arc::new(AtomicBool::new(false)),
             sound_deafened: Arc::new(AtomicBool::new(false)),
             is_speaking: Arc::new(AtomicBool::new(false)),
+            user_volumes: Arc::new(RwLock::new(HashMap::new())),
+            local_mutes: Arc::new(RwLock::new(HashSet::new())),
+            input_mode: Arc::new(RwLock::new(InputMode::VoiceActivity)),
+            is_ptt_active: Arc::new(AtomicBool::new(false)),
             event_tx,
         }
     }
@@ -107,6 +124,67 @@ impl VoiceSession {
         let _ = self
             .event_tx
             .send(VoiceEvent::SpeakingChanged { is_speaking, level });
+    }
+
+    /// Returns the configured volume multiplier for a specific user (defaults to 1.0).
+    pub fn get_user_volume(&self, user_id: u32) -> f32 {
+        self.user_volumes
+            .read()
+            .unwrap()
+            .get(&user_id)
+            .copied()
+            .unwrap_or(1.0)
+    }
+
+    /// Sets the volume multiplier for a specific user (clamped to 0.0..=2.0).
+    pub fn set_user_volume(&self, user_id: u32, volume: f32) {
+        let clamped = volume.clamp(0.0, 2.0);
+        self.user_volumes.write().unwrap().insert(user_id, clamped);
+    }
+
+    /// Returns whether a specific user is locally muted.
+    pub fn is_local_muted(&self, user_id: u32) -> bool {
+        self.local_mutes.read().unwrap().contains(&user_id)
+    }
+
+    /// Sets local mute status for a specific user.
+    pub fn set_local_mute(&self, user_id: u32, muted: bool) {
+        let mut mutes = self.local_mutes.write().unwrap();
+        if muted {
+            mutes.insert(user_id);
+        } else {
+            mutes.remove(&user_id);
+        }
+    }
+
+    /// Computes effective output playback gain for a user.
+    /// Returns 0.0 if locally muted or if master sound is deafened, else user's volume.
+    pub fn effective_output_gain(&self, user_id: u32) -> f32 {
+        if self.is_deafened() || self.is_local_muted(user_id) {
+            0.0
+        } else {
+            self.get_user_volume(user_id)
+        }
+    }
+
+    /// Returns the current input transmission mode.
+    pub fn input_mode(&self) -> InputMode {
+        *self.input_mode.read().unwrap()
+    }
+
+    /// Sets the input transmission mode.
+    pub fn set_input_mode(&self, mode: InputMode) {
+        *self.input_mode.write().unwrap() = mode;
+    }
+
+    /// Returns whether Push-to-Talk is currently actively transmitting.
+    pub fn is_ptt_active(&self) -> bool {
+        self.is_ptt_active.load(Ordering::SeqCst)
+    }
+
+    /// Sets Push-to-Talk active state.
+    pub fn set_ptt_active(&self, active: bool) {
+        self.is_ptt_active.store(active, Ordering::SeqCst);
     }
 
     /// Dispatches an arbitrary voice event (e.g. participant joined or remote user speaking).
