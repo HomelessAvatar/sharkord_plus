@@ -80,7 +80,7 @@ jobs:
         run: |
           cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
           mkdir -p target/packages-windows
-          find . -type f \( -name "*.msi" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/release/desktop-gpui.exe" -exec cp {} target/packages-windows/ \; || true
+          find . -type f \( -name "*.msi" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/release/desktop-gpui.exe" ! -path "./target/packages-*/*" -exec cp {} target/packages-windows/ \; || true
           ls -la target/packages-windows
 
       - name: Package desktop application (Linux)
@@ -88,7 +88,7 @@ jobs:
         run: |
           cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
           mkdir -p target/packages-linux
-          find . -type f \( -name "*.AppImage" -o -name "*.deb" \) ! -path "./target/debug/*" -exec cp {} target/packages-linux/ \; || true
+          find . -type f \( -name "*.AppImage" -o -name "*.deb" \) ! -path "./target/debug/*" ! -path "./target/packages-*/*" -exec cp {} target/packages-linux/ \; || true
           ls -la target/packages-linux
 
       - name: Upload desktop artifacts (Windows)
@@ -142,14 +142,15 @@ jobs:
         run: |
           cargo packager --release -p desktop-gpui || cargo packager --release --config apps/desktop-gpui/packager.toml || (cd apps/desktop-gpui && cargo packager --release)
           mkdir -p target/packages-macos
-          find . -type f \( -name "*.dmg" -o -name "*.zip" \) ! -path "./target/debug/*" -exec cp {} target/packages-macos/ \; || true
+          PACKAGES_DIR="$(pwd)/target/packages-macos"
+          find . -type f \( -name "*.dmg" -o -name "*.zip" \) ! -path "./target/debug/*" ! -path "./target/packages-*/*" -exec cp {} "$PACKAGES_DIR/" \; || true
           for app_path in $(find . -type d -name "*.app" ! -path "*/build/*" ! -path "*/target/debug/*"); do
             app_name=$(basename "$app_path" .app)
-            if [ ! -f "target/packages-macos/${app_name}.zip" ]; then
-              (cd "$(dirname "$app_path")" && zip -r "../../target/packages-macos/${app_name}-macos.zip" "$(basename "$app_path")")
+            if [ ! -f "$PACKAGES_DIR/${app_name}.zip" ]; then
+              (cd "$(dirname "$app_path")" && zip -r "$PACKAGES_DIR/${app_name}-macos.zip" "$(basename "$app_path")")
             fi
           done
-          ls -la target/packages-macos
+          ls -la "$PACKAGES_DIR"
 
       - name: Upload desktop artifacts (macOS)
         uses: actions/upload-artifact@v7
