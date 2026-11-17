@@ -6,7 +6,7 @@ description = "High-performance Discord-alternative chat, voice, and video clien
 long_description = "A fast, lightweight, and modern desktop client for Sharkord built with Rust and GPUI."
 homepage = "https://github.com/HomelessAvatar/sharkord_plus"
 copyright = "Copyright 2026 HomelessAvatar"
-category = "Chat"
+category = "SocialNetworking"
 
 icons = [
     "assets/icons/icon.ico",
