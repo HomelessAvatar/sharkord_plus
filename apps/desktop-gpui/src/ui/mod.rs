@@ -5,6 +5,7 @@
 pub mod audio_settings;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod pip_player;
 pub mod server_rail;
 pub mod source_picker;
 pub mod video_tile;
@@ -29,6 +30,7 @@ pub use channel_tree::{
 pub use chat_canvas::{
     format_message_timestamp, group_messages_for_feed, ChatCanvasView, MessageFeedGroup,
 };
+pub use pip_player::{PipPlayerState, PipPlayerView};
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
@@ -209,7 +211,8 @@ impl Render for WorkspaceView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let voice_bar_view = VoiceBarView::new(self.voice_bar.clone());
 
-        div()
+        let mut root = div()
+            .relative()
             .flex()
             .flex_row()
             .w_full()
@@ -231,6 +234,14 @@ impl Render for WorkspaceView {
                     .child(voice_bar_view.render_element()),
             )
             // Column 3: Primary Chat Canvas (Flex 1)
-            .child(self.chat_canvas.render_element())
+            .child(self.chat_canvas.render_element());
+
+        if let Some(ref pip) = self.state.active_pip_player {
+            if pip.is_visible {
+                root = root.child(PipPlayerView::new(pip.clone()).render_element());
+            }
+        }
+
+        root
     }
 }

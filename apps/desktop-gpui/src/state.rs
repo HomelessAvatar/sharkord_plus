@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::{Channel, Message, ServerSettings, User};
 
+use crate::ui::pip_player::PipPlayerState;
 use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
 
 /// Top-level application state for Sharkord desktop.
@@ -22,6 +23,7 @@ pub struct AppState {
     pub voice_bar_state: VoiceBarState,
     pub user_volumes: HashMap<u64, f32>,
     pub local_muted_users: HashSet<u64>,
+    pub active_pip_player: Option<PipPlayerState>,
 }
 
 impl Default for AppState {
@@ -39,6 +41,7 @@ impl Default for AppState {
             voice_bar_state: VoiceBarState::default(),
             user_volumes: HashMap::new(),
             local_muted_users: HashSet::new(),
+            active_pip_player: None,
         }
     }
 }
@@ -190,5 +193,15 @@ impl AppState {
     /// Returns whether a specific user is locally muted.
     pub fn is_local_muted(&self, user_id: u64) -> bool {
         self.local_muted_users.contains(&user_id)
+    }
+
+    /// Sets or updates the active Picture-in-Picture player state.
+    pub fn set_pip_player(&mut self, player: PipPlayerState) {
+        self.active_pip_player = Some(player);
+    }
+
+    /// Closes the active Picture-in-Picture player.
+    pub fn close_pip_player(&mut self) {
+        self.active_pip_player = None;
     }
 }
