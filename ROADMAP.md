@@ -41,13 +41,23 @@ This document outlines the official development roadmap for **Sharkord Plus**.
 
 ---
 
-### Phase 2: Desktop Packaging, Installers & Auto-Updater 📦
-- **Windows Packaging:**
-  - Automated `.msi` Windows installer and portable `.zip` releases.
-- **Linux Packaging:**
-  - Standalone `.AppImage` and `.deb` packages with desktop launcher integration.
-- **Background Auto-Updater:**
-  - In-app release detector querying GitHub Releases API with seamless one-click background upgrade.
+### Phase 2: Desktop Packaging, Installers & Auto-Updater 📦 ✅ *(Completed)*
+- **Cross-Platform Packaging Engine (`apps/desktop-gpui/packager.toml`):**
+  - **Windows Packaging:** Automated `.msi` Windows installer and portable standalone `.zip` distributions.
+  - **macOS Packaging:** Universal `.dmg` drag-and-drop installer and `.app` bundle with high-resolution Apple icon (`icon.icns`).
+  - **Linux Packaging:** Standalone `.AppImage` and Debian `.deb` packages with desktop launcher integration and category metadata.
+  - **Desktop Branding Assets:** High-resolution icons generated across all native formats (`.ico`, `.icns`, `.png`).
+- **Core Update Engine (`crates/sharkord-core`):**
+  - Strict SemVer parsing with pre-release tag filtering and update target selection.
+  - GitHub Releases API integration matching OS architectures (`x86_64`, `aarch64`) and file extensions (`.msi`, `.zip`, `.dmg`, `.AppImage`, `.deb`).
+  - Asynchronous background download engine with real-time byte progress tracking and system browser fallback.
+- **In-App Desktop Updater Modal (`apps/desktop-gpui`):**
+  - Discord-grade update modal dialog styled with Sharkord's Pure Neutral Dark palette (`#111216`, `#16171d`, `#1c1e24`, `#6366f1`).
+  - Real-time download progress bar with percentage indicator, release notes markdown viewer, and "Update Now" / "Relaunch" flow.
+  - Non-intrusive status bar update notification badge with glowing amber accent.
+- **Automated CI/CD Release Pipeline (`.github/workflows/desktop-release.yml`):**
+  - Matrix release workflow compiling and packaging native artifacts on Windows (`windows-latest`), macOS (`macos-latest`), and Linux (`ubuntu-latest`).
+  - Automated draft GitHub Releases generation triggered on semantic version tags (`v*.*.*`).
 
 ---
 

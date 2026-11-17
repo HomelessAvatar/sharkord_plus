@@ -75,7 +75,7 @@ The repository includes a production-ready `docker-compose.yml`:
 services:
   sharkord-plus:
     # SemVer release image (fully compatible with What's Up Docker / WUD automated updates)
-    image: ghcr.io/homelessavatar/sharkord_plus:0.1.1
+    image: ghcr.io/homelessavatar/sharkord_plus:0.2.0
     container_name: sharkord-plus
     restart: unless-stopped
     labels:
