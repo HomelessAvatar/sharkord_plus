@@ -6,6 +6,7 @@ pub mod audio_settings;
 pub mod channel_tree;
 pub mod chat_canvas;
 pub mod server_rail;
+pub mod source_picker;
 pub mod voice_bar;
 pub mod voice_context_menu;
 pub mod voice_stage;
@@ -28,6 +29,7 @@ pub use chat_canvas::{
     format_message_timestamp, group_messages_for_feed, ChatCanvasView, MessageFeedGroup,
 };
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
+pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
     VoiceBarView, VoiceConnectionState,
