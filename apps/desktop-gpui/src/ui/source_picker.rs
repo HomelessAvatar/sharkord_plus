@@ -1,6 +1,6 @@
 //! Screen & Window Source Picker modal dialog component for GPUI.
 //! Allows users to select an entire monitor display or specific application window to share,
-//! configure resolution (720p/1080p/1440p) and framerate (15/30/60 FPS), and toggle audio capture.
+//! configure resolution (720p/1080p/1440p/4K) and framerate (15/30/60/120/144 FPS), and toggle audio capture.
 
 use gpui::prelude::*;
 use gpui::*;
@@ -121,6 +121,23 @@ pub struct SourcePickerView {
 }
 
 impl SourcePickerView {
+    /// Available resolution presets displayed in the source picker.
+    pub const AVAILABLE_RESOLUTIONS: &'static [VideoResolution] = &[
+        VideoResolution::R720p,
+        VideoResolution::R1080p,
+        VideoResolution::R1440p,
+        VideoResolution::R4K,
+    ];
+
+    /// Available framerate presets displayed in the source picker.
+    pub const AVAILABLE_FRAMERATES: &'static [VideoFrameRate] = &[
+        VideoFrameRate::Fps15,
+        VideoFrameRate::Fps30,
+        VideoFrameRate::Fps60,
+        VideoFrameRate::Fps120,
+        VideoFrameRate::Fps144,
+    ];
+
     /// Creates a new `SourcePickerView` with the provided state.
     pub fn new(state: SourcePickerState) -> Self {
         Self { state }
@@ -132,22 +149,13 @@ impl SourcePickerView {
         let sources = self.state.current_tab_sources();
         let selected_id = self.state.selected_source.as_ref().map(|s| s.id());
 
-        let resolutions = [
-            VideoResolution::R720p,
-            VideoResolution::R1080p,
-            VideoResolution::R1440p,
-        ];
-
-        let framerates = [
-            VideoFrameRate::Fps15,
-            VideoFrameRate::Fps30,
-            VideoFrameRate::Fps60,
-        ];
+        let resolutions = Self::AVAILABLE_RESOLUTIONS;
+        let framerates = Self::AVAILABLE_FRAMERATES;
 
         div()
             .flex()
             .flex_col()
-            .w(px(560.0))
+            .w(px(580.0))
             .p_6()
             .bg(theme::bg_surface())
             .rounded_2xl()

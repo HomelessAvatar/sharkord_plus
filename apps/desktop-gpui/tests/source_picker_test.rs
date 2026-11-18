@@ -64,3 +64,34 @@ fn test_source_picker_view_instantiation() {
     let view = SourcePickerView::new(state);
     assert_eq!(view.state.available_sources.len(), 2);
 }
+
+#[test]
+fn test_source_picker_allows_4k_and_144fps_selection() {
+    let mut state = SourcePickerState::new();
+    state.select_source(ScreenSource::Monitor {
+        id: 1,
+        name: "Primary Display".to_string(),
+    });
+    state.set_resolution(VideoResolution::R4K);
+    state.set_framerate(VideoFrameRate::Fps144);
+
+    let config = state.build_track_config().expect("config should be built");
+    assert_eq!(config.resolution, VideoResolution::R4K);
+    assert_eq!(config.framerate, VideoFrameRate::Fps144);
+    assert_eq!(config.resolution.width(), 3840);
+    assert_eq!(config.framerate.fps(), 144);
+
+    state.set_framerate(VideoFrameRate::Fps120);
+    let config120 = state.build_track_config().expect("config should be built");
+    assert_eq!(config120.resolution, VideoResolution::R4K);
+    assert_eq!(config120.framerate, VideoFrameRate::Fps120);
+    assert_eq!(config120.framerate.fps(), 120);
+}
+
+#[test]
+fn test_source_picker_view_preset_badges() {
+    assert!(SourcePickerView::AVAILABLE_RESOLUTIONS.contains(&VideoResolution::R4K));
+    assert!(SourcePickerView::AVAILABLE_FRAMERATES.contains(&VideoFrameRate::Fps120));
+    assert!(SourcePickerView::AVAILABLE_FRAMERATES.contains(&VideoFrameRate::Fps144));
+}
+
