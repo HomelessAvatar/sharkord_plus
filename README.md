@@ -101,7 +101,7 @@ docker run -d \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name sharkord-plus \
-  ghcr.io/homelessavatar/sharkord_plus:0.2.3
+  ghcr.io/homelessavatar/sharkord_plus:0.2.4
 ```
 
 > [!WARNING]

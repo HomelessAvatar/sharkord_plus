@@ -154,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: const TextStyle(color: SharkordColors.textPrimary),
                       decoration: InputDecoration(
                         labelText: 'Server URL',
-                        hintText: 'e.g. lobi.genclink.tr or your-domain.com',
+                        hintText: 'e.g. your-server.com or 192.168.1.100',
                         prefixIcon: const Icon(
                           Icons.dns_rounded,
                           color: SharkordColors.textMuted,

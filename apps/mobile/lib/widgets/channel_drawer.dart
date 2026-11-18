@@ -479,7 +479,7 @@ class ChannelDrawer extends ConsumerWidget {
                 autofocus: true,
                 style: const TextStyle(color: SharkordColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'e.g. lobi.genclink.tr',
+                  hintText: 'e.g. your-server.com',
                   hintStyle: const TextStyle(color: SharkordColors.textMuted),
                   filled: true,
                   fillColor: SharkordColors.card,

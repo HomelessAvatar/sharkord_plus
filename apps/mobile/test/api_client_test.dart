@@ -7,13 +7,13 @@ import 'package:sharkord_mobile/core/network/api_client.dart';
 void main() {
   group('SharkordApiClient URL & Parsing Tests', () {
     test('normalizeServerUrl handles domains, protocols, and trailing slashes', () {
-      expect(normalizeServerUrl('lobi.genclink.tr'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('lobi.genclink.tr/'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('https://lobi.genclink.tr///'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('httpa://lobi.genclink.tr'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('htp://lobi.genclink.tr'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('ws://lobi.genclink.tr'), 'https://lobi.genclink.tr');
-      expect(normalizeServerUrl('wss://lobi.genclink.tr'), 'https://lobi.genclink.tr');
+      expect(normalizeServerUrl('sharkord.example.com'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('sharkord.example.com/'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('https://sharkord.example.com///'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('httpa://sharkord.example.com'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('htp://sharkord.example.com'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('ws://sharkord.example.com'), 'https://sharkord.example.com');
+      expect(normalizeServerUrl('wss://sharkord.example.com'), 'https://sharkord.example.com');
       expect(normalizeServerUrl('http://192.168.1.50:3000/'), 'http://192.168.1.50:3000');
       expect(normalizeServerUrl('localhost:3000'), 'http://localhost:3000');
       expect(normalizeServerUrl('10.0.2.2:3000'), 'http://10.0.2.2:3000');
@@ -21,9 +21,9 @@ void main() {
     });
 
     test('toWsUrl correctly converts http/https to ws/wss', () {
-      expect(toWsUrl('https://lobi.genclink.tr'), 'wss://lobi.genclink.tr');
+      expect(toWsUrl('https://sharkord.example.com'), 'wss://sharkord.example.com');
       expect(toWsUrl('http://localhost:3000'), 'ws://localhost:3000');
-      expect(toWsUrl('lobi.genclink.tr'), 'wss://lobi.genclink.tr');
+      expect(toWsUrl('sharkord.example.com'), 'wss://sharkord.example.com');
     });
 
     test('fetchServerInfo parses valid server metadata', () async {
@@ -32,7 +32,7 @@ void main() {
           return http.Response(
             jsonEncode({
               'serverId': 'srv_123',
-              'name': 'Genclik Linki Server',
+              'name': 'Sharkord Server',
               'description': 'Official Sharkord Community',
               'logo': 'https://example.com/logo.png',
               'allowNewUsers': true,
@@ -45,10 +45,10 @@ void main() {
       });
 
       final client = SharkordApiClient(httpClient: mockClient);
-      final info = await client.fetchServerInfo('https://lobi.genclink.tr');
+      final info = await client.fetchServerInfo('https://sharkord.example.com');
 
       expect(info.serverId, 'srv_123');
-      expect(info.name, 'Genclik Linki Server');
+      expect(info.name, 'Sharkord Server');
       expect(info.description, 'Official Sharkord Community');
       expect(info.logo, 'https://example.com/logo.png');
       expect(info.allowNewUsers, true);
@@ -79,7 +79,7 @@ void main() {
 
       final client = SharkordApiClient(httpClient: mockClient);
       final token = await client.login(
-        serverUrl: 'https://lobi.genclink.tr',
+        serverUrl: 'https://sharkord.example.com',
         identity: 'admin',
         password: 'secret',
       );
@@ -88,7 +88,7 @@ void main() {
 
       expect(
         () => client.login(
-          serverUrl: 'https://lobi.genclink.tr',
+          serverUrl: 'https://sharkord.example.com',
           identity: 'admin',
           password: 'wrong',
         ),
