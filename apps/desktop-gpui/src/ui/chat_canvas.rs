@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use gpui::prelude::*;
 use gpui::*;
-use sharkord_core::types::Message;
+use sharkord_core::types::{InteractiveComponent, Message, PluginCommand};
 
 use crate::theme;
 use crate::ui::server_rail::server_initials;
@@ -167,6 +167,173 @@ pub fn render_channel_welcome_card(channel_name: &str, topic: Option<&str>) -> C
     }
 }
 
+/// Default slash commands provided for native autocomplete.
+pub fn default_slash_commands() -> Vec<PluginCommand> {
+    vec![
+        PluginCommand {
+            plugin_id: "poll".to_string(),
+            name: "poll".to_string(),
+            description: "Create an interactive poll in the channel".to_string(),
+        },
+        PluginCommand {
+            plugin_id: "remind".to_string(),
+            name: "remind".to_string(),
+            description: "Set a reminder notification".to_string(),
+        },
+        PluginCommand {
+            plugin_id: "soundboard".to_string(),
+            name: "soundboard".to_string(),
+            description: "Play a sound clip in the voice channel".to_string(),
+        },
+    ]
+}
+
+/// Renders interactive message components (buttons, polls, form cards) natively.
+pub fn render_interactive_components(components: &[InteractiveComponent]) -> Vec<AnyElement> {
+    components
+        .iter()
+        .map(|comp| match comp {
+            InteractiveComponent::Button(btn) => {
+                let is_danger = btn.style.as_deref() == Some("danger");
+                let is_primary = btn.style.as_deref() == Some("primary");
+                let bg_color = if is_danger {
+                    theme::status_dnd()
+                } else if is_primary {
+                    theme::accent()
+                } else {
+                    theme::bg_elevated()
+                };
+
+                div()
+                    .id(ElementId::Name(format!("plugin_button_{}", btn.id).into()))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .my_1()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .px_3()
+                            .py_1()
+                            .rounded_md()
+                            .bg(bg_color)
+                            .border_1()
+                            .border_color(theme::border_hairline())
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .text_color(theme::text_primary())
+                            .child(btn.label.clone()),
+                    )
+                    .into_any_element()
+            }
+            InteractiveComponent::Poll(poll) => {
+                div()
+                    .id(ElementId::Name(format!("plugin_poll_{}", poll.id).into()))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .p_3()
+                    .my_2()
+                    .rounded_lg()
+                    .bg(theme::bg_surface())
+                    .border_1()
+                    .border_color(theme::border_hairline())
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(theme::text_primary())
+                            .child(poll.question.clone()),
+                    )
+                    .children(poll.options.iter().map(|opt| {
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .px_3()
+                            .py_1p5()
+                            .rounded_md()
+                            .bg(if opt.voted {
+                                theme::bg_elevated()
+                            } else {
+                                theme::bg_surface_4()
+                            })
+                            .border_1()
+                            .border_color(if opt.voted {
+                                theme::accent()
+                            } else {
+                                theme::border_hairline()
+                            })
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_primary())
+                                    .child(opt.text.clone()),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .child(format!("{} votes", opt.votes)),
+                            )
+                    }))
+                    .into_any_element()
+            }
+            InteractiveComponent::Card {
+                title,
+                description,
+                buttons,
+            } => div()
+                .flex()
+                .flex_col()
+                .gap_2()
+                .p_3()
+                .my_2()
+                .rounded_lg()
+                .bg(theme::bg_surface())
+                .border_1()
+                .border_color(theme::border_hairline())
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                        .text_color(theme::text_primary())
+                        .child(title.clone()),
+                )
+                .children(description.as_ref().map(|desc| {
+                    div()
+                        .text_xs()
+                        .text_color(theme::text_muted())
+                        .child(desc.clone())
+                }))
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .gap_2()
+                        .children(buttons.iter().map(|btn| {
+                            div()
+                                .px_2()
+                                .py_1()
+                                .rounded_md()
+                                .bg(theme::bg_elevated())
+                                .border_1()
+                                .border_color(theme::border_hairline())
+                                .text_xs()
+                                .text_color(theme::text_primary())
+                                .child(btn.label.clone())
+                        })),
+                )
+                .into_any_element(),
+            InteractiveComponent::Unknown => div().into_any_element(),
+        })
+        .collect()
+}
+
 /// Chat Canvas view state.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChatCanvasView {
@@ -175,6 +342,7 @@ pub struct ChatCanvasView {
     pub groups: Vec<MessageFeedGroup>,
     pub message_draft: String,
     pub is_users_panel_open: bool,
+    pub available_commands: Vec<PluginCommand>,
 }
 
 impl Default for ChatCanvasView {
@@ -185,6 +353,7 @@ impl Default for ChatCanvasView {
             groups: Vec::new(),
             message_draft: String::new(),
             is_users_panel_open: true,
+            available_commands: default_slash_commands(),
         }
     }
 }
@@ -204,6 +373,32 @@ impl ChatCanvasView {
             groups,
             message_draft: draft.into(),
             is_users_panel_open: true,
+            available_commands: default_slash_commands(),
+        }
+    }
+
+    pub fn with_commands(mut self, commands: Vec<PluginCommand>) -> Self {
+        self.available_commands = commands;
+        self
+    }
+
+    pub fn matching_slash_commands(&self) -> Vec<PluginCommand> {
+        if !self.message_draft.starts_with('/') {
+            return Vec::new();
+        }
+        let query = self.message_draft[1..].trim().to_lowercase();
+        let commands = if self.available_commands.is_empty() {
+            default_slash_commands()
+        } else {
+            self.available_commands.clone()
+        };
+        if query.is_empty() {
+            commands
+        } else {
+            commands
+                .into_iter()
+                .filter(|c| c.name.to_lowercase().starts_with(&query))
+                .collect()
         }
     }
 
@@ -355,54 +550,127 @@ impl ChatCanvasView {
                                     // Body of grouped messages
                                     .children(group.messages.iter().map(|msg| {
                                         div()
-                                            .text_sm()
-                                            .text_color(theme::text_primary())
-                                            .child(msg.content.clone().unwrap_or_default())
+                                            .flex()
+                                            .flex_col()
+                                            .gap_1()
+                                            .child(
+                                                div()
+                                                    .text_sm()
+                                                    .text_color(theme::text_primary())
+                                                    .child(msg.content.clone().unwrap_or_default()),
+                                            )
+                                            .children(render_interactive_components(&msg.components))
                                     })),
                             )
                     }))
             })
-            // 3. Bottom Composer Input Bar
+            // 3. Bottom Composer Input Bar with Slash Command Autocomplete Popover
             .child(
                 div().p_4().bg(theme::bg_base()).child(
                     div()
                         .flex()
-                        .flex_row()
-                        .items_center()
-                        .justify_between()
-                        .px_4()
-                        .py_3()
-                        .rounded_lg()
-                        .bg(theme::bg_elevated())
-                        .border_1()
-                        .border_color(theme::border_hairline())
-                        .child(
-                            div()
-                                .text_sm()
-                                .text_color(if self.message_draft.is_empty() {
-                                    theme::text_muted()
-                                } else {
-                                    theme::text_primary()
-                                })
-                                .child(if self.message_draft.is_empty() {
-                                    placeholder
-                                } else {
-                                    self.message_draft.clone()
-                                }),
-                        )
+                        .flex_col()
+                        .children(if self.message_draft.starts_with('/') {
+                            let matching = self.matching_slash_commands();
+                            if matching.is_empty() {
+                                None
+                            } else {
+                                Some(
+                                    div()
+                                        .id("slash_command_popover")
+                                        .flex()
+                                        .flex_col()
+                                        .gap_1()
+                                        .p_2()
+                                        .mb_2()
+                                        .rounded_lg()
+                                        .bg(theme::bg_elevated())
+                                        .border_1()
+                                        .border_color(theme::border_hairline())
+                                        .children(matching.into_iter().map(|cmd| {
+                                            div()
+                                                .flex()
+                                                .flex_row()
+                                                .items_center()
+                                                .justify_between()
+                                                .px_3()
+                                                .py_1p5()
+                                                .rounded_md()
+                                                .hover(|s| s.bg(theme::bg_surface_4()))
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .flex_row()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .child(
+                                                            div()
+                                                                .text_xs()
+                                                                .font_weight(
+                                                                    gpui::FontWeight::BOLD,
+                                                                )
+                                                                .text_color(theme::accent())
+                                                                .child(format!("/{}", cmd.name)),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .text_xs()
+                                                                .text_color(theme::text_muted())
+                                                                .child(cmd.description),
+                                                        ),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_xs()
+                                                        .text_color(theme::text_muted())
+                                                        .child(cmd.plugin_id),
+                                                )
+                                        })),
+                                )
+                            }
+                        } else {
+                            None
+                        })
                         .child(
                             div()
                                 .flex()
+                                .flex_row()
                                 .items_center()
-                                .justify_center()
-                                .px_2()
-                                .py_1()
-                                .rounded_md()
-                                .bg(theme::accent())
-                                .text_xs()
-                                .font_weight(gpui::FontWeight::MEDIUM)
-                                .text_color(theme::text_primary())
-                                .child("Send ↵"),
+                                .justify_between()
+                                .px_4()
+                                .py_3()
+                                .rounded_lg()
+                                .bg(theme::bg_elevated())
+                                .border_1()
+                                .border_color(theme::border_hairline())
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .text_color(if self.message_draft.is_empty() {
+                                            theme::text_muted()
+                                        } else {
+                                            theme::text_primary()
+                                        })
+                                        .child(if self.message_draft.is_empty() {
+                                            placeholder
+                                        } else {
+                                            self.message_draft.clone()
+                                        }),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .px_2()
+                                        .py_1()
+                                        .rounded_md()
+                                        .bg(theme::accent())
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .text_color(theme::text_primary())
+                                        .child("Send ↵"),
+                                ),
                         ),
                 ),
             )

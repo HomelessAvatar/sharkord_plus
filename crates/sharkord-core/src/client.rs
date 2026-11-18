@@ -11,7 +11,9 @@ use url::Url;
 use crate::error::SharkordError;
 use crate::protocol::events::{decode_websocket_frame, SubscriptionEvent};
 use crate::protocol::{decode_trpc_response, encode_mutation_body, encode_query_params};
-use crate::types::{Capabilities, Channel, Message, ServerSettings, User};
+use crate::types::{
+    Capabilities, Channel, Message, PluginCommand, ServerSettings, User,
+};
 
 /// High-level asynchronous Sharkord client handling tRPC HTTP queries, mutations,
 /// session persistence, and capability negotiation.
@@ -348,6 +350,154 @@ impl SharkordClient {
                 })
             }
         }
+    }
+
+    /// Calls an interactive plugin action (`plugins.executeAction`).
+    pub async fn call_plugin_action(
+        &self,
+        plugin_id: &str,
+        action_name: &str,
+        payload: Option<serde_json::Value>,
+        channel_id: Option<u64>,
+    ) -> Result<serde_json::Value, SharkordError> {
+        let mut input = serde_json::json!({
+            "pluginId": plugin_id,
+            "actionName": action_name,
+        });
+        if let Some(p) = payload {
+            input["payload"] = p;
+        }
+        if let Some(cid) = channel_id {
+            input["channelId"] = serde_json::json!(cid);
+        }
+
+        let body = encode_mutation_body(Some(&input))?;
+        let url = format!("{}/trpc/plugins.executeAction?batch=1", self.base_url);
+
+        let resp = self
+            .http_client
+            .post(&url)
+            .headers(self.auth_headers())
+            .header("content-type", "application/json")
+            .body(body)
+            .send()
+            .await?;
+
+        if resp.status().as_u16() == 401 {
+            return Err(SharkordError::Unauthorized(
+                "Authentication required to call plugin action".to_string(),
+            ));
+        }
+        if !resp.status().is_success() {
+            return Err(SharkordError::Network(format!(
+                "HTTP {} calling plugin action",
+                resp.status()
+            )));
+        }
+
+        let body_str = resp.text().await?;
+        let val: serde_json::Value = decode_trpc_response(&body_str)?;
+        Ok(val)
+    }
+
+    /// Fetches registered slash commands (`plugins.getCommands`).
+    pub async fn get_plugin_commands(
+        &self,
+        plugin_id: Option<&str>,
+    ) -> Result<Vec<PluginCommand>, SharkordError> {
+        let input = if let Some(pid) = plugin_id {
+            serde_json::json!({ "pluginId": pid })
+        } else {
+            serde_json::json!({})
+        };
+        let query_params = encode_query_params(Some(&input))?;
+        let url = format!("{}/trpc/plugins.getCommands?{}", self.base_url, query_params);
+
+        let resp = self
+            .http_client
+            .get(&url)
+            .headers(self.auth_headers())
+            .send()
+            .await?;
+
+        if resp.status().as_u16() == 401 {
+            return Err(SharkordError::Unauthorized(
+                "Authentication required to fetch plugin commands".to_string(),
+            ));
+        }
+        if !resp.status().is_success() {
+            return Err(SharkordError::Network(format!(
+                "HTTP {} fetching plugin commands",
+                resp.status()
+            )));
+        }
+
+        let body = resp.text().await?;
+        let commands_map: Result<std::collections::HashMap<String, Vec<PluginCommand>>, _> =
+            decode_trpc_response(&body);
+        match commands_map {
+            Ok(map) => {
+                let mut list = Vec::new();
+                for (_, mut cmds) in map {
+                    list.append(&mut cmds);
+                }
+                Ok(list)
+            }
+            Err(_) => match decode_trpc_response::<Vec<PluginCommand>>(&body) {
+                Ok(list) => Ok(list),
+                Err(e) => Err(SharkordError::Protocol(format!(
+                    "Failed to parse plugin commands: {e}"
+                ))),
+            },
+        }
+    }
+
+    /// Executes a slash command (`plugins.executeCommand`).
+    pub async fn execute_plugin_command(
+        &self,
+        plugin_id: &str,
+        command_name: &str,
+        args: Option<serde_json::Value>,
+        channel_id: Option<u64>,
+    ) -> Result<serde_json::Value, SharkordError> {
+        let mut input = serde_json::json!({
+            "pluginId": plugin_id,
+            "commandName": command_name,
+        });
+        if let Some(a) = args {
+            input["args"] = a;
+        }
+        if let Some(cid) = channel_id {
+            input["channelId"] = serde_json::json!(cid);
+        }
+
+        let body = encode_mutation_body(Some(&input))?;
+        let url = format!("{}/trpc/plugins.executeCommand?batch=1", self.base_url);
+
+        let resp = self
+            .http_client
+            .post(&url)
+            .headers(self.auth_headers())
+            .header("content-type", "application/json")
+            .body(body)
+            .send()
+            .await?;
+
+        if resp.status().as_u16() == 401 {
+            return Err(SharkordError::Unauthorized(
+                "Authentication required to execute plugin command".to_string(),
+            ));
+        }
+        if !resp.status().is_success() {
+            return Err(SharkordError::Network(format!(
+                "HTTP {} executing plugin command",
+                resp.status()
+            )));
+        }
+
+        let body_str = resp.text().await?;
+        let val: serde_json::Value = decode_trpc_response(&body_str)?;
+        Ok(val)
     }
 
     /// Connects to the WebSocket endpoint and spawns a background listener delivering real-time SubscriptionEvents.

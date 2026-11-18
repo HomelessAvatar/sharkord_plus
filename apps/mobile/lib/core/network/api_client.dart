@@ -466,6 +466,48 @@ class SharkordSocketSession {
     throw const FormatException('Invalid sendMessage response');
   }
 
+  /// Dispatches an interactive plugin action (plugins.executeAction)
+  Future<dynamic> callPluginAction({
+    required String pluginId,
+    required String actionName,
+    dynamic payload,
+    int? channelId,
+  }) async {
+    return await mutation('plugins.executeAction', {
+      'pluginId': pluginId,
+      'actionName': actionName,
+      if (payload != null) 'payload': payload,
+      if (channelId != null) 'channelId': channelId,
+    });
+  }
+
+  /// Fetches registered plugin slash commands (plugins.getCommands)
+  Future<List<PluginCommand>> getPluginCommands({String? pluginId}) async {
+    final dynamic response = await query('plugins.getCommands', {
+      if (pluginId != null) 'pluginId': pluginId,
+    });
+
+    final List<PluginCommand> commands = [];
+    if (response is Map<String, dynamic>) {
+      for (final entry in response.entries) {
+        if (entry.value is List) {
+          for (final item in entry.value as List) {
+            if (item is Map<String, dynamic>) {
+              commands.add(PluginCommand.fromJson(item));
+            }
+          }
+        }
+      }
+    } else if (response is List) {
+      for (final item in response) {
+        if (item is Map<String, dynamic>) {
+          commands.add(PluginCommand.fromJson(item));
+        }
+      }
+    }
+    return commands;
+  }
+
   /// Disposes session and closes socket
   Future<void> dispose() async {
     if (_isDisposed) return;

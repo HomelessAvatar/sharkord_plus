@@ -87,6 +87,97 @@ pub struct Message {
     pub created_at: Option<i64>,
     #[serde(default)]
     pub updated_at: Option<i64>,
+    #[serde(default)]
+    pub components: Vec<InteractiveComponent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginCommand {
+    #[serde(alias = "plugin_id")]
+    pub plugin_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginActionPayload {
+    #[serde(alias = "plugin_id")]
+    pub plugin_id: String,
+    #[serde(alias = "action_name", alias = "actionId", alias = "action_id")]
+    pub action_name: String,
+    #[serde(default, alias = "channel_id")]
+    pub channel_id: Option<u64>,
+    #[serde(default)]
+    pub payload: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginButton {
+    pub id: String,
+    pub label: String,
+    #[serde(default, alias = "plugin_id")]
+    pub plugin_id: Option<String>,
+    #[serde(default, alias = "action_name", alias = "actionId", alias = "action_id")]
+    pub action_name: Option<String>,
+    #[serde(default)]
+    pub style: Option<String>,
+    #[serde(default)]
+    pub disabled: Option<bool>,
+    #[serde(default)]
+    pub payload: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginPollOption {
+    pub id: String,
+    pub text: String,
+    #[serde(default)]
+    pub votes: u32,
+    #[serde(default)]
+    pub voted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PluginPoll {
+    pub id: String,
+    pub question: String,
+    #[serde(default)]
+    pub options: Vec<PluginPollOption>,
+    #[serde(default, alias = "plugin_id")]
+    pub plugin_id: Option<String>,
+    #[serde(default, alias = "action_name", alias = "actionId", alias = "action_id")]
+    pub action_name: Option<String>,
+    #[serde(default, alias = "total_votes")]
+    pub total_votes: Option<u32>,
+    #[serde(default, alias = "allows_multiple")]
+    pub allows_multiple: bool,
+    #[serde(default)]
+    pub closed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum InteractiveComponent {
+    #[serde(rename = "button")]
+    Button(PluginButton),
+    #[serde(rename = "poll")]
+    Poll(PluginPoll),
+    #[serde(rename = "card", rename_all = "camelCase")]
+    Card {
+        title: String,
+        #[serde(default)]
+        description: Option<String>,
+        #[serde(default)]
+        buttons: Vec<PluginButton>,
+    },
+    #[serde(other)]
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

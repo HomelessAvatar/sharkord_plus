@@ -153,6 +153,7 @@ fn test_core_type_conversions() {
         edited_by: None,
         created_at: Some(1700000050),
         updated_at: None,
+        components: Vec::new(),
     };
 
     let mobile_msg: MobileMessage = core_msg.into();

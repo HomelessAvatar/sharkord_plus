@@ -4,7 +4,8 @@ use desktop_gpui::state::AppState;
 use desktop_gpui::theme;
 use desktop_gpui::ui::channel_tree::{channel_icon, compose_channel_tree, ChannelDisplayItem};
 use desktop_gpui::ui::chat_canvas::{
-    format_message_timestamp, group_messages_for_feed, MessageFeedGroup,
+    default_slash_commands, format_message_timestamp, group_messages_for_feed,
+    render_interactive_components, ChatCanvasView, MessageFeedGroup,
 };
 use desktop_gpui::ui::server_rail::{server_initials, server_pill_height, ServerItem};
 use desktop_gpui::ui::voice_bar::{
@@ -12,7 +13,10 @@ use desktop_gpui::ui::voice_bar::{
     VoiceConnectionState,
 };
 use desktop_gpui::ui::WorkspaceView;
-use sharkord_core::types::{Channel, ChannelType, Message, User};
+use sharkord_core::types::{
+    Channel, ChannelType, InteractiveComponent, Message, PluginButton, PluginCommand, PluginPoll,
+    PluginPollOption, User,
+};
 
 #[test]
 fn test_server_rail_helpers() {
@@ -278,4 +282,75 @@ fn test_workspace_view_initialization_and_mutations() {
         workspace.voice_bar.connection,
         VoiceConnectionState::Disconnected
     );
+}
+
+#[test]
+fn test_chat_canvas_interactive_components_and_slash_commands() {
+    // 1. Default slash commands
+    let defaults = default_slash_commands();
+    assert!(defaults.iter().any(|c| c.name == "poll"));
+    assert!(defaults.iter().any(|c| c.name == "remind"));
+    assert!(defaults.iter().any(|c| c.name == "soundboard"));
+
+    // 2. Chat canvas slash autocomplete filtering
+    let users = HashMap::new();
+    let messages = Vec::new();
+    let mut canvas = ChatCanvasView::new("general", None, &messages, &users, "");
+    assert!(canvas.matching_slash_commands().is_empty());
+
+    canvas.message_draft = "/".to_string();
+    assert_eq!(canvas.matching_slash_commands().len(), defaults.len());
+
+    canvas.message_draft = "/so".to_string();
+    let matched = canvas.matching_slash_commands();
+    assert_eq!(matched.len(), 1);
+    assert_eq!(matched[0].name, "soundboard");
+
+    // Custom commands via with_commands
+    let custom_cmd = PluginCommand {
+        plugin_id: "dice".to_string(),
+        name: "roll".to_string(),
+        description: "Roll dice".to_string(),
+    };
+    canvas = canvas.with_commands(vec![custom_cmd]);
+    canvas.message_draft = "/ro".to_string();
+    let matched_custom = canvas.matching_slash_commands();
+    assert_eq!(matched_custom.len(), 1);
+    assert_eq!(matched_custom[0].name, "roll");
+
+    // 3. Interactive components rendering
+    let components = vec![
+        InteractiveComponent::Button(PluginButton {
+            id: "btn-1".to_string(),
+            label: "Click Me".to_string(),
+            plugin_id: Some("test".to_string()),
+            action_name: Some("click".to_string()),
+            style: Some("primary".to_string()),
+            disabled: Some(false),
+            payload: None,
+        }),
+        InteractiveComponent::Poll(PluginPoll {
+            id: "poll-1".to_string(),
+            question: "Is this native?".to_string(),
+            options: vec![PluginPollOption {
+                id: "yes".to_string(),
+                text: "Yes, 100% native GPUI".to_string(),
+                votes: 10,
+                voted: true,
+            }],
+            plugin_id: Some("polls".to_string()),
+            action_name: Some("vote".to_string()),
+            total_votes: Some(10),
+            allows_multiple: false,
+            closed: false,
+        }),
+        InteractiveComponent::Card {
+            title: "Card Title".to_string(),
+            description: Some("Card description".to_string()),
+            buttons: vec![],
+        },
+    ];
+
+    let rendered = render_interactive_components(&components);
+    assert_eq!(rendered.len(), 3);
 }
