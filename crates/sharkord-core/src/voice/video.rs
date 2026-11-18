@@ -61,6 +61,10 @@ pub enum VideoResolution {
     R1080p,
     #[serde(rename = "1440p", alias = "R1440p", alias = "r1440p")]
     R1440p,
+    #[serde(rename = "4k", alias = "4K", alias = "R4K", alias = "r4k", alias = "2160p", alias = "R2160p")]
+    R4K,
+    #[serde(rename = "custom", alias = "Custom")]
+    Custom { width: u32, height: u32 },
 }
 
 impl VideoResolution {
@@ -70,6 +74,8 @@ impl VideoResolution {
             VideoResolution::R720p => 1280,
             VideoResolution::R1080p => 1920,
             VideoResolution::R1440p => 2560,
+            VideoResolution::R4K => 3840,
+            VideoResolution::Custom { width, .. } => *width,
         }
     }
 
@@ -79,15 +85,19 @@ impl VideoResolution {
             VideoResolution::R720p => 720,
             VideoResolution::R1080p => 1080,
             VideoResolution::R1440p => 1440,
+            VideoResolution::R4K => 2160,
+            VideoResolution::Custom { height, .. } => *height,
         }
     }
 
     /// Returns human-readable label for the resolution preset.
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            VideoResolution::R720p => "720p",
-            VideoResolution::R1080p => "1080p",
-            VideoResolution::R1440p => "1440p",
+            VideoResolution::R720p => "720p".to_string(),
+            VideoResolution::R1080p => "1080p".to_string(),
+            VideoResolution::R1440p => "1440p".to_string(),
+            VideoResolution::R4K => "4K".to_string(),
+            VideoResolution::Custom { width, height } => format!("{width}x{height}"),
         }
     }
 }
@@ -108,6 +118,12 @@ pub enum VideoFrameRate {
     #[default]
     #[serde(rename = "60", alias = "Fps60", alias = "fps60", alias = "60fps")]
     Fps60,
+    #[serde(rename = "120", alias = "Fps120", alias = "fps120", alias = "120fps")]
+    Fps120,
+    #[serde(rename = "144", alias = "Fps144", alias = "fps144", alias = "144fps")]
+    Fps144,
+    #[serde(rename = "custom", alias = "Custom")]
+    Custom(u32),
 }
 
 impl VideoFrameRate {
@@ -117,15 +133,21 @@ impl VideoFrameRate {
             VideoFrameRate::Fps15 => 15,
             VideoFrameRate::Fps30 => 30,
             VideoFrameRate::Fps60 => 60,
+            VideoFrameRate::Fps120 => 120,
+            VideoFrameRate::Fps144 => 144,
+            VideoFrameRate::Custom(fps) => *fps,
         }
     }
 
     /// Returns human-readable label for the frame rate preset.
-    pub fn label(&self) -> &'static str {
+    pub fn label(&self) -> String {
         match self {
-            VideoFrameRate::Fps15 => "15 FPS",
-            VideoFrameRate::Fps30 => "30 FPS",
-            VideoFrameRate::Fps60 => "60 FPS",
+            VideoFrameRate::Fps15 => "15 FPS".to_string(),
+            VideoFrameRate::Fps30 => "30 FPS".to_string(),
+            VideoFrameRate::Fps60 => "60 FPS".to_string(),
+            VideoFrameRate::Fps120 => "120 FPS".to_string(),
+            VideoFrameRate::Fps144 => "144 FPS".to_string(),
+            VideoFrameRate::Custom(fps) => format!("{fps} FPS"),
         }
     }
 }
