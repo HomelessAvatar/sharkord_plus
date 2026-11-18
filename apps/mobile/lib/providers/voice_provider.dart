@@ -4,10 +4,12 @@ import 'package:sharkord_mobile/models/user.dart';
 import 'package:sharkord_mobile/models/voice_state.dart';
 import 'package:sharkord_mobile/providers/auth_provider.dart';
 
-/// Provider for WebRTC voice engine instance.
+/// Provider for WebRTC voice engine instance with automatic cleanup on disposal.
 final voiceEngineProvider = Provider<WebRTCVoiceEngine>((ref) {
   final session = ref.watch(socketSessionProvider);
-  return WebRTCVoiceEngine(socketSession: session);
+  final engine = WebRTCVoiceEngine(socketSession: session);
+  ref.onDispose(() => engine.leave());
+  return engine;
 });
 
 /// Notifier managing real-time voice channel connection and audio controls.
@@ -88,8 +90,10 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
     );
   }
 
-  /// Updates active speaker state for a user.
+  /// Updates active speaker state for a user, avoiding redundant updates.
   void setSpeaking(String userId, bool isSpeaking) {
+    if (state.isSpeaking(userId) == isSpeaking) return;
+
     final currentSpeakers = Set<String>.from(state.activeSpeakerIds);
     if (isSpeaking) {
       currentSpeakers.add(userId);

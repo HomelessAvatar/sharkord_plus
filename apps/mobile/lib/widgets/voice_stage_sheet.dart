@@ -268,12 +268,27 @@ class VoiceStageSheet extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               if (isSpeaking)
-                                const Text(
-                                  'Speaking...',
-                                  style: TextStyle(
-                                    color: SharkordColors.speaking,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(
+                                        Icons.graphic_eq_rounded,
+                                        size: 13,
+                                        color: SharkordColors.speaking,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Speaking...',
+                                        style: TextStyle(
+                                          color: SharkordColors.speaking,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                             ],
