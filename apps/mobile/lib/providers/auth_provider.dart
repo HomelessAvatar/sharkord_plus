@@ -3,11 +3,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sharkord_mobile/core/network/api_client.dart';
+import 'package:sharkord_mobile/core/storage/vault_service.dart';
 import 'package:sharkord_mobile/models/user.dart';
 import 'package:sharkord_mobile/providers/channel_provider.dart';
 import 'package:sharkord_mobile/providers/member_provider.dart';
 import 'package:sharkord_mobile/providers/message_provider.dart';
 import 'package:sharkord_mobile/providers/server_provider.dart';
+
+export 'package:sharkord_mobile/core/storage/vault_service.dart'
+    show vaultServiceProvider, savedServersProvider;
 
 /// Active API Client provider.
 final apiClientProvider = Provider<SharkordApiClient>((ref) {
@@ -75,16 +79,145 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref? _ref;
   final SharkordApiClient _apiClient;
+  final VaultService _vaultService;
   final bool _allowOfflineFallback;
 
   AuthNotifier({
     Ref? ref,
     SharkordApiClient? apiClient,
+    VaultService? vaultService,
     bool allowOfflineFallback = true,
   })  : _ref = ref,
         _apiClient = apiClient ?? SharkordApiClient(),
+        _vaultService = vaultService ?? VaultService(),
         _allowOfflineFallback = allowOfflineFallback,
         super(const AuthState());
+
+  /// Restores active session from persistent vault without prompting user.
+  /// Returns true if a valid session was found and restored.
+  Future<bool> tryRestoreSession() async {
+    try {
+      final active = await _vaultService.getActiveServer();
+      if (active == null || active.token.isEmpty || active.serverUrl.isEmpty) {
+        return false;
+      }
+
+      final restoredUser = User(
+        id: active.userId,
+        username: active.username,
+        displayName: active.displayName,
+        avatarUrl: active.avatarUrl,
+        isOnline: true,
+      );
+
+      _ref?.read(serverProvider.notifier).setServerDetails(
+        serverId: active.serverId,
+        serverName: active.serverName,
+      );
+
+      state = state.copyWith(
+        user: restoredUser,
+        token: active.token,
+        serverUrl: active.serverUrl,
+        isLoading: false,
+        clearError: true,
+      );
+
+      // Trigger background WebSocket reconnect
+      _reconnectSocketInBackground(
+        serverUrl: active.serverUrl,
+        token: active.token,
+      );
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Switches to another saved server from the vault.
+  Future<bool> switchServer(SavedServerSession server) async {
+    try {
+      _ref?.read(socketSessionProvider)?.dispose();
+    } catch (_) {}
+    _ref?.read(socketSessionProvider.notifier).state = null;
+    _ref?.read(channelProvider.notifier).setChannels(const []);
+    _ref?.read(memberProvider.notifier).clear();
+
+    try {
+      await _vaultService.setActiveServerId(server.serverId);
+      _ref?.read(savedServersProvider.notifier).loadServers();
+    } catch (_) {}
+
+    final user = User(
+      id: server.userId,
+      username: server.username,
+      displayName: server.displayName,
+      avatarUrl: server.avatarUrl,
+      isOnline: true,
+    );
+
+    _ref?.read(serverProvider.notifier).setServerDetails(
+      serverId: server.serverId,
+      serverName: server.serverName,
+    );
+
+    state = state.copyWith(
+      user: user,
+      token: server.token,
+      serverUrl: server.serverUrl,
+      isLoading: false,
+      clearError: true,
+    );
+
+    _reconnectSocketInBackground(
+      serverUrl: server.serverUrl,
+      token: server.token,
+    );
+
+    return true;
+  }
+
+  void _reconnectSocketInBackground({
+    required String serverUrl,
+    required String token,
+  }) {
+    final isTestEnv = Platform.environment.containsKey('FLUTTER_TEST');
+    if (isTestEnv) {
+      return;
+    }
+
+    _apiClient
+        .connectSession(
+      serverUrl: serverUrl,
+      token: token,
+    )
+        .then((session) async {
+      _ref?.read(socketSessionProvider.notifier).state = session;
+      final handshakeHash = await session.handshake();
+      final joinResult = await session.joinServer(handshakeHash: handshakeHash);
+
+      _ref?.read(serverProvider.notifier).setServerDetails(
+        serverId: joinResult.serverId,
+        serverName: joinResult.serverName,
+      );
+      _ref?.read(channelProvider.notifier).setChannels(joinResult.channels);
+      _ref?.read(memberProvider.notifier).setMembers(joinResult.users);
+
+      final activeChannelId = _ref?.read(channelProvider).selectedChannelId;
+      if (activeChannelId != null) {
+        final numericId = int.tryParse(activeChannelId);
+        if (numericId != null) {
+          try {
+            final msgs = await session.fetchMessages(numericId);
+            _ref?.read(messageProvider.notifier).setMessages(activeChannelId, msgs);
+          } catch (_) {}
+        }
+      }
+    }).catchError((_) {
+      // Offline fallback: maintain restored session for offline access
+    });
+  }
 
   /// Authenticates with a Sharkord server instance and loads live server data.
   Future<bool> login({
@@ -150,6 +283,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
             isLoading: false,
             clearError: true,
           );
+          try {
+            final fallbackSession = SavedServerSession(
+              serverId: '1',
+              serverName: 'Sharkord Server',
+              serverUrl: cleanUrl,
+              token: token,
+              userId: mockUser.id,
+              username: mockUser.username,
+              displayName: mockUser.displayName,
+              lastConnectedAt: DateTime.now(),
+            );
+            await _vaultService.saveServer(fallbackSession, setAsActive: true);
+            _ref?.read(savedServersProvider.notifier).loadServers();
+          } catch (_) {}
           return true;
         }
 
@@ -208,6 +355,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
           clearError: true,
         );
 
+        // Persist session to vault
+        try {
+          final sessionToSave = SavedServerSession(
+            serverId: joinResult.serverId,
+            serverName: joinResult.serverName.isNotEmpty
+                ? joinResult.serverName
+                : 'Sharkord Server',
+            serverUrl: cleanUrl,
+            token: token,
+            userId: loggedInUser.id,
+            username: loggedInUser.username,
+            displayName: loggedInUser.displayName,
+            avatarUrl: loggedInUser.avatarUrl,
+            lastConnectedAt: DateTime.now(),
+          );
+          await _vaultService.saveServer(sessionToSave, setAsActive: true);
+          _ref?.read(savedServersProvider.notifier).loadServers();
+        } catch (_) {}
+
         // Pre-fetch messages for first text channel
         final activeChannelId = _ref?.read(channelProvider).selectedChannelId;
         if (activeChannelId != null) {
@@ -237,6 +403,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
             isLoading: false,
             clearError: true,
           );
+          try {
+            final fallbackSession = SavedServerSession(
+              serverId: '1',
+              serverName: 'Sharkord Server',
+              serverUrl: cleanUrl,
+              token: token,
+              userId: fallbackUser.id,
+              username: fallbackUser.username,
+              displayName: fallbackUser.displayName,
+              lastConnectedAt: DateTime.now(),
+            );
+            await _vaultService.saveServer(fallbackSession, setAsActive: true);
+            _ref?.read(savedServersProvider.notifier).loadServers();
+          } catch (_) {}
           return true;
         }
 
@@ -275,7 +455,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Logs out the user and clears all session tokens and active connections.
-  void logout() {
+  void logout({bool removeFromVault = false}) {
+    final currentUrl = state.serverUrl;
     try {
       _ref?.read(socketSessionProvider)?.dispose();
     } catch (_) {}
@@ -284,6 +465,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _ref?.read(memberProvider.notifier).clear();
     _ref?.read(channelProvider.notifier).setChannels(const []);
     state = const AuthState();
+
+    if (removeFromVault && currentUrl != null) {
+      _vaultService.getActiveServer().then((active) {
+        if (active != null) {
+          _vaultService.removeServer(active.serverId).then((_) {
+            _ref?.read(savedServersProvider.notifier).loadServers();
+          });
+        }
+      }).catchError((_) {});
+    }
   }
 
   /// Clears active error message.
@@ -295,7 +486,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 /// Provider for authentication state.
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return AuthNotifier(ref: ref, apiClient: apiClient);
+  final vaultService = ref.watch(vaultServiceProvider);
+  return AuthNotifier(ref: ref, apiClient: apiClient, vaultService: vaultService);
 });
 
 /// Convenience provider for current authenticated user.

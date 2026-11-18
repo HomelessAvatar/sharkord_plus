@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sharkord_mobile/core/storage/vault_service.dart';
 import 'package:sharkord_mobile/core/theme/colors.dart';
 import 'package:sharkord_mobile/models/channel.dart';
 import 'package:sharkord_mobile/providers/auth_provider.dart';
@@ -18,10 +19,27 @@ class ChannelDrawer extends ConsumerWidget {
     final voiceState = ref.watch(voiceProvider);
     final currentUser = ref.watch(currentUserProvider);
     final serverName = ref.watch(serverNameProvider);
+    final currentServerId = ref.watch(serverProvider).serverId;
+    final savedServers = ref.watch(savedServersProvider);
+    final authState = ref.watch(authProvider);
 
     // Group channels by category
     final textChannels = channelState.textChannels;
     final voiceChannels = channelState.voiceChannels;
+
+    final displayedServers = savedServers.isNotEmpty
+        ? savedServers
+        : [
+            SavedServerSession(
+              serverId: currentServerId.isNotEmpty ? currentServerId : 'default',
+              serverName: serverName,
+              serverUrl: authState.serverUrl ?? 'https://hq.sharkord.com',
+              token: authState.token ?? '',
+              userId: currentUser?.id ?? '1',
+              username: currentUser?.username ?? 'user',
+              displayName: currentUser?.displayName ?? 'User',
+            )
+          ];
 
     return Drawer(
       backgroundColor: SharkordColors.sidebar,
@@ -35,47 +53,28 @@ class ChannelDrawer extends ConsumerWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 12),
-                  // Active Server Pill & Icon
-                  Row(
-                    children: [
-                      // Active indicator pill
-                      Container(
-                        width: 4,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: SharkordColors.primary,
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(4),
-                            bottomRight: Radius.circular(4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Server Icon
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: SharkordColors.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: SharkordColors.primary.withAlpha(128),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            'assets/logo.png',
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Server List Rail
+                  Expanded(
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: displayedServers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final server = displayedServers[index];
+                        final isActive = server.serverId == currentServerId ||
+                            (server.serverUrl == authState.serverUrl &&
+                                authState.isAuthenticated) ||
+                            (displayedServers.length == 1);
+
+                        return _buildServerRailItem(
+                          context: context,
+                          ref: ref,
+                          server: server,
+                          isActive: isActive,
+                        );
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 12),
                   const Divider(
                     color: SharkordColors.border,
                     indent: 14,
@@ -106,7 +105,7 @@ class ChannelDrawer extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 12),
                   // Settings / Profile
                   Material(
                     color: Colors.transparent,
@@ -182,7 +181,8 @@ class ChannelDrawer extends ConsumerWidget {
                       children: [
                         if (textChannels.isEmpty && voiceChannels.isEmpty)
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 32, horizontal: 16),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -338,6 +338,84 @@ class ChannelDrawer extends ConsumerWidget {
     );
   }
 
+  Widget _buildServerRailItem({
+    required BuildContext context,
+    required WidgetRef ref,
+    required SavedServerSession server,
+    required bool isActive,
+  }) {
+    return GestureDetector(
+      key: Key('server_rail_item_${server.serverId}'),
+      onTap: () {
+        if (!isActive) {
+          ref.read(authProvider.notifier).switchServer(server);
+        }
+      },
+      onLongPress: () {
+        _showServerOptionsDialog(context, ref, server);
+      },
+      child: Row(
+        children: [
+          // Active indicator pill
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 4,
+            height: isActive ? 36 : 8,
+            decoration: BoxDecoration(
+              color: isActive ? SharkordColors.primary : Colors.transparent,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(4),
+                bottomRight: Radius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Server Icon
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: SharkordColors.surface,
+              borderRadius: BorderRadius.circular(isActive ? 14 : 22),
+              border: Border.all(
+                color: isActive
+                    ? SharkordColors.primary.withAlpha(180)
+                    : SharkordColors.border,
+                width: isActive ? 1.5 : 1.0,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isActive ? 12 : 20),
+              child: (server.serverName.toLowerCase().contains('sharkord') ||
+                      server.serverId == '1' ||
+                      server.serverId == 'default')
+                  ? Image.asset(
+                      'assets/logo.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    )
+                  : Center(
+                      child: Text(
+                        server.serverName.isNotEmpty
+                            ? server.serverName[0].toUpperCase()
+                            : 'S',
+                        style: TextStyle(
+                          color: isActive
+                              ? SharkordColors.textPrimary
+                              : SharkordColors.textMuted,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategoryHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -408,7 +486,8 @@ class ChannelDrawer extends ConsumerWidget {
                 ),
               if (isVoice && channel.participantCount > 0)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: SharkordColors.surface,
                     borderRadius: BorderRadius.circular(10),
@@ -440,7 +519,9 @@ class ChannelDrawer extends ConsumerWidget {
               if (session != null) {
                 final numericId = channel.numericId;
                 session.fetchMessages(numericId).then((msgs) {
-                  ref.read(messageProvider.notifier).setMessages(channel.id, msgs);
+                  ref
+                      .read(messageProvider.notifier)
+                      .setMessages(channel.id, msgs);
                 }).catchError((_) {});
               }
               Navigator.of(context).pop();
@@ -451,64 +532,267 @@ class ChannelDrawer extends ConsumerWidget {
     );
   }
 
+  void _showServerOptionsDialog(
+    BuildContext context,
+    WidgetRef ref,
+    SavedServerSession server,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: SharkordColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  server.serverName,
+                  style: const TextStyle(
+                    color: SharkordColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  server.serverUrl,
+                  style: const TextStyle(
+                    color: SharkordColors.textMuted,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading:
+                      const Icon(Icons.sync_alt_rounded, color: SharkordColors.primary),
+                  title: const Text(
+                    'Switch to this server',
+                    style: TextStyle(color: SharkordColors.textPrimary),
+                  ),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    ref.read(authProvider.notifier).switchServer(server);
+                  },
+                ),
+                ListTile(
+                  key: Key('delete_server_${server.serverId}'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.delete_outline_rounded,
+                      color: SharkordColors.danger),
+                  title: const Text(
+                    'Delete from Saved Servers',
+                    style: TextStyle(color: SharkordColors.danger),
+                  ),
+                  onTap: () async {
+                    final navigator = Navigator.of(context);
+                    Navigator.of(sheetCtx).pop();
+                    final currentServerId = ref.read(serverProvider).serverId;
+                    final isCurrent = server.serverId == currentServerId;
+
+                    await ref
+                        .read(savedServersProvider.notifier)
+                        .remove(server.serverId);
+                    final remaining = ref.read(savedServersProvider);
+
+                    if (isCurrent) {
+                      if (remaining.isNotEmpty) {
+                        await ref
+                            .read(authProvider.notifier)
+                            .switchServer(remaining.first);
+                      } else {
+                        if (context.mounted) {
+                          navigator.pop(); // close drawer
+                        }
+                        ref.read(authProvider.notifier).logout();
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showAddServerDialog(BuildContext context, WidgetRef ref) {
-    final serverName = ref.read(serverNameProvider);
-    final authState = ref.read(authProvider);
-    final urlController = TextEditingController(text: authState.serverUrl ?? '');
+    final urlController = TextEditingController();
+    final identityController = TextEditingController();
+    final passwordController = TextEditingController();
+    var isSubmitting = false;
+    String? errorMessage;
 
     showDialog<void>(
       context: context,
       builder: (dialogCtx) {
-        return AlertDialog(
-          backgroundColor: SharkordColors.surface,
-          title: const Text(
-            'Connect to Server',
-            style: TextStyle(color: SharkordColors.textPrimary, fontSize: 18),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Active: $serverName',
-                style: const TextStyle(color: SharkordColors.textMuted, fontSize: 13),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: SharkordColors.surface,
+              title: const Text(
+                'Add New Server',
+                style: TextStyle(color: SharkordColors.textPrimary, fontSize: 18),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: urlController,
-                autofocus: true,
-                style: const TextStyle(color: SharkordColors.textPrimary, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: 'e.g. your-server.com',
-                  hintStyle: const TextStyle(color: SharkordColors.textMuted),
-                  filled: true,
-                  fillColor: SharkordColors.card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: SharkordColors.border),
-                  ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Connect to another Sharkord instance and save it to your multi-server vault.',
+                      style:
+                          TextStyle(color: SharkordColors.textMuted, fontSize: 13),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      key: const Key('add_server_url_field'),
+                      controller: urlController,
+                      autofocus: true,
+                      style: const TextStyle(
+                          color: SharkordColors.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: 'Server URL',
+                        labelStyle:
+                            const TextStyle(color: SharkordColors.textMuted),
+                        hintText: 'https://hq.sharkord.com',
+                        hintStyle:
+                            const TextStyle(color: SharkordColors.textMuted),
+                        filled: true,
+                        fillColor: SharkordColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: SharkordColors.border),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('add_server_identity_field'),
+                      controller: identityController,
+                      style: const TextStyle(
+                          color: SharkordColors.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: 'Username or Email',
+                        labelStyle:
+                            const TextStyle(color: SharkordColors.textMuted),
+                        filled: true,
+                        fillColor: SharkordColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: SharkordColors.border),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('add_server_password_field'),
+                      controller: passwordController,
+                      obscureText: true,
+                      style: const TextStyle(
+                          color: SharkordColors.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        labelStyle:
+                            const TextStyle(color: SharkordColors.textMuted),
+                        filled: true,
+                        fillColor: SharkordColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide:
+                              const BorderSide(color: SharkordColors.border),
+                        ),
+                      ),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(
+                            color: SharkordColors.danger, fontSize: 13),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogCtx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: SharkordColors.textMuted)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: SharkordColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.of(dialogCtx).pop();
-                Navigator.of(context).pop(); // Close drawer
-                ref.read(authProvider.notifier).logout();
-              },
-              child: const Text('Change Server'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: SharkordColors.textMuted)),
+                ),
+                ElevatedButton(
+                  key: const Key('add_server_submit_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: SharkordColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final url = urlController.text.trim();
+                          final identity = identityController.text.trim();
+                          final pass = passwordController.text;
+
+                          if (url.isEmpty || identity.isEmpty || pass.isEmpty) {
+                            setState(() {
+                              errorMessage = 'All fields are required.';
+                            });
+                            return;
+                          }
+
+                          setState(() {
+                            isSubmitting = true;
+                            errorMessage = null;
+                          });
+
+                          final navigator = Navigator.of(context);
+                          final dialogNav = Navigator.of(dialogCtx);
+                          final success = await ref
+                              .read(authProvider.notifier)
+                              .login(
+                                serverUrl: url,
+                                identity: identity,
+                                password: pass,
+                              );
+
+                          if (success) {
+                            if (dialogCtx.mounted) {
+                              dialogNav.pop();
+                            }
+                            if (context.mounted) {
+                              navigator.pop(); // close drawer
+                            }
+                          } else {
+                            final err = ref.read(authProvider).error ??
+                                'Failed to connect to server.';
+                            setState(() {
+                              isSubmitting = false;
+                              errorMessage = err;
+                            });
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Connect & Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -585,7 +869,7 @@ class ChannelDrawer extends ConsumerWidget {
                   onPressed: () {
                     Navigator.of(sheetCtx).pop();
                     Navigator.of(context).pop(); // Close drawer
-                    ref.read(authProvider.notifier).logout();
+                    ref.read(authProvider.notifier).logout(removeFromVault: true);
                   },
                 ),
               ],

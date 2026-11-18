@@ -5,8 +5,17 @@ import 'package:sharkord_mobile/providers/auth_provider.dart';
 import 'package:sharkord_mobile/screens/login_screen.dart';
 import 'package:sharkord_mobile/screens/workspace_screen.dart';
 
-void main() {
-  runApp(const ProviderScope(child: SharkordApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final container = ProviderContainer();
+  await container.read(authProvider.notifier).tryRestoreSession();
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const SharkordApp(),
+    ),
+  );
 }
 
 /// Root widget for the Sharkord mobile application.
