@@ -10,6 +10,10 @@ void main() {
       expect(normalizeServerUrl('lobi.genclink.tr'), 'https://lobi.genclink.tr');
       expect(normalizeServerUrl('lobi.genclink.tr/'), 'https://lobi.genclink.tr');
       expect(normalizeServerUrl('https://lobi.genclink.tr///'), 'https://lobi.genclink.tr');
+      expect(normalizeServerUrl('httpa://lobi.genclink.tr'), 'https://lobi.genclink.tr');
+      expect(normalizeServerUrl('htp://lobi.genclink.tr'), 'https://lobi.genclink.tr');
+      expect(normalizeServerUrl('ws://lobi.genclink.tr'), 'https://lobi.genclink.tr');
+      expect(normalizeServerUrl('wss://lobi.genclink.tr'), 'https://lobi.genclink.tr');
       expect(normalizeServerUrl('http://192.168.1.50:3000/'), 'http://192.168.1.50:3000');
       expect(normalizeServerUrl('localhost:3000'), 'http://localhost:3000');
       expect(normalizeServerUrl('10.0.2.2:3000'), 'http://10.0.2.2:3000');

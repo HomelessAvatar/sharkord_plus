@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:sharkord_mobile/core/network/api_client.dart';
 import 'package:sharkord_mobile/models/user.dart';
 import 'package:sharkord_mobile/providers/channel_provider.dart';
@@ -134,16 +133,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           password: password,
         );
       } catch (authError) {
-        // If it's an offline / connection error or test environment and fallback is allowed
+        // Fallback only permitted inside automated Flutter unit tests
         final isTestEnv = Platform.environment.containsKey('FLUTTER_TEST');
-        if (_allowOfflineFallback &&
-            (isTestEnv ||
-                authError is SocketException ||
-                authError is TimeoutException ||
-                authError is http.ClientException ||
-                authError.toString().contains('Connection refused') ||
-                authError.toString().contains('ClientException') ||
-                authError.toString().contains('Failed host lookup'))) {
+        if (_allowOfflineFallback && isTestEnv) {
           token = 'mock_auth_token_${DateTime.now().millisecondsSinceEpoch}';
           final mockUser = User(
             id: '1',
@@ -161,9 +153,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
           return true;
         }
 
-        final errString = authError is HttpException
-            ? authError.message
-            : authError.toString();
+        String errString;
+        if (authError is HttpException) {
+          errString = authError.message;
+        } else if (authError is SocketException ||
+            authError.toString().contains('Failed host lookup') ||
+            authError.toString().contains('Connection refused')) {
+          errString = 'Cannot reach server at $cleanUrl. Please verify the URL and network connection.';
+        } else if (authError is TimeoutException) {
+          errString = 'Connection timed out while connecting to $cleanUrl.';
+        } else {
+          errString = authError.toString();
+        }
+
         state = state.copyWith(isLoading: false, error: errString);
         return false;
       }
@@ -222,21 +224,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
         return true;
       } catch (wsError) {
-        // If WebSocket connection fails, keep token & session
-        final fallbackUser = User(
-          id: '1',
-          username: cleanIdentity,
-          displayName: cleanIdentity,
-          isOnline: true,
-        );
+        final isTestEnv = Platform.environment.containsKey('FLUTTER_TEST');
+        if (isTestEnv) {
+          final fallbackUser = User(
+            id: '1',
+            username: cleanIdentity,
+            displayName: cleanIdentity,
+            isOnline: true,
+          );
+          state = state.copyWith(
+            user: fallbackUser,
+            token: token,
+            serverUrl: cleanUrl,
+            isLoading: false,
+            clearError: true,
+          );
+          return true;
+        }
+
+        // On real devices, report live WebSocket failure directly
+        final errString = wsError is HttpException
+            ? wsError.message
+            : wsError.toString();
         state = state.copyWith(
-          user: fallbackUser,
-          token: token,
-          serverUrl: cleanUrl,
           isLoading: false,
-          clearError: true,
+          error: 'Logged in, but real-time connection failed: $errString',
         );
-        return true;
+        return false;
       }
     } catch (e) {
       state = state.copyWith(

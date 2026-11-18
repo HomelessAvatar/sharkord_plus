@@ -57,23 +57,46 @@ String normalizeServerUrl(String input) {
   var trimmed = input.trim();
   if (trimmed.isEmpty) return '';
 
-  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-    // Default to https, except for localhost / 10.0.2.2 / local dev IPs
-    if (trimmed.startsWith('localhost') ||
-        trimmed.startsWith('127.0.0.1') ||
-        trimmed.startsWith('10.0.2.2') ||
-        trimmed.contains(':3000')) {
-      trimmed = 'http://$trimmed';
-    } else {
-      trimmed = 'https://$trimmed';
+  // Strip and sanitize any malformed or misspelled scheme (e.g., 'httpa://', 'htp://', 'ws://')
+  final schemeRegex = RegExp(r'^[a-zA-Z0-9+.-]+://');
+  final match = schemeRegex.firstMatch(trimmed);
+
+  String hostAndPath;
+  bool isExplicitHttp = false;
+
+  if (match != null) {
+    final rawScheme = match.group(0)!.toLowerCase();
+    hostAndPath = trimmed.substring(match.end);
+    if (rawScheme == 'http://') {
+      isExplicitHttp = true;
     }
+  } else {
+    hostAndPath = trimmed;
   }
 
-  while (trimmed.endsWith('/')) {
-    trimmed = trimmed.substring(0, trimmed.length - 1);
+  // Strip leading slashes if any
+  while (hostAndPath.startsWith('/')) {
+    hostAndPath = hostAndPath.substring(1);
   }
 
-  return trimmed;
+  // Strip trailing slashes
+  while (hostAndPath.endsWith('/')) {
+    hostAndPath = hostAndPath.substring(0, hostAndPath.length - 1);
+  }
+
+  if (hostAndPath.isEmpty) return '';
+
+  // Local development addresses use http by default
+  final isLocal = hostAndPath.startsWith('localhost') ||
+      hostAndPath.startsWith('127.0.0.1') ||
+      hostAndPath.startsWith('10.0.2.2') ||
+      hostAndPath.contains(':3000');
+
+  if (isExplicitHttp || isLocal) {
+    return 'http://$hostAndPath';
+  } else {
+    return 'https://$hostAndPath';
+  }
 }
 
 /// Derives WebSocket URL (ws:// or wss://) from normalized server URL.

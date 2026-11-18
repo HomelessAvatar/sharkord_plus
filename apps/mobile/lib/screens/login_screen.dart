@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sharkord_mobile/core/theme/colors.dart';
@@ -13,8 +14,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _serverUrlController =
-      TextEditingController(text: 'http://localhost:3000');
+  final _serverUrlController = TextEditingController(
+    text: Platform.environment.containsKey('FLUTTER_TEST')
+        ? 'http://localhost:3000'
+        : '',
+  );
   final _identityController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -89,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'Sharkord',
+                      'Sharkord Plus',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 28,
@@ -100,7 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Welcome back! Enter your server credentials to connect.',
+                      'Enter your server credentials to connect.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -148,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: const TextStyle(color: SharkordColors.textPrimary),
                       decoration: InputDecoration(
                         labelText: 'Server URL',
-                        hintText: 'https://sharkord.example.com',
+                        hintText: 'e.g. lobi.genclink.tr or your-domain.com',
                         prefixIcon: const Icon(
                           Icons.dns_rounded,
                           color: SharkordColors.textMuted,

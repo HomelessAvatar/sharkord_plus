@@ -81,35 +81,53 @@ class ChannelDrawer extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   // Add Server Action
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: SharkordColors.surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: SharkordColors.border),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: SharkordColors.speaking,
-                      size: 24,
+                  Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const Key('add_server_rail_button'),
+                      customBorder: const CircleBorder(),
+                      onTap: () => _showAddServerDialog(context, ref),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: SharkordColors.surface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: SharkordColors.border),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: SharkordColors.speaking,
+                          size: 24,
+                        ),
+                      ),
                     ),
                   ),
                   const Spacer(),
                   // Settings / Profile
-                  Container(
-                    width: 44,
-                    height: 44,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: SharkordColors.surface,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: SharkordColors.border),
-                    ),
-                    child: const Icon(
-                      Icons.settings_rounded,
-                      color: SharkordColors.textMuted,
-                      size: 22,
+                  Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const Key('settings_rail_button'),
+                      customBorder: const CircleBorder(),
+                      onTap: () => _showSettingsDialog(context, ref),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: SharkordColors.surface,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: SharkordColors.border),
+                        ),
+                        child: const Icon(
+                          Icons.settings_rounded,
+                          color: SharkordColors.textMuted,
+                          size: 22,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -428,6 +446,151 @@ class ChannelDrawer extends ConsumerWidget {
           },
         ),
       ),
+    );
+  }
+
+  void _showAddServerDialog(BuildContext context, WidgetRef ref) {
+    final serverName = ref.read(serverNameProvider);
+    final authState = ref.read(authProvider);
+    final urlController = TextEditingController(text: authState.serverUrl ?? '');
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          backgroundColor: SharkordColors.surface,
+          title: const Text(
+            'Connect to Server',
+            style: TextStyle(color: SharkordColors.textPrimary, fontSize: 18),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Active: $serverName',
+                style: const TextStyle(color: SharkordColors.textMuted, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlController,
+                autofocus: true,
+                style: const TextStyle(color: SharkordColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'e.g. lobi.genclink.tr',
+                  hintStyle: const TextStyle(color: SharkordColors.textMuted),
+                  filled: true,
+                  fillColor: SharkordColors.card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: SharkordColors.border),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: SharkordColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SharkordColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop(); // Close drawer
+                ref.read(authProvider.notifier).logout();
+              },
+              child: const Text('Change Server'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSettingsDialog(BuildContext context, WidgetRef ref) {
+    final user = ref.read(currentUserProvider);
+    final serverName = ref.read(serverNameProvider);
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: SharkordColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: SharkordColors.card,
+                      child: Text(
+                        (user?.displayName.isNotEmpty ?? false)
+                            ? user!.displayName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          color: SharkordColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.displayName ?? 'User',
+                            style: const TextStyle(
+                              color: SharkordColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '@${user?.username ?? 'anonymous'} • Connected to $serverName',
+                            style: const TextStyle(
+                              color: SharkordColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: SharkordColors.danger,
+                    side: const BorderSide(color: SharkordColors.danger),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 20),
+                  label: const Text('Log Out from Server'),
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    Navigator.of(context).pop(); // Close drawer
+                    ref.read(authProvider.notifier).logout();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

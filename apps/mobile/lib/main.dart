@@ -18,7 +18,7 @@ class SharkordApp extends ConsumerWidget {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
     return MaterialApp(
-      title: 'Sharkord',
+      title: 'Sharkord Plus',
       debugShowCheckedModeBanner: false,
       theme: SharkordTheme.darkTheme,
       themeMode: ThemeMode.dark,

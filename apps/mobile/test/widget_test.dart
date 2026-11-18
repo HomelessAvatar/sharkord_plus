@@ -65,7 +65,7 @@ void main() {
     testWidgets('renders login form fields and submit button', (tester) async {
       await tester.pumpWidget(createTestApp(home: const LoginScreen()));
 
-      expect(find.text('Sharkord'), findsWidgets);
+      expect(find.textContaining('Sharkord'), findsWidgets);
       expect(find.byKey(const Key('login_server_url')), findsOneWidget);
       expect(find.byKey(const Key('login_identity')), findsOneWidget);
       expect(find.byKey(const Key('login_password')), findsOneWidget);

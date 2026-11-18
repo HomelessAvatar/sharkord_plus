@@ -24,7 +24,7 @@ class WorkspaceScreen extends ConsumerWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Sharkord is up to date!'),
+            content: Text('Sharkord Plus is up to date!'),
             duration: Duration(seconds: 2),
           ),
         );
