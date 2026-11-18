@@ -1459,7 +1459,7 @@ dependencies = [
 
 [[package]]
 name = "desktop-gpui"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "gpui",
  "serde",
@@ -5231,7 +5231,7 @@ dependencies = [
 
 [[package]]
 name = "sharkord-core"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "cpal",
  "futures-util",
@@ -5248,7 +5248,7 @@ dependencies = [
 
 [[package]]
 name = "sharkord-mobile"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "serde",
  "serde_json",
