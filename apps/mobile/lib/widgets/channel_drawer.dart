@@ -63,11 +63,13 @@ class ChannelDrawer extends ConsumerWidget {
                             width: 1.5,
                           ),
                         ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.waves_rounded,
-                            color: SharkordColors.primary,
-                            size: 26,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'assets/logo.png',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),

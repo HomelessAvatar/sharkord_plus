@@ -74,20 +74,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Brand Logo & Heading
                     Center(
                       child: Container(
-                        width: 72,
-                        height: 72,
+                        width: 76,
+                        height: 76,
                         decoration: BoxDecoration(
-                          color: SharkordColors.primary.withAlpha(38),
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: SharkordColors.primary,
                             width: 2,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.waves_rounded,
-                          color: SharkordColors.primary,
-                          size: 40,
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/logo.png',
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
