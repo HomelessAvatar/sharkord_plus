@@ -1,7 +1,14 @@
 import { Dialog } from '@/components/dialogs/dialogs';
 import { logDebug } from '@/helpers/browser-logger';
-import { getHostFromServer } from '@/helpers/get-file-url';
+import {
+  getHostFromServer,
+  getUrlFromServer,
+  isTauriEnvironment,
+  saveSessionToVault,
+  syncActiveSessionFromVault
+} from '@/helpers/get-file-url';
 import { playSound } from '@/helpers/sounds';
+import { getSessionStorageItem, SessionStorageKey } from '@/helpers/storage';
 import { pushVoiceDebugEvent } from '@/helpers/voice-debug';
 import { i18n } from '@/i18n';
 import { cleanup, connectToTRPC, getTRPCClient } from '@/lib/trpc';
@@ -66,6 +73,10 @@ export const setActiveFullscreenPluginId = (pluginId: string | undefined) => {
 };
 
 export const connect = async () => {
+  if (isTauriEnvironment()) {
+    await syncActiveSessionFromVault();
+  }
+
   const state = store.getState();
   const info = infoSelector(state);
 
@@ -121,6 +132,35 @@ export const joinServer = async (handshakeHash: string, password?: string) => {
   unsubscribeFromServer = initSubscriptions();
 
   store.dispatch(serverSliceActions.setInitialData(data));
+
+  if (isTauriEnvironment()) {
+    const token = getSessionStorageItem(SessionStorageKey.TOKEN) || '';
+    const ownUser = data.users.find((u) => u.id === data.ownUserId);
+    const serverUrl = getUrlFromServer();
+    const info = infoSelector(store.getState());
+    const serverName = info?.name || 'Sharkord Server';
+
+    saveSessionToVault({
+      id: data.serverId,
+      name: serverName,
+      serverUrl,
+      token,
+      user: ownUser
+        ? {
+            id: ownUser.id,
+            name: ownUser.name,
+            profileColor: ownUser.profileColor,
+            avatarId: ownUser.avatarId,
+            bannerId: ownUser.bannerId,
+            bio: ownUser.bio,
+            status: ownUser.status,
+            roleIds: ownUser.roleIds
+          }
+        : undefined
+    }).catch((error) => {
+      logDebug('Failed to persist session to Tauri vault', error);
+    });
+  }
 
   startFileTokenRefresh();
   setPluginCommands(data.commands);

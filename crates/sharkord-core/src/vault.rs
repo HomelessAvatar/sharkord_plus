@@ -20,6 +20,62 @@ pub struct SavedServerSession {
     pub last_accessed_at: u64,
 }
 
+/// Server profile representation matching Tauri IPC and client schema.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerProfile {
+    pub id: String,
+    pub name: String,
+    pub server_url: String,
+    pub token: String,
+    #[serde(default)]
+    pub user: Option<crate::types::User>,
+}
+
+impl From<&SavedServerSession> for ServerProfile {
+    fn from(s: &SavedServerSession) -> Self {
+        ServerProfile {
+            id: s.server_id.clone(),
+            name: s.server_name.clone(),
+            server_url: s.server_url.clone(),
+            token: s.token.clone(),
+            user: if s.user_id > 0 || !s.username.is_empty() {
+                Some(crate::types::User {
+                    id: s.user_id,
+                    name: s.username.clone(),
+                    identity: Some(s.display_name.clone()),
+                    ..Default::default()
+                })
+            } else {
+                None
+            },
+        }
+    }
+}
+
+impl From<&ServerProfile> for SavedServerSession {
+    fn from(p: &ServerProfile) -> Self {
+        SavedServerSession {
+            server_id: p.id.clone(),
+            server_name: p.name.clone(),
+            server_url: p.server_url.clone(),
+            token: p.token.clone(),
+            user_id: p.user.as_ref().map(|u| u.id).unwrap_or(0),
+            username: p.user.as_ref().map(|u| u.name.clone()).unwrap_or_default(),
+            display_name: p
+                .user
+                .as_ref()
+                .and_then(|u| u.identity.clone())
+                .unwrap_or_else(|| p.name.clone()),
+            avatar_url: None,
+            last_accessed_at: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
+        }
+    }
+}
+
 /// Conversion trait to allow flexible server identifiers in `set_active`.
 pub trait IntoActiveServerId {
     fn into_active_id(self) -> Option<String>;
@@ -64,6 +120,8 @@ pub struct SessionVault {
     pub active_server_id: Option<String>,
     #[serde(default)]
     pub servers: Vec<SavedServerSession>,
+    #[serde(default)]
+    pub profiles: Vec<ServerProfile>,
 }
 
 impl Default for SessionVault {
@@ -79,7 +137,13 @@ impl SessionVault {
             path: path.into(),
             active_server_id: None,
             servers: Vec::new(),
+            profiles: Vec::new(),
         }
+    }
+
+    /// Alias for `new` allowing fluent construction with an explicit path.
+    pub fn with_path(path: impl Into<PathBuf>) -> Self {
+        Self::new(path)
     }
 
     /// Default configuration path for the current operating system.
@@ -133,6 +197,11 @@ impl SessionVault {
         let content = std::fs::read_to_string(path_ref)?;
         let mut vault: SessionVault = serde_json::from_str(&content)?;
         vault.path = path_ref.to_path_buf();
+        if vault.profiles.is_empty() && !vault.servers.is_empty() {
+            vault.profiles = vault.servers.iter().map(ServerProfile::from).collect();
+        } else if vault.servers.is_empty() && !vault.profiles.is_empty() {
+            vault.servers = vault.profiles.iter().map(SavedServerSession::from).collect();
+        }
         Ok(vault)
     }
 
@@ -141,6 +210,7 @@ impl SessionVault {
         let loaded = Self::load_from_path(&self.path)?;
         self.active_server_id = loaded.active_server_id;
         self.servers = loaded.servers;
+        self.profiles = loaded.profiles;
         Ok(())
     }
 
@@ -208,9 +278,16 @@ impl SessionVault {
     ) -> Result<(), SharkordError> {
         let server_id = session.server_id.clone();
         if let Some(existing) = self.servers.iter_mut().find(|s| s.server_id == server_id) {
-            *existing = session;
+            *existing = session.clone();
         } else {
-            self.servers.push(session);
+            self.servers.push(session.clone());
+        }
+
+        let profile = ServerProfile::from(&session);
+        if let Some(existing_p) = self.profiles.iter_mut().find(|p| p.id == server_id) {
+            *existing_p = profile;
+        } else {
+            self.profiles.push(profile);
         }
 
         if set_active {
@@ -218,6 +295,69 @@ impl SessionVault {
         }
 
         self.save()
+    }
+
+    /// Saves or updates a server profile, and makes it active if no active server is set.
+    pub fn save_profile(&mut self, profile: ServerProfile) -> Result<(), SharkordError> {
+        let id = profile.id.clone();
+        if let Some(existing) = self.profiles.iter_mut().find(|p| p.id == id) {
+            *existing = profile.clone();
+        } else {
+            self.profiles.push(profile.clone());
+        }
+
+        let session = SavedServerSession::from(&profile);
+        if let Some(existing_s) = self.servers.iter_mut().find(|s| s.server_id == id) {
+            *existing_s = session;
+        } else {
+            self.servers.push(session);
+        }
+
+        if self.active_server_id.is_none() {
+            self.active_server_id = Some(id);
+        }
+
+        self.save()
+    }
+
+    /// Finds a saved server profile by id.
+    pub fn get_profile(&self, id: &str) -> Option<&ServerProfile> {
+        self.profiles.iter().find(|p| p.id == id)
+    }
+
+    /// Returns the active server profile, if set and present.
+    pub fn get_active_profile(&self) -> Option<&ServerProfile> {
+        let active_id = self.active_server_id.as_deref()?;
+        self.profiles.iter().find(|p| p.id == active_id)
+    }
+
+    /// Removes a server profile by id.
+    pub fn remove_profile(&mut self, id: &str) -> Result<Option<ServerProfile>, SharkordError> {
+        let pos = self.profiles.iter().position(|p| p.id == id);
+        let removed = match pos {
+            Some(idx) => Some(self.profiles.remove(idx)),
+            None => None,
+        };
+
+        let pos_s = self.servers.iter().position(|s| s.server_id == id);
+        if let Some(idx_s) = pos_s {
+            self.servers.remove(idx_s);
+        }
+
+        if self.active_server_id.as_deref() == Some(id) {
+            self.active_server_id = self.profiles.first().map(|p| p.id.clone());
+        }
+
+        if removed.is_some() {
+            self.save()?;
+        }
+
+        Ok(removed)
+    }
+
+    /// Returns all saved server profiles.
+    pub fn list_profiles(&self) -> Vec<ServerProfile> {
+        self.profiles.clone()
     }
 
     /// Removes a server session by `server_id`.
@@ -228,6 +368,11 @@ impl SessionVault {
             Some(idx) => Some(self.servers.remove(idx)),
             None => None,
         };
+
+        let pos_p = self.profiles.iter().position(|p| p.id == server_id);
+        if let Some(idx_p) = pos_p {
+            self.profiles.remove(idx_p);
+        }
 
         if self.active_server_id.as_deref() == Some(server_id) {
             self.active_server_id = self.servers.first().map(|s| s.server_id.clone());
@@ -285,6 +430,7 @@ impl SessionVault {
     /// Clears all server sessions and resets the active server pointer.
     pub fn clear(&mut self) -> Result<(), SharkordError> {
         self.servers.clear();
+        self.profiles.clear();
         self.active_server_id = None;
         self.save()
     }

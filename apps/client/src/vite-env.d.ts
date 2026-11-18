@@ -14,6 +14,22 @@ declare global {
     // only set when the client runs inside the desktop app
     sharkordDesktop?: import('@sharkord/shared').TDesktopEntry;
 
+    // tauri runtime internals
+    __TAURI_INTERNALS__?: {
+      invoke: <T = unknown>(
+        cmd: string,
+        args?: Record<string, unknown>
+      ) => Promise<T>;
+    };
+    __TAURI__?: {
+      core?: {
+        invoke: <T = unknown>(
+          cmd: string,
+          args?: Record<string, unknown>
+        ) => Promise<T>;
+      };
+    };
+
     // plugin store exposed for plugins to use imperatively
     __SHARKORD_STORE__: import('@sharkord/shared').TPluginStore;
 

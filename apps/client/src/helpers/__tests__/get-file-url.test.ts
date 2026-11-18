@@ -1,6 +1,14 @@
 import type { TFile } from '@sharkord/shared';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
-import { getFileUrl } from '../get-file-url';
+import {
+  getFileUrl,
+  getHostFromServer,
+  getUrlFromServer,
+  isTauriEnvironment,
+  saveSessionToVault,
+  setActiveServerUrl,
+  syncActiveSessionFromVault
+} from '../get-file-url';
 
 const getFile = (name: string, accessToken?: string): TFile =>
   ({
@@ -46,5 +54,94 @@ describe('getFileUrl', () => {
 
     expect(url.searchParams.get('accessToken')).toBe('abc123');
     expect(url.searchParams.get('expires')).toBe('1700000000000');
+  });
+});
+
+describe('Tauri Server Host Discovery', () => {
+  afterAll(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+
+  test('detects web environment when Tauri globals are absent', () => {
+    globalThis.window = {
+      location: { host: 'chat.example.com', protocol: 'https:' }
+    } as never;
+
+    expect(isTauriEnvironment()).toBe(false);
+    expect(getHostFromServer()).toBe('chat.example.com');
+    expect(getUrlFromServer()).toBe('https://chat.example.com');
+  });
+
+  test('detects Tauri environment and resolves active server override', () => {
+    globalThis.window = {
+      location: {
+        host: 'tauri.localhost',
+        hostname: 'tauri.localhost',
+        protocol: 'http:'
+      },
+      __TAURI_INTERNALS__: {
+        invoke: async () => null
+      }
+    } as never;
+
+    expect(isTauriEnvironment()).toBe(true);
+
+    // With active server configured
+    setActiveServerUrl('https://remote.sharkord.network:8443');
+    expect(getHostFromServer()).toBe('remote.sharkord.network:8443');
+    expect(getUrlFromServer()).toBe('https://remote.sharkord.network:8443');
+
+    // Clear active server
+    setActiveServerUrl(null);
+  });
+
+  test('syncs active session from Tauri SessionVault invoke', async () => {
+    let savedProfile: unknown = null;
+
+    globalThis.window = {
+      location: {
+        host: 'tauri.localhost',
+        hostname: 'tauri.localhost',
+        protocol: 'http:'
+      },
+      __TAURI_INTERNALS__: {
+        invoke: async (cmd: string, args?: Record<string, unknown>) => {
+          if (cmd === 'get_saved_session') {
+            return {
+              id: 'srv_remote',
+              name: 'Community Server',
+              serverUrl: 'https://community.sharkord.com',
+              token: 'vault_jwt'
+            };
+          }
+          if (cmd === 'save_session') {
+            savedProfile = args?.profile;
+            return;
+          }
+          return null;
+        }
+      }
+    } as never;
+
+    const syncedUrl = await syncActiveSessionFromVault();
+    expect(syncedUrl).toBe('https://community.sharkord.com');
+    expect(getHostFromServer()).toBe('community.sharkord.com');
+
+    await saveSessionToVault({
+      id: 'srv_new',
+      name: 'New Server',
+      serverUrl: 'http://192.168.1.100:4991',
+      token: 'jwt_abc'
+    });
+
+    expect(savedProfile).toEqual({
+      id: 'srv_new',
+      name: 'New Server',
+      serverUrl: 'http://192.168.1.100:4991',
+      token: 'jwt_abc'
+    });
+    expect(getHostFromServer()).toBe('192.168.1.100:4991');
+
+    setActiveServerUrl(null);
   });
 });

@@ -1,5 +1,10 @@
 import { assertNotificationsPermission } from '@/helpers/assert-notifications-permission';
-import { getFileUrl, getUrlFromServer } from '@/helpers/get-file-url';
+import {
+  getFileUrl,
+  getUrlFromServer,
+  isTauriEnvironment,
+  syncActiveSessionFromVault
+} from '@/helpers/get-file-url';
 import {
   LocalStorageKey,
   setLocalStorageItem,
@@ -71,6 +76,10 @@ const applyServerBranding = (info: TServerInfo) => {
 
 export const fetchServerInfo = async (): Promise<TServerInfo | undefined> => {
   try {
+    if (isTauriEnvironment()) {
+      await syncActiveSessionFromVault();
+    }
+
     const url = getUrlFromServer();
     const response = await fetch(`${url}/info`);
 

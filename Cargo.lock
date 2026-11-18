@@ -6890,6 +6890,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-notification",
+ "tempfile",
  "tokio",
 ]
 

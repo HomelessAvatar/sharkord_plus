@@ -1,6 +1,154 @@
 import type { TFile } from '@sharkord/shared';
 
+export type TSavedServerProfile = {
+  id: string;
+  name: string;
+  serverUrl: string;
+  token: string;
+  user?: {
+    id: number;
+    name: string;
+    identity?: string | null;
+    profileColor?: string | null;
+    avatarId?: number | null;
+    bannerId?: number | null;
+    bio?: string | null;
+    status?: string | null;
+    roleIds?: number[];
+  };
+};
+
+let inMemoryServerUrl: string | null = null;
+const ACTIVE_SERVER_STORAGE_KEY = 'sharkord-active-server-url';
+
+export const isTauriEnvironment = (): boolean => {
+  return (
+    typeof window !== 'undefined' &&
+    ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
+  );
+};
+
+export const setActiveServerUrl = (url: string | null) => {
+  inMemoryServerUrl = url;
+  if (typeof window !== 'undefined') {
+    try {
+      if (url) {
+        localStorage.setItem(ACTIVE_SERVER_STORAGE_KEY, url);
+      } else {
+        localStorage.removeItem(ACTIVE_SERVER_STORAGE_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
+};
+
+export const getActiveServerUrl = (): string | null => {
+  if (inMemoryServerUrl) {
+    return inMemoryServerUrl;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(ACTIVE_SERVER_STORAGE_KEY);
+      if (stored) return stored;
+    } catch {
+      // ignore storage errors
+    }
+  }
+  return null;
+};
+
+export const syncActiveSessionFromVault = async (): Promise<string | null> => {
+  if (!isTauriEnvironment()) return null;
+
+  try {
+    const invoke =
+      window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
+
+    if (typeof invoke === 'function') {
+      const session = (await invoke(
+        'get_saved_session'
+      )) as TSavedServerProfile | null;
+
+      if (session?.serverUrl) {
+        setActiveServerUrl(session.serverUrl);
+        return session.serverUrl;
+      }
+    }
+  } catch (error) {
+    console.warn(
+      'Failed to retrieve active session from Tauri SessionVault:',
+      error
+    );
+  }
+
+  return null;
+};
+
+export const saveSessionToVault = async (
+  profile: TSavedServerProfile
+): Promise<void> => {
+  if (!isTauriEnvironment()) return;
+
+  try {
+    const invoke =
+      window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
+
+    if (typeof invoke === 'function') {
+      await invoke('save_session', { profile });
+      setActiveServerUrl(profile.serverUrl);
+    }
+  } catch (error) {
+    console.warn('Failed to save session to Tauri SessionVault:', error);
+  }
+};
+
+export const clearSessionFromVault = async (
+  serverId: string
+): Promise<void> => {
+  if (!isTauriEnvironment()) return;
+
+  try {
+    const invoke =
+      window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
+
+    if (typeof invoke === 'function') {
+      await invoke('clear_session', { serverId });
+    }
+  } catch (error) {
+    console.warn('Failed to clear session from Tauri SessionVault:', error);
+  }
+};
+
 const getHostFromServer = () => {
+  if (isTauriEnvironment()) {
+    const activeUrl = getActiveServerUrl();
+    if (activeUrl) {
+      try {
+        const parsed = new URL(
+          activeUrl.startsWith('http') ? activeUrl : `http://${activeUrl}`
+        );
+        return parsed.host;
+      } catch {
+        return activeUrl;
+      }
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      return 'localhost:4991';
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.host.includes('tauri.localhost') ||
+        window.location.hostname === 'tauri.localhost')
+    ) {
+      return 'localhost:4991';
+    }
+
+    return window.location.host;
+  }
+
   if (import.meta.env.MODE === 'development') {
     return 'localhost:4991';
   }
@@ -9,6 +157,36 @@ const getHostFromServer = () => {
 };
 
 const getUrlFromServer = () => {
+  if (isTauriEnvironment()) {
+    const activeUrl = getActiveServerUrl();
+    if (activeUrl) {
+      try {
+        const parsed = new URL(
+          activeUrl.startsWith('http') ? activeUrl : `http://${activeUrl}`
+        );
+        return parsed.origin;
+      } catch {
+        return activeUrl.startsWith('http') ? activeUrl : `http://${activeUrl}`;
+      }
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      return 'http://localhost:4991';
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.host.includes('tauri.localhost') ||
+        window.location.hostname === 'tauri.localhost')
+    ) {
+      return 'http://localhost:4991';
+    }
+
+    const host = window.location.host;
+    const currentProtocol = window.location.protocol;
+    return `${currentProtocol}//${host}`;
+  }
+
   if (import.meta.env.MODE === 'development') {
     return 'http://localhost:4991';
   }
