@@ -17,7 +17,10 @@ fn test_plugin_command_serialization() {
     let deserialized: PluginCommand = serde_json::from_str(&json).unwrap();
     assert_eq!(deserialized.plugin_id, "soundboard");
     assert_eq!(deserialized.name, "play");
-    assert_eq!(deserialized.description, "Play sound bite into voice channel");
+    assert_eq!(
+        deserialized.description,
+        "Play sound bite into voice channel"
+    );
 }
 
 #[test]
@@ -135,7 +138,10 @@ fn test_message_with_components_deserialization() {
 
     let msg: Message = serde_json::from_value(json).unwrap();
     assert_eq!(msg.id, 101);
-    assert_eq!(msg.content.as_deref(), Some("Please vote on this proposal:"));
+    assert_eq!(
+        msg.content.as_deref(),
+        Some("Please vote on this proposal:")
+    );
     assert_eq!(msg.components.len(), 1);
     match &msg.components[0] {
         InteractiveComponent::Button(btn) => {

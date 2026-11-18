@@ -11,6 +11,7 @@ on:
     paths:
       - 'apps/mobile/**'
       - 'crates/sharkord-mobile/**'
+      - 'crates/sharkord-core/**'
       - '.github/workflows/mobile.yml'
   pull_request:
     branches:
@@ -19,6 +20,7 @@ on:
     paths:
       - 'apps/mobile/**'
       - 'crates/sharkord-mobile/**'
+      - 'crates/sharkord-core/**'
       - '.github/workflows/mobile.yml'
   workflow_dispatch:
 
@@ -52,6 +54,7 @@ jobs:
         run: |
           cd apps/mobile
           flutter pub get
+          flutter analyze
           flutter test
 
       - name: Build release APK

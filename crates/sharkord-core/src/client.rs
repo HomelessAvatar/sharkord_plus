@@ -11,9 +11,7 @@ use url::Url;
 use crate::error::SharkordError;
 use crate::protocol::events::{decode_websocket_frame, SubscriptionEvent};
 use crate::protocol::{decode_trpc_response, encode_mutation_body, encode_query_params};
-use crate::types::{
-    Capabilities, Channel, Message, PluginCommand, ServerSettings, User,
-};
+use crate::types::{Capabilities, Channel, Message, PluginCommand, ServerSettings, User};
 
 /// High-level asynchronous Sharkord client handling tRPC HTTP queries, mutations,
 /// session persistence, and capability negotiation.
@@ -411,7 +409,10 @@ impl SharkordClient {
             serde_json::json!({})
         };
         let query_params = encode_query_params(Some(&input))?;
-        let url = format!("{}/trpc/plugins.getCommands?{}", self.base_url, query_params);
+        let url = format!(
+            "{}/trpc/plugins.getCommands?{}",
+            self.base_url, query_params
+        );
 
         let resp = self
             .http_client

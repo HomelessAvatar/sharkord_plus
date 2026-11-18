@@ -229,60 +229,58 @@ pub fn render_interactive_components(components: &[InteractiveComponent]) -> Vec
                     )
                     .into_any_element()
             }
-            InteractiveComponent::Poll(poll) => {
-                div()
-                    .id(ElementId::Name(format!("plugin_poll_{}", poll.id).into()))
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .p_3()
-                    .my_2()
-                    .rounded_lg()
-                    .bg(theme::bg_surface())
-                    .border_1()
-                    .border_color(theme::border_hairline())
-                    .child(
-                        div()
-                            .text_sm()
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(theme::text_primary())
-                            .child(poll.question.clone()),
-                    )
-                    .children(poll.options.iter().map(|opt| {
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .justify_between()
-                            .px_3()
-                            .py_1p5()
-                            .rounded_md()
-                            .bg(if opt.voted {
-                                theme::bg_elevated()
-                            } else {
-                                theme::bg_surface_4()
-                            })
-                            .border_1()
-                            .border_color(if opt.voted {
-                                theme::accent()
-                            } else {
-                                theme::border_hairline()
-                            })
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(theme::text_primary())
-                                    .child(opt.text.clone()),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(theme::text_muted())
-                                    .child(format!("{} votes", opt.votes)),
-                            )
-                    }))
-                    .into_any_element()
-            }
+            InteractiveComponent::Poll(poll) => div()
+                .id(ElementId::Name(format!("plugin_poll_{}", poll.id).into()))
+                .flex()
+                .flex_col()
+                .gap_2()
+                .p_3()
+                .my_2()
+                .rounded_lg()
+                .bg(theme::bg_surface())
+                .border_1()
+                .border_color(theme::border_hairline())
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                        .text_color(theme::text_primary())
+                        .child(poll.question.clone()),
+                )
+                .children(poll.options.iter().map(|opt| {
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .px_3()
+                        .py_1p5()
+                        .rounded_md()
+                        .bg(if opt.voted {
+                            theme::bg_elevated()
+                        } else {
+                            theme::bg_surface_4()
+                        })
+                        .border_1()
+                        .border_color(if opt.voted {
+                            theme::accent()
+                        } else {
+                            theme::border_hairline()
+                        })
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(theme::text_primary())
+                                .child(opt.text.clone()),
+                        )
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(theme::text_muted())
+                                .child(format!("{} votes", opt.votes)),
+                        )
+                }))
+                .into_any_element(),
             InteractiveComponent::Card {
                 title,
                 description,
@@ -559,7 +557,9 @@ impl ChatCanvasView {
                                                     .text_color(theme::text_primary())
                                                     .child(msg.content.clone().unwrap_or_default()),
                                             )
-                                            .children(render_interactive_components(&msg.components))
+                                            .children(render_interactive_components(
+                                                &msg.components,
+                                            ))
                                     })),
                             )
                     }))
@@ -606,9 +606,7 @@ impl ChatCanvasView {
                                                         .child(
                                                             div()
                                                                 .text_xs()
-                                                                .font_weight(
-                                                                    gpui::FontWeight::BOLD,
-                                                                )
+                                                                .font_weight(gpui::FontWeight::BOLD)
                                                                 .text_color(theme::accent())
                                                                 .child(format!("/{}", cmd.name)),
                                                         )

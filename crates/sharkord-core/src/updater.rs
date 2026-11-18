@@ -238,7 +238,10 @@ impl UpdaterClient {
 
     pub async fn fetch_latest_release(&self) -> Result<ReleaseInfo, SharkordError> {
         let base = self.base_url.trim_end_matches('/');
-        let list_url = format!("{}/repos/{}/{}/releases?per_page=10", base, self.repo_owner, self.repo_name);
+        let list_url = format!(
+            "{}/repos/{}/{}/releases?per_page=10",
+            base, self.repo_owner, self.repo_name
+        );
 
         if let Ok(resp) = self.client.get(&list_url).send().await {
             if resp.status().is_success() {
@@ -262,9 +265,7 @@ impl UpdaterClient {
 
         let url = format!(
             "{}/repos/{}/{}/releases/latest",
-            base,
-            self.repo_owner,
-            self.repo_name
+            base, self.repo_owner, self.repo_name
         );
         let resp = self.client.get(&url).send().await?;
         if !resp.status().is_success() {

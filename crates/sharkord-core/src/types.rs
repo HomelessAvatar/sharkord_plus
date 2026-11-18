@@ -121,7 +121,12 @@ pub struct PluginButton {
     pub label: String,
     #[serde(default, alias = "plugin_id")]
     pub plugin_id: Option<String>,
-    #[serde(default, alias = "action_name", alias = "actionId", alias = "action_id")]
+    #[serde(
+        default,
+        alias = "action_name",
+        alias = "actionId",
+        alias = "action_id"
+    )]
     pub action_name: Option<String>,
     #[serde(default)]
     pub style: Option<String>,
@@ -151,7 +156,12 @@ pub struct PluginPoll {
     pub options: Vec<PluginPollOption>,
     #[serde(default, alias = "plugin_id")]
     pub plugin_id: Option<String>,
-    #[serde(default, alias = "action_name", alias = "actionId", alias = "action_id")]
+    #[serde(
+        default,
+        alias = "action_name",
+        alias = "actionId",
+        alias = "action_id"
+    )]
     pub action_name: Option<String>,
     #[serde(default, alias = "total_votes")]
     pub total_votes: Option<u32>,

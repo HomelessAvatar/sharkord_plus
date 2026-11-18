@@ -48,7 +48,7 @@ class _ChatCanvasState extends ConsumerState<ChatCanvas> {
   void _onTextChanged() {
     final text = _messageController.text;
     final isSlash = text.startsWith('/');
-    if (isSlash != _showSlashAutocomplete) {
+    if (isSlash != _showSlashAutocomplete || _showSlashAutocomplete) {
       setState(() {
         _showSlashAutocomplete = isSlash;
       });
@@ -396,9 +396,9 @@ class _ChatCanvasState extends ConsumerState<ChatCanvas> {
     BorderSide borderSide = const BorderSide(color: SharkordColors.border);
 
     if (isDanger) {
-      bgColor = SharkordColors.danger.withOpacity(0.15);
+      bgColor = SharkordColors.danger.withValues(alpha: 0.15);
       textColor = SharkordColors.danger;
-      borderSide = BorderSide(color: SharkordColors.danger.withOpacity(0.5));
+      borderSide = BorderSide(color: SharkordColors.danger.withValues(alpha: 0.5));
     } else if (isPrimary) {
       bgColor = SharkordColors.primary;
       textColor = Colors.white;
@@ -499,7 +499,7 @@ class _ChatCanvasState extends ConsumerState<ChatCanvas> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isVoted
-                        ? SharkordColors.primary.withOpacity(0.12)
+                        ? SharkordColors.primary.withValues(alpha: 0.12)
                         : SharkordColors.card,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
@@ -518,8 +518,8 @@ class _ChatCanvasState extends ConsumerState<ChatCanvas> {
                             widthFactor: pct,
                             child: Container(
                               color: isVoted
-                                  ? SharkordColors.primary.withOpacity(0.25)
-                                  : SharkordColors.surface.withOpacity(0.5),
+                                  ? SharkordColors.primary.withValues(alpha: 0.25)
+                                  : SharkordColors.surface.withValues(alpha: 0.5),
                             ),
                           ),
                         ),

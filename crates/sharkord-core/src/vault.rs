@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 
 use crate::error::SharkordError;
 
@@ -103,10 +103,15 @@ impl SessionVault {
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         {
             if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
-                return PathBuf::from(config_home).join("sharkord").join("vault.json");
+                return PathBuf::from(config_home)
+                    .join("sharkord")
+                    .join("vault.json");
             }
             if let Ok(home) = std::env::var("HOME") {
-                return PathBuf::from(home).join(".config").join("sharkord").join("vault.json");
+                return PathBuf::from(home)
+                    .join(".config")
+                    .join("sharkord")
+                    .join("vault.json");
             }
         }
         PathBuf::from("sharkord_vault.json")
@@ -149,10 +154,7 @@ impl SessionVault {
 
         let json = serde_json::to_string_pretty(self)?;
 
-        let parent_dir = self
-            .path
-            .parent()
-            .unwrap_or_else(|| Path::new("."));
+        let parent_dir = self.path.parent().unwrap_or_else(|| Path::new("."));
 
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -205,11 +207,7 @@ impl SessionVault {
         set_active: bool,
     ) -> Result<(), SharkordError> {
         let server_id = session.server_id.clone();
-        if let Some(existing) = self
-            .servers
-            .iter_mut()
-            .find(|s| s.server_id == server_id)
-        {
+        if let Some(existing) = self.servers.iter_mut().find(|s| s.server_id == server_id) {
             *existing = session;
         } else {
             self.servers.push(session);

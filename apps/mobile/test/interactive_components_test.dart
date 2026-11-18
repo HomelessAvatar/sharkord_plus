@@ -226,5 +226,49 @@ void main() {
       final inputWidget = tester.widget<TextField>(inputFinder);
       expect(inputWidget.controller?.text, startsWith('/poll'));
     });
+
+    testWidgets('typing slash and characters reactively filters command list',
+        (tester) async {
+      const channel = Channel(
+        id: '1',
+        name: 'general',
+        isVoice: false,
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          selectedChannelProvider.overrideWith((ref) => channel),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(
+              body: ChatCanvas(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final inputFinder = find.byKey(const Key('chat_input_field'));
+      await tester.enterText(inputFinder, '/');
+      await tester.pumpAndSettle();
+
+      expect(find.text('/poll'), findsOneWidget);
+      expect(find.text('/remind'), findsOneWidget);
+      expect(find.text('/soundboard'), findsOneWidget);
+
+      // Type 'rem' to filter reactively
+      await tester.enterText(inputFinder, '/rem');
+      await tester.pumpAndSettle();
+
+      expect(find.text('/remind'), findsOneWidget);
+      expect(find.text('/poll'), findsNothing);
+      expect(find.text('/soundboard'), findsNothing);
+    });
   });
 }

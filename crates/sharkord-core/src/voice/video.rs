@@ -61,7 +61,14 @@ pub enum VideoResolution {
     R1080p,
     #[serde(rename = "1440p", alias = "R1440p", alias = "r1440p")]
     R1440p,
-    #[serde(rename = "4k", alias = "4K", alias = "R4K", alias = "r4k", alias = "2160p", alias = "R2160p")]
+    #[serde(
+        rename = "4k",
+        alias = "4K",
+        alias = "R4K",
+        alias = "r4k",
+        alias = "2160p",
+        alias = "R2160p"
+    )]
     R4K,
     #[serde(rename = "custom", alias = "Custom")]
     Custom { width: u32, height: u32 },

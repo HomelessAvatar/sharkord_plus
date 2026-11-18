@@ -94,4 +94,3 @@ fn test_source_picker_view_preset_badges() {
     assert!(SourcePickerView::AVAILABLE_FRAMERATES.contains(&VideoFrameRate::Fps120));
     assert!(SourcePickerView::AVAILABLE_FRAMERATES.contains(&VideoFrameRate::Fps144));
 }
-

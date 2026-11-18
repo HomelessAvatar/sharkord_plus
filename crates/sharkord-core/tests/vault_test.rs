@@ -21,7 +21,9 @@ fn test_session_vault_add_save_and_retrieve_active() {
         last_accessed_at: 1700000000,
     };
 
-    vault.add_or_update(server.clone(), true).expect("should save");
+    vault
+        .add_or_update(server.clone(), true)
+        .expect("should save");
     assert_eq!(vault.get_active().unwrap().server_id, "srv_123");
 
     // Reopen vault from disk
@@ -34,7 +36,8 @@ fn test_session_vault_add_save_and_retrieve_active() {
 
 #[test]
 fn test_session_vault_update_existing_server() {
-    let temp_dir = std::env::temp_dir().join(format!("sharkord_test_vault_update_{}", std::process::id()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("sharkord_test_vault_update_{}", std::process::id()));
     let vault_path = temp_dir.join("vault.json");
     let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -52,7 +55,9 @@ fn test_session_vault_update_existing_server() {
         last_accessed_at: 1000,
     };
 
-    vault.add_or_update(server1, true).expect("should save server1");
+    vault
+        .add_or_update(server1, true)
+        .expect("should save server1");
     assert_eq!(vault.servers.len(), 1);
     assert_eq!(vault.get_active().unwrap().server_name, "Initial Name");
 
@@ -69,8 +74,14 @@ fn test_session_vault_update_existing_server() {
         last_accessed_at: 2000,
     };
 
-    vault.add_or_update(server1_updated, true).expect("should update server1");
-    assert_eq!(vault.servers.len(), 1, "should not duplicate server in list");
+    vault
+        .add_or_update(server1_updated, true)
+        .expect("should update server1");
+    assert_eq!(
+        vault.servers.len(),
+        1,
+        "should not duplicate server in list"
+    );
     assert_eq!(vault.get_active().unwrap().server_name, "Updated Name");
     assert_eq!(vault.get_active().unwrap().token, "new_token");
     assert_eq!(
@@ -83,7 +94,8 @@ fn test_session_vault_update_existing_server() {
 
 #[test]
 fn test_session_vault_multiple_servers_set_active_and_remove() {
-    let temp_dir = std::env::temp_dir().join(format!("sharkord_test_vault_multi_{}", std::process::id()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("sharkord_test_vault_multi_{}", std::process::id()));
     let vault_path = temp_dir.join("vault.json");
     let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -114,7 +126,9 @@ fn test_session_vault_multiple_servers_set_active_and_remove() {
     };
 
     vault.add_or_update(server_a, true).expect("save a");
-    vault.add_or_update(server_b, false).expect("save b without making active");
+    vault
+        .add_or_update(server_b, false)
+        .expect("save b without making active");
 
     assert_eq!(vault.servers.len(), 2);
     assert_eq!(vault.get_active().unwrap().server_id, "srv_a");
@@ -147,7 +161,8 @@ fn test_session_vault_multiple_servers_set_active_and_remove() {
 
 #[test]
 fn test_session_vault_nested_parent_dirs_created_atomically() {
-    let temp_dir = std::env::temp_dir().join(format!("sharkord_test_vault_nested_{}", std::process::id()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("sharkord_test_vault_nested_{}", std::process::id()));
     let nested_vault_path = temp_dir.join("level1").join("level2").join("vault.json");
     let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -164,10 +179,13 @@ fn test_session_vault_nested_parent_dirs_created_atomically() {
         last_accessed_at: 500,
     };
 
-    vault.add_or_update(server, true).expect("should create nested parent directories");
+    vault
+        .add_or_update(server, true)
+        .expect("should create nested parent directories");
     assert!(nested_vault_path.exists());
 
-    let loaded = SessionVault::load_from_path(nested_vault_path).expect("should load from nested path");
+    let loaded =
+        SessionVault::load_from_path(nested_vault_path).expect("should load from nested path");
     assert_eq!(loaded.get_active().unwrap().server_id, "srv_nested");
 
     let _ = std::fs::remove_dir_all(&temp_dir);
@@ -175,13 +193,17 @@ fn test_session_vault_nested_parent_dirs_created_atomically() {
 
 #[test]
 fn test_session_vault_set_active_not_found_and_clear() {
-    let temp_dir = std::env::temp_dir().join(format!("sharkord_test_vault_errors_{}", std::process::id()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("sharkord_test_vault_errors_{}", std::process::id()));
     let vault_path = temp_dir.join("vault.json");
     let _ = std::fs::remove_dir_all(&temp_dir);
 
     let mut vault = SessionVault::new(vault_path);
     let result = vault.set_active("non_existent_srv");
-    assert!(result.is_err(), "setting non-existent active server must fail");
+    assert!(
+        result.is_err(),
+        "setting non-existent active server must fail"
+    );
 
     let server = SavedServerSession {
         server_id: "srv_valid".to_string(),
@@ -208,7 +230,10 @@ fn test_session_vault_set_active_not_found_and_clear() {
 
 #[test]
 fn test_session_vault_load_non_existent_and_corrupt() {
-    let temp_dir = std::env::temp_dir().join(format!("sharkord_test_vault_corrupt_{}", std::process::id()));
+    let temp_dir = std::env::temp_dir().join(format!(
+        "sharkord_test_vault_corrupt_{}",
+        std::process::id()
+    ));
     let non_existent_path = temp_dir.join("missing.json");
 
     assert!(SessionVault::load_from_path(&non_existent_path).is_err());

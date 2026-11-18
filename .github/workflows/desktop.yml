@@ -73,7 +73,7 @@ jobs:
         run: cargo test --all
 
       - name: Build release binaries
-        run: cargo build --release -p desktop-gpui -p sharkord-core
+        run: cargo build --release -p desktop-gpui -p sharkord-core -p sharkord-mobile
 
       - name: Package desktop application (Windows)
         if: runner.os == 'Windows'
@@ -138,7 +138,7 @@ jobs:
           tool: cargo-packager
 
       - name: Build release binaries
-        run: cargo build --release -p desktop-gpui -p sharkord-core
+        run: cargo build --release -p desktop-gpui -p sharkord-core -p sharkord-mobile
 
       - name: Package desktop application (macOS)
         run: |
