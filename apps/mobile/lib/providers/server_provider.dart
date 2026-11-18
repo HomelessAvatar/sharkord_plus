@@ -11,7 +11,7 @@ class ServerState {
 
   const ServerState({
     this.serverId = '',
-    this.serverName = 'Sharkord Server',
+    this.serverName = 'Sharkord Plus',
     this.description,
     this.logoUrl,
   });

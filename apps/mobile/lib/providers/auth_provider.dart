@@ -188,9 +188,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
 
         // Update real channels
-        if (joinResult.channels.isNotEmpty) {
-          _ref?.read(channelProvider.notifier).setChannels(joinResult.channels);
-        }
+        _ref?.read(channelProvider.notifier).setChannels(joinResult.channels);
 
         // Update real members
         _ref?.read(memberProvider.notifier).setMembers(joinResult.users);
@@ -283,6 +281,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
     _ref?.read(socketSessionProvider.notifier).state = null;
     _ref?.read(serverProvider.notifier).reset();
+    _ref?.read(memberProvider.notifier).clear();
+    _ref?.read(channelProvider.notifier).setChannels(const []);
     state = const AuthState();
   }
 

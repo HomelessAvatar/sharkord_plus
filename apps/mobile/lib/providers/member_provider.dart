@@ -1,41 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sharkord_mobile/models/user.dart';
 
-/// Default mock members for mobile offline / demo presentation.
-const List<User> defaultMembers = [
-  User(
-    id: '1',
-    username: 'admin',
-    displayName: 'Shark Admin',
-    avatarUrl: null,
-    isOnline: true,
-  ),
-  User(
-    id: '2',
-    username: 'alice',
-    displayName: 'Alice',
-    avatarUrl: null,
-    isOnline: true,
-  ),
-  User(
-    id: '3',
-    username: 'bob',
-    displayName: 'Bob',
-    avatarUrl: null,
-    isOnline: false,
-  ),
-  User(
-    id: '4',
-    username: 'charlie',
-    displayName: 'Charlie',
-    avatarUrl: null,
-    isOnline: false,
-  ),
-];
-
 /// Notifier managing server members roster and online states.
 class MemberNotifier extends StateNotifier<List<User>> {
-  MemberNotifier([List<User>? initial]) : super(initial ?? defaultMembers);
+  MemberNotifier([List<User>? initial]) : super(initial ?? const []);
 
   /// Overwrites the full member list.
   void setMembers(List<User> members) {
@@ -60,6 +28,11 @@ class MemberNotifier extends StateNotifier<List<User>> {
       return m.id == userId ? m.copyWith(isOnline: isOnline) : m;
     }).toList();
     state = List.unmodifiable(updated);
+  }
+
+  /// Resets member roster (e.g. on logout).
+  void clear() {
+    state = const [];
   }
 }
 

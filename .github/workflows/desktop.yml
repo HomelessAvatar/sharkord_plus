@@ -1,4 +1,4 @@
-name: Rust Core & GPUI Desktop CI
+name: Desktop GPUI CI & Release
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
       - development
       - main
     tags:
+      - 'desktop-v*'
       - 'v*'
     paths:
       - 'crates/**'
       - 'apps/desktop-gpui/**'
-      - 'apps/mobile/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - '.github/workflows/rust-ci.yml'
+      - '.github/workflows/desktop.yml'
   pull_request:
     branches:
       - development
@@ -21,10 +21,9 @@ on:
     paths:
       - 'crates/**'
       - 'apps/desktop-gpui/**'
-      - 'apps/mobile/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - '.github/workflows/rust-ci.yml'
+      - '.github/workflows/desktop.yml'
   workflow_dispatch:
 
 permissions:
@@ -116,7 +115,7 @@ jobs:
 
   build-macos:
     name: Build (macos-latest)
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     timeout-minutes: 30
     runs-on: macos-latest
     continue-on-error: true
@@ -165,100 +164,10 @@ jobs:
           path: dist-macos/*
           if-no-files-found: warn
 
-  build-mobile-android:
-    name: Build Mobile (Android APK)
-    timeout-minutes: 30
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
-
-      - name: Run Flutter tests
-        run: |
-          cd apps/mobile
-          flutter pub get
-          flutter test
-
-      - name: Build release APK
-        run: |
-          cd apps/mobile
-          flutter build apk --release
-
-      - name: Stage mobile artifacts
-        run: |
-          mkdir -p dist-mobile
-          cp apps/mobile/build/app/outputs/flutter-apk/app-release.apk dist-mobile/sharkord-mobile-android.apk
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            cp apps/mobile/build/app/outputs/flutter-apk/app-release.apk "dist-mobile/sharkord-mobile-android-${{ github.ref_name }}.apk"
-          fi
-          ls -la dist-mobile
-
-      - name: Upload mobile artifacts (Android)
-        uses: actions/upload-artifact@v7
-        with:
-          name: sharkord-mobile-android
-          path: dist-mobile/*
-          if-no-files-found: warn
-
-  build-mobile-ios:
-    name: Build Mobile (iOS Sideload IPA)
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 30
-    runs-on: macos-latest
-    continue-on-error: true
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.0'
-          channel: 'stable'
-          cache: true
-
-      - name: Build iOS unsigned bundle
-        run: |
-          cd apps/mobile
-          flutter pub get
-          flutter build ios --release --no-codesign
-
-      - name: Package Sideloadable IPA
-        run: |
-          mkdir -p dist-ios/Payload
-          cp -r apps/mobile/build/ios/iphoneos/Runner.app dist-ios/Payload/
-          (cd dist-ios && zip -r sharkord-mobile-ios-unsigned.ipa Payload)
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            cp dist-ios/sharkord-mobile-ios-unsigned.ipa "dist-ios/sharkord-mobile-ios-${{ github.ref_name }}-unsigned.ipa"
-          fi
-          ls -la dist-ios
-
-      - name: Upload mobile artifacts (iOS)
-        uses: actions/upload-artifact@v7
-        with:
-          name: sharkord-mobile-ios
-          path: dist-ios/*
-          if-no-files-found: warn
-
   publish-release:
-    name: Publish GitHub Release
-    if: always() && !cancelled() && startsWith(github.ref, 'refs/tags/v')
-    needs: [check-and-test, build-macos, build-mobile-android, build-mobile-ios]
+    name: Publish Desktop Release
+    if: always() && !cancelled() && (startsWith(github.ref, 'refs/tags/desktop-v') || startsWith(github.ref, 'refs/tags/v'))
+    needs: [check-and-test, build-macos]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -269,7 +178,7 @@ jobs:
       - name: Generate automated release notes
         run: node .github/scripts/generate-release-notes.js release-notes.md
 
-      - name: Download all build artifacts
+      - name: Download desktop build artifacts
         uses: actions/download-artifact@v8
         continue-on-error: true
         with:
@@ -278,7 +187,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.apk" -o -name "*.ipa" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-release/ \;
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-release/ \;
           find release-artifacts -type f \( -name "*linux*" -o -name "*macos*" \) ! -name "*.*" -exec cp {} dist-release/ \; 2>/dev/null || true
           find dist-release -type f \( -name "*.AppImage" -o -name "*-linux-*" -o -name "*-macos-*" \) -exec chmod +x {} \;
           echo "=== Contents of dist-release ==="
@@ -288,7 +197,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: Sharkord Plus ${{ github.ref_name }}
+          name: Sharkord Plus Desktop ${{ github.ref_name }}
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           body_path: release-notes.md
           files: |

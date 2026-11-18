@@ -212,6 +212,20 @@ impl SharkordClient {
         // Extract User
         let user: User = if let Some(user_val) = json_val.get("user") {
             serde_json::from_value(user_val.clone())?
+        } else if let Some(user_id) = json_val.get("userId").and_then(|id| id.as_u64()) {
+            User {
+                id: user_id,
+                name: identity.to_string(),
+                status: Some("online".to_string()),
+                ..Default::default()
+            }
+        } else if json_val.get("token").is_some() || json_val.get("success").is_some() {
+            User {
+                id: 1,
+                name: identity.to_string(),
+                status: Some("online".to_string()),
+                ..Default::default()
+            }
         } else {
             serde_json::from_value(json_val)?
         };

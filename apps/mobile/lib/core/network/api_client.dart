@@ -244,11 +244,19 @@ class SharkordSocketSession {
   void _handleIncomingMessage(dynamic raw) {
     if (raw is! String) return;
 
+    // Handle tRPC text-level keep-alive ping
+    if (raw.trim() == 'PING') {
+      try {
+        _socket.add('PONG');
+      } catch (_) {}
+      return;
+    }
+
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) return;
 
-      // Handle keep-alive ping
+      // Handle JSON keep-alive ping if formatted as RPC
       if (decoded['method'] == 'ping') {
         _socket.add(jsonEncode({'method': 'pong'}));
         return;
@@ -351,7 +359,15 @@ class SharkordSocketSession {
     }
 
     final serverId = response['serverId']?.toString() ?? '';
-    final serverName = response['serverName'] as String? ?? 'Sharkord Server';
+    final serverNameRaw = response['serverName'] as String?;
+    final publicSettingsName = response['publicSettings'] is Map<String, dynamic>
+        ? (response['publicSettings'] as Map<String, dynamic>)['name'] as String?
+        : null;
+    final serverName = (serverNameRaw != null && serverNameRaw.trim().isNotEmpty)
+        ? serverNameRaw.trim()
+        : ((publicSettingsName != null && publicSettingsName.trim().isNotEmpty)
+            ? publicSettingsName.trim()
+            : 'Sharkord Plus');
     final ownUserId = (response['ownUserId'] as num?)?.toInt() ?? 0;
 
     // Parse categories map: id -> name
@@ -373,14 +389,23 @@ class SharkordSocketSession {
     if (response['channels'] is List) {
       for (final ch in response['channels'] as List) {
         if (ch is Map<String, dynamic>) {
+          final isDm = ch['isDm'] == true ||
+              ch['isDm'] == 1 ||
+              ch['is_dm_channel'] == true ||
+              ch['is_dm_channel'] == 1;
+          if (isDm) continue;
+
           final catId = (ch['categoryId'] as num?)?.toInt();
           final categoryName = catId != null ? categoryMap[catId] : null;
+          final rawType = ch['type']?.toString().toUpperCase() ??
+              ch['channelType']?.toString().toUpperCase();
+          final isVoice = rawType == 'VOICE';
 
           final channel = Channel(
             id: ch['id']?.toString() ?? '',
             name: ch['name'] as String? ?? '',
-            category: categoryName ?? (ch['type'] == 'VOICE' ? 'VOICE CHANNELS' : 'TEXT CHANNELS'),
-            isVoice: ch['type'] == 'VOICE' || ch['channelType'] == 'VOICE',
+            category: categoryName ?? (isVoice ? 'VOICE CHANNELS' : 'TEXT CHANNELS'),
+            isVoice: isVoice,
             participantCount: (ch['participantCount'] as num?)?.toInt() ?? 0,
           );
           channelsList.add(channel);

@@ -31,6 +31,16 @@ void main() {
       expect(v3.minor, 0);
       expect(v3.patch, 0);
       expect(v3.preRelease, 'rc.1');
+
+      final v4 = SemVer.parse('mobile-v0.2.5');
+      expect(v4.major, 0);
+      expect(v4.minor, 2);
+      expect(v4.patch, 5);
+
+      final v5 = SemVer.parse('desktop-v1.4.2');
+      expect(v5.major, 1);
+      expect(v5.minor, 4);
+      expect(v5.patch, 2);
     });
 
     test('handles whitespace and partial versions safely', () {

@@ -10,10 +10,13 @@ fn test_semver_parsing_and_version_comparison() {
     assert_eq!(parse_semver("0.1.0"), Some((0, 1, 0)));
     assert_eq!(parse_semver("v1.2.3"), Some((1, 2, 3)));
     assert_eq!(parse_semver("v2.0.0-beta.1"), Some((2, 0, 0)));
+    assert_eq!(parse_semver("desktop-v0.2.4"), Some((0, 2, 4)));
+    assert_eq!(parse_semver("mobile-v1.0.5"), Some((1, 0, 5)));
     assert_eq!(parse_semver("invalid"), None);
 
     assert!(is_newer_version("0.1.0", "0.1.1"));
     assert!(is_newer_version("0.1.0", "v0.2.0"));
+    assert!(is_newer_version("0.2.3", "desktop-v0.2.4"));
     assert!(is_newer_version("1.0.0", "2.0.0"));
     assert!(!is_newer_version("0.2.0", "0.1.9"));
     assert!(!is_newer_version("1.0.0", "1.0.0"));

@@ -11,24 +11,28 @@ function getGitOutput(command) {
   }
 }
 
-const currentTag = process.env.GITHUB_REF_NAME || getGitOutput('git describe --tags --exact-match') || 'v0.1.0-alpha.2';
+const currentTag = process.env.GITHUB_REF_NAME || getGitOutput('git describe --tags --exact-match') || 'v0.2.4';
 const repo = process.env.GITHUB_REPOSITORY || 'HomelessAvatar/sharkord_plus';
 
-// Find previous tag
+// Find previous tag with matching prefix
 let prevTag = '';
 try {
-  const tags = getGitOutput('git tag --sort=-creatordate').split('\n').filter(Boolean);
-  const currentIndex = tags.indexOf(currentTag);
-  if (currentIndex >= 0 && currentIndex < tags.length - 1) {
-    prevTag = tags[currentIndex + 1];
-  } else if (tags.length > 1) {
-    prevTag = tags[1];
+  const allTags = getGitOutput('git tag --sort=-creatordate').split('\n').map(t => t.trim()).filter(Boolean);
+  const prefixMatch = currentTag.match(/^([a-z]+-v)/i);
+  const prefix = prefixMatch ? prefixMatch[1] : (currentTag.startsWith('v') ? 'v' : '');
+
+  const matchingTags = prefix ? allTags.filter(t => t.startsWith(prefix)) : allTags;
+  const currentIndex = matchingTags.indexOf(currentTag);
+  if (currentIndex >= 0 && currentIndex < matchingTags.length - 1) {
+    prevTag = matchingTags[currentIndex + 1];
+  } else if (matchingTags.length > 1) {
+    prevTag = matchingTags[1];
   }
 } catch (e) {
   prevTag = '';
 }
 
-const range = prevTag ? `${prevTag}..HEAD` : 'HEAD~10..HEAD';
+const range = prevTag ? `${prevTag}..HEAD` : 'HEAD~15..HEAD';
 const logOutput = getGitOutput(`git log ${range} --pretty=format:"%H|%h|%s|%an"`);
 
 const commits = logOutput ? logOutput.split('\n').filter(Boolean).map(line => {
@@ -69,7 +73,16 @@ for (const commit of commits) {
   }
 }
 
-let body = `## 🦈 Sharkord Plus ${currentTag}\n\n`;
+let titlePrefix = 'Sharkord Plus';
+if (currentTag.startsWith('mobile-v')) {
+  titlePrefix = 'Sharkord Plus Mobile';
+} else if (currentTag.startsWith('desktop-v')) {
+  titlePrefix = 'Sharkord Plus Desktop';
+} else if (currentTag.startsWith('server-v')) {
+  titlePrefix = 'Sharkord Plus Server';
+}
+
+let body = `## 🦈 ${titlePrefix} ${currentTag}\n\n`;
 
 if (features.length > 0) {
   body += `### ✨ Features & Enhancements\n`;
@@ -96,16 +109,24 @@ if (others.length > 0) {
   body += others.join('\n') + '\n\n';
 }
 
-body += `### 📦 Downloadable Assets (Native Binaries)\n`;
-body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` or \`sharkord-gpui-windows-x64.zip\`\n`;
-body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` or \`sharkord-gpui-linux-x64.tar.gz\`\n`;
-body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n`;
-body += `* **Android:** \`sharkord-mobile-android.apk\`\n`;
-body += `* **iOS (Sideload / AltStore / TrollStore / Sideloadly):** \`sharkord-mobile-ios-unsigned.ipa\`\n\n`;
+if (!currentTag.startsWith('mobile-v')) {
+  body += `### 📦 Downloadable Desktop Assets (Native Binaries)\n`;
+  body += `* **Windows (x64):** \`sharkord-gpui-windows-x64.exe\` or \`sharkord-gpui-windows-x64.zip\`\n`;
+  body += `* **Linux (x64):** \`sharkord-gpui-linux-x64\` or \`sharkord-gpui-linux-x64.tar.gz\`\n`;
+  body += `* **macOS (Apple Silicon arm64):** \`sharkord-gpui-macos-arm64.zip\`\n\n`;
+}
 
-body += `### 🐳 Docker Image (GHCR / SemVer & WUD Ready)\n`;
-const semverTag = currentTag.replace(/^v/, '');
-body += `\`\`\`bash\n# Pull the SemVer release (WUD compatible):\ndocker pull ghcr.io/${repo.toLowerCase()}:${semverTag}\n\`\`\`\n\n`;
+if (!currentTag.startsWith('desktop-v')) {
+  body += `### 📱 Mobile Assets\n`;
+  body += `* **Android:** \`sharkord-mobile-android.apk\`\n`;
+  body += `* **iOS (Sideload / AltStore / TrollStore / Sideloadly):** \`sharkord-mobile-ios-unsigned.ipa\`\n\n`;
+}
+
+if (currentTag.startsWith('server-v') || (!currentTag.startsWith('mobile-v') && !currentTag.startsWith('desktop-v'))) {
+  body += `### 🐳 Docker Image (GHCR / SemVer & WUD Ready)\n`;
+  const semverTag = currentTag.replace(/^[a-z]+-v/i, '').replace(/^v/, '');
+  body += `\`\`\`bash\n# Pull the SemVer release (WUD compatible):\ndocker pull ghcr.io/${repo.toLowerCase()}:${semverTag}\n\`\`\`\n\n`;
+}
 
 if (prevTag) {
   body += `**Full Changelog:** https://github.com/${repo}/compare/${prevTag}...${currentTag}\n`;

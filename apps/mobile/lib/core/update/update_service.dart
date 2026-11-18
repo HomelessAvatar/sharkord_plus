@@ -32,24 +32,51 @@ class UpdateService {
         }
       }
 
-      final url = Uri.parse('https://api.github.com/repos/$repo/releases/latest');
-      final response = await effectiveClient.get(
-        url,
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Sharkord-Mobile-App',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        return UpdateCheckResult(
-          hasUpdate: false,
-          currentVersion: currentVersion,
+      ReleaseInfo? release;
+      try {
+        final listUrl = Uri.parse('https://api.github.com/repos/$repo/releases?per_page=10');
+        final listResponse = await effectiveClient.get(
+          listUrl,
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Sharkord-Mobile-App',
+          },
         );
-      }
+        if (listResponse.statusCode == 200) {
+          final listJson = jsonDecode(listResponse.body) as List<dynamic>;
+          for (final item in listJson) {
+            if (item is Map<String, dynamic>) {
+              final r = ReleaseInfo.fromJson(item);
+              final tagLower = r.tagName.toLowerCase();
+              if (tagLower.startsWith('mobile-v') || tagLower.startsWith('v') || r.apkAsset != null) {
+                release = r;
+                break;
+              }
+            }
+          }
+        }
+      } catch (_) {}
 
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final release = ReleaseInfo.fromJson(json);
+      if (release == null) {
+        final url = Uri.parse('https://api.github.com/repos/$repo/releases/latest');
+        final response = await effectiveClient.get(
+          url,
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Sharkord-Mobile-App',
+          },
+        );
+
+        if (response.statusCode != 200) {
+          return UpdateCheckResult(
+            hasUpdate: false,
+            currentVersion: currentVersion,
+          );
+        }
+
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        release = ReleaseInfo.fromJson(json);
+      }
 
       final hasUpdate = SemVer.isNewer(currentVersion, release.tagName);
       final isAndroid = isAndroidOverride ?? (defaultTargetPlatform == TargetPlatform.android);

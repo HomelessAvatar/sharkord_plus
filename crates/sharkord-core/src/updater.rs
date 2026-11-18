@@ -65,15 +65,15 @@ impl UpdateStatus {
 
 pub fn parse_semver(version_str: &str) -> Option<(u64, u64, u64)> {
     let trimmed = version_str.trim();
-    let without_v = if let Some(stripped) = trimmed.strip_prefix('v') {
-        stripped
-    } else if let Some(stripped) = trimmed.strip_prefix('V') {
-        stripped
+    let without_prefix = if let Some(idx) = trimmed.find('v') {
+        &trimmed[idx + 1..]
+    } else if let Some(idx) = trimmed.find('V') {
+        &trimmed[idx + 1..]
     } else {
         trimmed
     };
 
-    let core_version = without_v.split('-').next()?.split('+').next()?;
+    let core_version = without_prefix.split('-').next()?.split('+').next()?;
 
     let parts: Vec<&str> = core_version.split('.').collect();
     if parts.len() != 3 {
@@ -237,9 +237,32 @@ impl UpdaterClient {
     }
 
     pub async fn fetch_latest_release(&self) -> Result<ReleaseInfo, SharkordError> {
+        let base = self.base_url.trim_end_matches('/');
+        let list_url = format!("{}/repos/{}/{}/releases?per_page=10", base, self.repo_owner, self.repo_name);
+
+        if let Ok(resp) = self.client.get(&list_url).send().await {
+            if resp.status().is_success() {
+                if let Ok(releases) = resp.json::<Vec<ReleaseInfo>>().await {
+                    for mut r in releases {
+                        let tag_lower = r.tag_name.to_lowercase();
+                        if tag_lower.starts_with("desktop-v") || tag_lower.starts_with('v') {
+                            if r.version.is_empty() {
+                                if let Some(idx) = r.tag_name.find(['v', 'V']) {
+                                    r.version = r.tag_name[idx + 1..].to_string();
+                                } else {
+                                    r.version = r.tag_name.clone();
+                                }
+                            }
+                            return Ok(r);
+                        }
+                    }
+                }
+            }
+        }
+
         let url = format!(
             "{}/repos/{}/{}/releases/latest",
-            self.base_url.trim_end_matches('/'),
+            base,
             self.repo_owner,
             self.repo_name
         );
@@ -252,7 +275,11 @@ impl UpdaterClient {
         }
         let mut release: ReleaseInfo = resp.json().await?;
         if release.version.is_empty() {
-            release.version = release.tag_name.trim_start_matches(['v', 'V']).to_string();
+            if let Some(idx) = release.tag_name.find(['v', 'V']) {
+                release.version = release.tag_name[idx + 1..].to_string();
+            } else {
+                release.version = release.tag_name.clone();
+            }
         }
         Ok(release)
     }

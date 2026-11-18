@@ -16,8 +16,9 @@ class SemVer implements Comparable<SemVer> {
 
   factory SemVer.parse(String version) {
     var clean = version.trim();
-    if (clean.startsWith('v') || clean.startsWith('V')) {
-      clean = clean.substring(1);
+    final vIndex = clean.toLowerCase().indexOf('v');
+    if (vIndex >= 0) {
+      clean = clean.substring(vIndex + 1);
     }
     if (clean.contains('+')) {
       clean = clean.split('+').first;
