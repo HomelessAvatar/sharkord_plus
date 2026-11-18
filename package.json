@@ -16,6 +16,8 @@
     "format:check": "bun run --filter '*' format:check",
     "check-types": "bun run --filter '*' check-types",
     "lint": "bun run --filter '*' lint",
+    "tauri:dev": "bun --filter @sharkord/tauri dev",
+    "tauri:build": "bun --filter @sharkord/tauri build",
     "knip": "knip",
     "knip:production": "knip --production",
     "magic": "bun run format && bun run check-types && bun run lint"

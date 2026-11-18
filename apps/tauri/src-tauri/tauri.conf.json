@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/tooling/cli/schema.json",
+  "productName": "Sharkord Plus",
+  "version": "0.2.5",
+  "identifier": "com.sharkord.plus",
+  "build": {
+    "beforeDevCommand": "bun --filter @sharkord/client dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "bun --filter @sharkord/client build",
+    "frontendDist": "../../../apps/client/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Sharkord Plus",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "backgroundColor": "#0A0A0A"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ]
+  }
+}

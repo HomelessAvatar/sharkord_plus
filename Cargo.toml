@@ -4,6 +4,7 @@ members = [
     "crates/sharkord-core",
     "crates/sharkord-mobile",
     "apps/desktop-gpui",
+    "apps/tauri/src-tauri",
 ]
 
 [patch.crates-io]
