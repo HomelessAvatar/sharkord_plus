@@ -8,6 +8,7 @@ import {
   setDisconnectInfo
 } from '@/features/server/actions';
 import { SoundType } from '@/features/server/types';
+import { getUrlFromServer, isTauriEnvironment } from '@/helpers/get-file-url';
 import { suppressOidcAutoRedirect } from '@/helpers/oidc';
 import { playSound } from '@/helpers/sounds';
 import {
@@ -34,15 +35,25 @@ let isCleaningUp = false;
 // Firefox fires WebSocket onClose during page refresh; Chrome does not. When navigating away,
 // we must not clear auto-login localStorage or it will be lost on refresh in Firefox.
 let isNavigatingAway = false;
-window.addEventListener('beforeunload', () => {
-  isNavigatingAway = true;
-});
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    isNavigatingAway = true;
+  });
+}
 
 const isTerminalClose = (code: number) =>
   code === DisconnectCode.KICKED || code === DisconnectCode.BANNED;
 
+export const getTrpcWsProtocol = (): 'wss' | 'ws' => {
+  const isHttps = isTauriEnvironment()
+    ? getUrlFromServer().startsWith('https')
+    : window.location.protocol === 'https:';
+
+  return isHttps ? 'wss' : 'ws';
+};
+
 const initializeTRPC = (host: string) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const protocol = getTrpcWsProtocol();
 
   wsClient = createWSClient({
     url: `${protocol}://${host}`,

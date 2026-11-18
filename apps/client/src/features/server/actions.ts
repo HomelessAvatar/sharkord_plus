@@ -368,19 +368,21 @@ export const markVisibleChannelAsRead = (channelId: number) => {
   markAsRead();
 };
 
-window.useToken = async (token: string) => {
-  const trpc = getTRPCClient();
+if (typeof window !== 'undefined') {
+  window.useToken = async (token: string) => {
+    const trpc = getTRPCClient();
 
-  try {
-    await trpc.others.useSecretToken.mutate({ token });
+    try {
+      await trpc.others.useSecretToken.mutate({ token });
 
-    toast.success(i18n.t('common:nowServerOwner'));
-  } catch {
-    toast.error(i18n.t('common:invalidAccessToken'));
-  }
-};
+      toast.success(i18n.t('common:nowServerOwner'));
+    } catch {
+      toast.error(i18n.t('common:invalidAccessToken'));
+    }
+  };
 
-window.sharkordDebug = {
-  ...window.sharkordDebug,
-  openSoundsModal: () => openDialog(Dialog.SOUNDS)
-};
+  window.sharkordDebug = {
+    ...window.sharkordDebug,
+    openSoundsModal: () => openDialog(Dialog.SOUNDS)
+  };
+}

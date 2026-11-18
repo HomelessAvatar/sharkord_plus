@@ -83,3 +83,47 @@ fn test_vault_remove_profile() {
     let reloaded = SessionVault::load_from_path(&vault_path).unwrap();
     assert_eq!(reloaded.list_profiles().len(), 0);
 }
+
+#[test]
+fn test_vault_startup_persistence_across_separate_instances() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let vault_path = temp_dir.path().join("startup_vault.json");
+
+    // Simulate first run: app creates vault, saves a session, then terminates
+    {
+        let mut vault_instance_1 = SessionVault::with_path(vault_path.clone());
+        let profile = ServerProfile {
+            id: "srv_persist".into(),
+            name: "Persistent Server".into(),
+            server_url: "https://community.sharkord.com".into(),
+            token: "session_token_xyz".into(),
+            user: None,
+        };
+        vault_instance_1.save_profile(profile).unwrap();
+        assert_eq!(
+            vault_instance_1.get_active_profile().unwrap().id,
+            "srv_persist"
+        );
+    }
+
+    // Simulate startup behavior in lib.rs: load_from_path with default fallback
+    {
+        let vault_instance_2 = SessionVault::load_from_path(&vault_path)
+            .unwrap_or_else(|_| SessionVault::default());
+
+        let active = vault_instance_2.get_active_profile();
+        assert!(
+            active.is_some(),
+            "Active profile must not be lost across restarts"
+        );
+        assert_eq!(active.unwrap().id, "srv_persist");
+        assert_eq!(
+            active.unwrap().server_url,
+            "https://community.sharkord.com"
+        );
+
+        let profiles = vault_instance_2.list_profiles();
+        assert_eq!(profiles.len(), 1);
+        assert_eq!(profiles[0].token, "session_token_xyz");
+    }
+}

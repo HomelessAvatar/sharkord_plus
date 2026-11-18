@@ -6,7 +6,8 @@ use vault::VaultState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let vault = SessionVault::default();
+    let vault = SessionVault::load_from_path(SessionVault::default_path())
+        .unwrap_or_else(|_| SessionVault::default());
 
     tauri::Builder::default()
         .manage(VaultState(Mutex::new(vault)))
