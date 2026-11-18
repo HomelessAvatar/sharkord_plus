@@ -1,10 +1,38 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sharkord_mobile/core/voice/webrtc_voice_engine.dart';
 import 'package:sharkord_mobile/models/user.dart';
 import 'package:sharkord_mobile/models/voice_state.dart';
+import 'package:sharkord_mobile/providers/auth_provider.dart';
+
+/// Provider for WebRTC voice engine instance.
+final voiceEngineProvider = Provider<WebRTCVoiceEngine>((ref) {
+  final session = ref.watch(socketSessionProvider);
+  return WebRTCVoiceEngine(socketSession: session);
+});
 
 /// Notifier managing real-time voice channel connection and audio controls.
 class VoiceNotifier extends StateNotifier<VoiceState> {
-  VoiceNotifier() : super(const VoiceState());
+  final WebRTCVoiceEngine _engine;
+  final Ref? _ref;
+
+  VoiceNotifier({WebRTCVoiceEngine? engine, Ref? ref})
+      : _engine = engine ?? WebRTCVoiceEngine(),
+        _ref = ref,
+        super(const VoiceState()) {
+    _bindEngine();
+  }
+
+  /// Active WebRTC voice engine instance.
+  WebRTCVoiceEngine get engine => _engine;
+
+  void _bindEngine() {
+    _engine.onPingChanged = (ping) {
+      updatePing(ping);
+    };
+    _engine.onSpeakingChanged = (userId, isSpeaking) {
+      setSpeaking(userId, isSpeaking);
+    };
+  }
 
   /// Connects to a voice channel.
   void joinVoice({
@@ -21,26 +49,39 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
       channelId: channelId,
       channelName: channelName,
       isConnected: true,
-      pingMs: 24,
+      pingMs: 0,
       participants: participants,
       activeSpeakerIds: const [],
     );
+
+    final numericId = int.tryParse(channelId);
+    if (numericId != null) {
+      final session = _ref?.read(socketSessionProvider);
+      _engine.join(
+        channelId: numericId,
+        userId: currentUser?.id ?? '',
+        socketSession: session,
+      );
+    }
   }
 
   /// Disconnects from active voice channel.
   void leaveVoice() {
+    _engine.leave();
     state = const VoiceState();
   }
 
   /// Toggles microphone mute state.
   void toggleMute([bool? muted]) {
     final newMuted = muted ?? !state.isMuted;
+    _engine.setMuted(newMuted);
     state = state.copyWith(isMuted: newMuted);
   }
 
   /// Toggles deafen state. Deafen also mutes microphone automatically.
   void toggleDeafen([bool? deafened]) {
     final newDeafened = deafened ?? !state.isDeafened;
+    _engine.setDeafened(newDeafened);
     state = state.copyWith(
       isDeafened: newDeafened,
       isMuted: newDeafened ? true : state.isMuted,
@@ -88,7 +129,8 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
 
 /// Provider for voice connection state.
 final voiceProvider = StateNotifierProvider<VoiceNotifier, VoiceState>((ref) {
-  return VoiceNotifier();
+  final engine = ref.watch(voiceEngineProvider);
+  return VoiceNotifier(engine: engine, ref: ref);
 });
 
 /// Convenience provider checking if voice is connected.

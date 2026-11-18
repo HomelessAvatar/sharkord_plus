@@ -285,9 +285,14 @@ void main() {
           );
       await tester.pumpAndSettle();
 
-      // Connected: VoiceBar should be present
+      // Connected: VoiceBar should be present with initial dynamic ping 0ms
       expect(find.byType(VoiceBar), findsOneWidget);
       expect(find.text('Voice Lounge'), findsOneWidget);
+      expect(find.textContaining('0ms'), findsOneWidget);
+
+      // Verify dynamic ping update from WebRTC stats
+      container.read(voiceProvider.notifier).updatePing(24);
+      await tester.pumpAndSettle();
       expect(find.textContaining('24ms'), findsOneWidget);
     });
 

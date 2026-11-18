@@ -12,6 +12,7 @@ class VoiceBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final voiceState = ref.watch(voiceProvider);
+    final isSpeaking = voiceState.activeSpeakerIds.isNotEmpty;
 
     if (!voiceState.isConnected) {
       return const SizedBox.shrink();
@@ -55,11 +56,18 @@ class VoiceBar extends ConsumerWidget {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: SharkordColors.speaking.withAlpha(38),
+                            color: isSpeaking
+                                ? SharkordColors.speaking.withAlpha(70)
+                                : SharkordColors.speaking.withAlpha(38),
                             shape: BoxShape.circle,
+                            border: isSpeaking
+                                ? Border.all(color: SharkordColors.speaking, width: 1.5)
+                                : null,
                           ),
-                          child: const Icon(
-                            Icons.volume_up_rounded,
+                          child: Icon(
+                            isSpeaking
+                                ? Icons.graphic_eq_rounded
+                                : Icons.volume_up_rounded,
                             color: SharkordColors.speaking,
                             size: 20,
                           ),
