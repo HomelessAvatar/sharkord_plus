@@ -6,32 +6,12 @@ on:
       - development
       - main
     tags:
-      - 'desktop-v*'
       - 'v*'
-    paths:
-      - 'crates/**'
-      - 'apps/tauri/**'
-      - 'apps/client/**'
-      - 'packages/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'package.json'
-      - 'bun.lock'
-      - '.github/workflows/desktop.yml'
+      - 'desktop-v*'
   pull_request:
     branches:
       - development
       - main
-    paths:
-      - 'crates/**'
-      - 'apps/tauri/**'
-      - 'apps/client/**'
-      - 'packages/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'package.json'
-      - 'bun.lock'
-      - '.github/workflows/desktop.yml'
   workflow_dispatch:
 
 permissions:
@@ -40,25 +20,24 @@ permissions:
 jobs:
   build-tauri-desktop:
     name: Build Desktop (${{ matrix.platform }})
-    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: windows-latest
-            name: windows-x64
-            args: ''
-          - platform: ubuntu-24.04
-            name: linux-x64
-            args: ''
-          - platform: macos-latest
-            name: macos-arm64
-            args: ''
-    runs-on: ${{ matrix.platform }}
+          - platform: windows-x64
+            os: windows-latest
+            artifact_name: sharkord-desktop-windows
+          - platform: linux-x86_64
+            os: ubuntu-24.04
+            artifact_name: sharkord-desktop-linux
+          - platform: macos-universal
+            os: macos-latest
+            artifact_name: sharkord-desktop-macos
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -86,76 +65,58 @@ jobs:
       - name: Run Tauri unit tests
         run: cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml
 
-      - name: Build Tauri desktop application (tauri build)
-        uses: tauri-apps/tauri-action@v0
+      - name: Build frontend client
+        run: bun --filter client build
+
+      - name: Build Tauri desktop application
+        run: bun --filter @sharkord/tauri build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: apps/tauri
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Sharkord Plus Desktop ${{ github.ref_name }}'
-          releaseDraft: false
-          prerelease:
-            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name,
-            'beta') || contains(github.ref_name, 'rc') }}
-          includeRelease: false
-          args: ${{ matrix.args }}
 
       - name: Stage desktop artifacts
         shell: bash
         run: |
           mkdir -p dist-desktop
-          find target/release/bundle apps/tauri/src-tauri/target/release/bundle -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          echo "=== Staged Desktop Artifacts ==="
           ls -la dist-desktop || true
 
       - name: Upload desktop build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
-          name: sharkord-desktop-${{ matrix.name }}
+          name: ${{ matrix.artifact_name }}
           path: dist-desktop/*
           if-no-files-found: warn
 
   publish-release:
     name: Publish Desktop Release
-    if:
-      startsWith(github.ref, 'refs/tags/desktop-v') || startsWith(github.ref,
-      'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/desktop-v')
     needs: [build-tauri-desktop]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Generate automated release notes
-        run:
-          node .github/scripts/generate-release-notes.js release-notes.md ||
-          echo "Release ${{ github.ref_name }}" > release-notes.md
-
-      - name: Download desktop build artifacts
-        uses: actions/download-artifact@v8
-        continue-on-error: true
+      - name: Download all desktop build artifacts
+        uses: actions/download-artifact@v4
         with:
           path: release-artifacts
 
       - name: Prepare release assets
         run: |
           mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-release/ \;
-          find dist-release -type f \( -name "*.AppImage" -o -name "*-linux-*" -o -name "*-macos-*" \) -exec chmod +x {} \; 2>/dev/null || true
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-release/ \;
           echo "=== Contents of dist-release ==="
           ls -la dist-release
 
       - name: Create or update GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Sharkord Plus Desktop ${{ github.ref_name }}
+          name: Sharkord Plus ${{ github.ref_name }}
           append_body: true
-          prerelease:
-            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name,
-            'beta') || contains(github.ref_name, 'rc') }}
-          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
             dist-release/*

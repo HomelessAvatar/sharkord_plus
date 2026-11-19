@@ -1,4 +1,4 @@
-name: Mobile Tauri CI & Release
+name: Mobile Tauri Android CI & Release
 
 on:
   push:
@@ -6,32 +6,12 @@ on:
       - development
       - main
     tags:
-      - 'mobile-v*'
       - 'v*'
-    paths:
-      - 'crates/**'
-      - 'apps/tauri/**'
-      - 'apps/client/**'
-      - 'packages/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'package.json'
-      - 'bun.lock'
-      - '.github/workflows/mobile-tauri.yml'
+      - 'mobile-v*'
   pull_request:
     branches:
       - development
       - main
-    paths:
-      - 'crates/**'
-      - 'apps/tauri/**'
-      - 'apps/client/**'
-      - 'packages/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'package.json'
-      - 'bun.lock'
-      - '.github/workflows/mobile-tauri.yml'
   workflow_dispatch:
 
 permissions:
@@ -40,12 +20,10 @@ permissions:
 jobs:
   build-mobile-tauri:
     name: Build Mobile (Tauri Android APK)
-    timeout-minutes: 45
     runs-on: ubuntu-24.04
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -81,84 +59,51 @@ jobs:
           workspaces: './apps/tauri/src-tauri -> target'
 
       - name: Run Tauri mobile and Android tests
-        run:
-          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --test
-          android_manifest_test
+        run: cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --test android_manifest_test
+
+      - name: Build frontend client
+        run: bun --filter client build
 
       - name: Build Tauri Android APK (tauri android build)
-        uses: tauri-apps/tauri-action@v0
+        run: bun --filter @sharkord/tauri android:build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ env.NDK_HOME }}
-        with:
-          projectPath: apps/tauri
-          mobile: android
-          args: --apk
-          includeRelease: false
 
       - name: Stage mobile artifacts
         run: |
           mkdir -p dist-mobile-tauri
           find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f \( -name "*.apk" -o -name "*.aab" \) -exec cp {} dist-mobile-tauri/ \; 2>/dev/null || true
-          if [ -d "dist-mobile-tauri" ] && [ -n "$(ls -A dist-mobile-tauri 2>/dev/null)" ]; then
-            for f in dist-mobile-tauri/*.apk; do
-              [ -e "$f" ] || continue
-              cp "$f" "dist-mobile-tauri/sharkord-tauri-android.apk"
-              if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-                cp "$f" "dist-mobile-tauri/sharkord-tauri-android-${{ github.ref_name }}.apk"
-              fi
-              break
-            done
-          fi
+          echo "=== Staged Mobile Artifacts ==="
           ls -la dist-mobile-tauri || true
 
-      - name: Upload mobile artifacts (Android)
-        uses: actions/upload-artifact@v7
+      - name: Upload mobile build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: sharkord-tauri-android
           path: dist-mobile-tauri/*
           if-no-files-found: warn
 
-  publish-release:
-    name: Publish Mobile Tauri Release
-    if:
-      startsWith(github.ref, 'refs/tags/mobile-v') || startsWith(github.ref,
-      'refs/tags/v')
+  publish-mobile-release:
+    name: Publish Mobile Release
+    if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/mobile-v')
     needs: [build-mobile-tauri]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
+
+      - name: Download mobile artifacts
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
-
-      - name: Generate automated release notes
-        run:
-          node .github/scripts/generate-release-notes.js release-notes.md ||
-          echo "Release ${{ github.ref_name }}" > release-notes.md
-
-      - name: Download mobile build artifacts
-        uses: actions/download-artifact@v8
-        continue-on-error: true
-        with:
-          path: release-artifacts
-
-      - name: Prepare release assets
-        run: |
-          mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.apk" -o -name "*.aab" \) -exec cp {} dist-release/ \;
-          echo "=== Contents of dist-release ==="
-          ls -la dist-release
+          name: sharkord-tauri-android
+          path: dist-release
 
       - name: Create or update GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Sharkord Plus Mobile Tauri ${{ github.ref_name }}
+          name: Sharkord Plus ${{ github.ref_name }}
           append_body: true
-          prerelease:
-            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name,
-            'beta') || contains(github.ref_name, 'rc') }}
-          body_path: release-notes.md
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
             dist-release/*
