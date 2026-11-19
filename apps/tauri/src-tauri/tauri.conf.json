@@ -4,9 +4,9 @@
   "version": "0.2.5",
   "identifier": "com.sharkord.plus",
   "build": {
-    "beforeDevCommand": "bun --filter @sharkord/client dev",
+    "beforeDevCommand": "bun --filter client dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "bun --filter @sharkord/client build",
+    "beforeBuildCommand": "bun --filter client build",
     "frontendDist": "../../../apps/client/dist"
   },
   "app": {
@@ -30,11 +30,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/icon.ico"
-    ],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
     "android": {
       "minSdkVersion": 24
     }
