@@ -58,9 +58,10 @@ jobs:
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
+          export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file
-          sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2 || true
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2t64 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2 || true
 
       - name: Run Tauri unit tests
         run: cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml
