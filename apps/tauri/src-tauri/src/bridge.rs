@@ -82,17 +82,24 @@ pub fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn set_unread_state(app: tauri::AppHandle, count: u32, mentioned: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        if count > 0 || mentioned {
-            let attention = if mentioned {
-                tauri::UserAttentionType::Critical
+        #[cfg(desktop)]
+        {
+            if count > 0 || mentioned {
+                let attention = if mentioned {
+                    tauri::UserAttentionType::Critical
+                } else {
+                    tauri::UserAttentionType::Informational
+                };
+                let _ = window.request_user_attention(Some(attention));
+                let _ = window.set_badge_count(Some(count as i64));
             } else {
-                tauri::UserAttentionType::Informational
-            };
-            let _ = window.request_user_attention(Some(attention));
-            let _ = window.set_badge_count(Some(count as i64));
-        } else {
-            let _ = window.request_user_attention(None);
-            let _ = window.set_badge_count(None);
+                let _ = window.request_user_attention(None);
+                let _ = window.set_badge_count(None);
+            }
+        }
+        #[cfg(not(desktop))]
+        {
+            let _ = (window, count, mentioned);
         }
     }
     Ok(())

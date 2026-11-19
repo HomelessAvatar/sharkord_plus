@@ -1,9 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Mutex;
-use tauri::Emitter;
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -17,11 +13,6 @@ pub struct HotkeyBinding {
 pub struct HotkeyError {
     pub action_id: String,
     pub reason: String,
-}
-
-#[derive(Default)]
-pub struct ShortcutStateMap {
-    pub registered: Mutex<HashMap<Shortcut, String>>,
 }
 
 /// Normalizes web-style key combo strings (e.g. "ctrl+KeyM", "shift+alt+KeyP", "F8")
@@ -65,79 +56,118 @@ pub fn normalize_combo(combo: &str) -> Option<String> {
     }
 }
 
-pub fn register_hotkeys<R: tauri::Runtime>(
-    app: &tauri::AppHandle<R>,
-    state: &ShortcutStateMap,
-    bindings: &[HotkeyBinding],
-) -> Vec<HotkeyError> {
-    let mut errors: Vec<HotkeyError> = Vec::new();
-    let mut registered_map = state.registered.lock().unwrap();
+#[cfg(desktop)]
+mod desktop_shortcuts {
+    use super::*;
+    use std::collections::HashMap;
+    use std::str::FromStr;
+    use tauri::Emitter;
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 
-    // Unregister any previously registered shortcuts
-    for shortcut in registered_map.keys() {
-        let _ = app.global_shortcut().unregister(*shortcut);
+    #[derive(Default)]
+    pub struct ShortcutStateMap {
+        pub registered: Mutex<HashMap<Shortcut, String>>,
     }
-    registered_map.clear();
 
-    for binding in bindings {
-        let normalized = match normalize_combo(&binding.combo) {
-            Some(n) => n,
-            None => {
-                errors.push(HotkeyError {
-                    action_id: binding.action_id.clone(),
-                    reason: "unsupported".to_string(),
-                });
-                continue;
-            }
-        };
+    pub fn register_hotkeys<R: tauri::Runtime>(
+        app: &tauri::AppHandle<R>,
+        state: &ShortcutStateMap,
+        bindings: &[HotkeyBinding],
+    ) -> Vec<HotkeyError> {
+        let mut errors: Vec<HotkeyError> = Vec::new();
+        let mut registered_map = state.registered.lock().unwrap();
 
-        let shortcut = match Shortcut::from_str(&normalized) {
-            Ok(s) => s,
-            Err(_) => {
-                errors.push(HotkeyError {
-                    action_id: binding.action_id.clone(),
-                    reason: "unsupported".to_string(),
-                });
-                continue;
-            }
-        };
+        // Unregister any previously registered shortcuts
+        for shortcut in registered_map.keys() {
+            let _ = app.global_shortcut().unregister(*shortcut);
+        }
+        registered_map.clear();
 
-        match app.global_shortcut().register(shortcut) {
-            Ok(()) => {
-                registered_map.insert(shortcut, binding.action_id.clone());
-            }
-            Err(_) => {
-                errors.push(HotkeyError {
-                    action_id: binding.action_id.clone(),
-                    reason: "taken".to_string(),
-                });
+        for binding in bindings {
+            let normalized = match normalize_combo(&binding.combo) {
+                Some(n) => n,
+                None => {
+                    errors.push(HotkeyError {
+                        action_id: binding.action_id.clone(),
+                        reason: "unsupported".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let shortcut = match Shortcut::from_str(&normalized) {
+                Ok(s) => s,
+                Err(_) => {
+                    errors.push(HotkeyError {
+                        action_id: binding.action_id.clone(),
+                        reason: "unsupported".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            match app.global_shortcut().register(shortcut) {
+                Ok(()) => {
+                    registered_map.insert(shortcut, binding.action_id.clone());
+                }
+                Err(_) => {
+                    errors.push(HotkeyError {
+                        action_id: binding.action_id.clone(),
+                        reason: "taken".to_string(),
+                    });
+                }
             }
         }
+
+        errors
     }
 
-    errors
-}
+    pub fn handle_shortcut_event<R: tauri::Runtime>(
+        app: &tauri::AppHandle<R>,
+        state: &ShortcutStateMap,
+        shortcut: &Shortcut,
+        event: ShortcutEvent,
+    ) {
+        let registered_map = state.registered.lock().unwrap();
+        if let Some(action_id) = registered_map.get(shortcut) {
+            let phase = match event.state() {
+                ShortcutState::Pressed => "down",
+                ShortcutState::Released => "up",
+            };
 
-pub fn handle_shortcut_event<R: tauri::Runtime>(
-    app: &tauri::AppHandle<R>,
-    state: &ShortcutStateMap,
-    shortcut: &Shortcut,
-    event: ShortcutEvent,
-) {
-    let registered_map = state.registered.lock().unwrap();
-    if let Some(action_id) = registered_map.get(shortcut) {
-        let phase = match event.state() {
-            ShortcutState::Pressed => "down",
-            ShortcutState::Released => "up",
-        };
-
-        // Standard single dispatch path through Tauri event bus
-        let _ = app.emit(
-            "desktop:hotkey",
-            serde_json::json!({
-                "actionId": action_id,
-                "phase": phase,
-            }),
-        );
+            // Standard single dispatch path through Tauri event bus
+            let _ = app.emit(
+                "desktop:hotkey",
+                serde_json::json!({
+                    "actionId": action_id,
+                    "phase": phase,
+                }),
+            );
+        }
     }
 }
+
+#[cfg(desktop)]
+pub use desktop_shortcuts::*;
+
+#[cfg(not(desktop))]
+mod mobile_shortcuts {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[derive(Default)]
+    pub struct ShortcutStateMap {
+        pub registered: Mutex<HashMap<String, String>>,
+    }
+
+    pub fn register_hotkeys<R: tauri::Runtime>(
+        _app: &tauri::AppHandle<R>,
+        _state: &ShortcutStateMap,
+        _bindings: &[HotkeyBinding],
+    ) -> Vec<HotkeyError> {
+        Vec::new()
+    }
+}
+
+#[cfg(not(desktop))]
+pub use mobile_shortcuts::*;

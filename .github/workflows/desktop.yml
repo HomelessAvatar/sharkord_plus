@@ -70,7 +70,8 @@ jobs:
         run: bun --filter client build
 
       - name: Build Tauri desktop application
-        run: bun --filter @sharkord/tauri build
+        shell: bash
+        run: bun --filter @sharkord/tauri build || (sleep 5 && bun --filter @sharkord/tauri build)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

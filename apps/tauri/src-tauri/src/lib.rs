@@ -17,6 +17,7 @@ pub fn run() {
     let vault = SessionVault::load_from_path(SessionVault::default_path())
         .unwrap_or_else(|_| SessionVault::default());
 
+    #[cfg(desktop)]
     let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|app, shortcut, event| {
             let state = app.state::<ShortcutStateMap>();
@@ -28,14 +29,21 @@ pub fn run() {
         .js_init_script(include_str!("bridge_init.js"))
         .build();
 
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .manage(VaultState(Mutex::new(vault)))
         .manage(ShortcutStateMap::default())
         .manage(BridgeState::default())
         .manage(NotificationState::default())
         .plugin(tauri_plugin_notification::init())
-        .plugin(shortcut_plugin)
-        .plugin(bridge_plugin)
+        .plugin(bridge_plugin);
+
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(shortcut_plugin);
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             vault::get_saved_session,
             vault::save_session,
