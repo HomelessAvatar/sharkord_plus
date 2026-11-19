@@ -65,7 +65,7 @@ fn test_android_release_signing_config() {
     let build_gradle = include_str!("../gen/android/app/build.gradle.kts");
     assert!(build_gradle.contains("signingConfigs"));
     assert!(build_gradle.contains("signingConfig = signingConfigs.getByName(\"release\")"));
-    assert!(build_gradle.contains("compileSdk = 34"));
+    assert!(build_gradle.contains("compileSdk = 37"));
     assert!(build_gradle.contains("targetSdk = 34"));
     assert!(build_gradle.contains("isMinifyEnabled = false"));
 }
