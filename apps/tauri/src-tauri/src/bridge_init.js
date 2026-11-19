@@ -187,7 +187,7 @@ const DESKTOP_BRIDGE_VERSION = 1;
 
       showNotification: (notification) => {
         if (!notification) return;
-        const title = notification.title || 'Sharkord Plus';
+        const title = notification.title || 'VibeShark';
         const body = notification.body || '';
         const icon = notification.icon || null;
         const target = notification.target || null;

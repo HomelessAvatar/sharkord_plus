@@ -29,7 +29,7 @@ pub fn setup_tray<R: tauri::Runtime>(
 
     let mut builder = TrayIconBuilder::<R>::with_id(TRAY_ID)
         .menu(&menu)
-        .tooltip("Sharkord Plus")
+        .tooltip("VibeShark")
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
             match event.id.as_ref() {
@@ -115,15 +115,15 @@ pub fn update_tray_tooltip<R: tauri::Runtime>(app: &tauri::AppHandle<R>, tooltip
 }
 
 pub fn set_tray_connection_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>, state: &str) {
-    let tooltip = format!("Sharkord Plus - {}", state);
+    let tooltip = format!("VibeShark - {}", state);
     update_tray_tooltip(app, &tooltip);
 }
 
 pub fn set_tray_voice_active<R: tauri::Runtime>(app: &tauri::AppHandle<R>, active: bool) {
     let tooltip = if active {
-        "Sharkord Plus - Voice Active"
+        "VibeShark - Voice Active"
     } else {
-        "Sharkord Plus"
+        "VibeShark"
     };
     update_tray_tooltip(app, tooltip);
 }

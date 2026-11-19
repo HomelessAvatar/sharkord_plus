@@ -134,7 +134,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Sharkord Plus ${{ github.ref_name }}
+          name: VibeShark ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'release-notes.md' || '' }}
           append_body: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

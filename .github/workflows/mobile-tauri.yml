@@ -47,7 +47,7 @@ jobs:
       - name: Install Android NDK and SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+          sdkmanager "platforms;android-34" "build-tools;35.0.0" "build-tools;34.0.0" "ndk;26.1.10909125"
           echo "NDK_HOME=${ANDROID_HOME}/ndk/26.1.10909125" >> $GITHUB_ENV
 
       - name: Install Rust toolchain
@@ -104,7 +104,7 @@ jobs:
         run: |
           mkdir -p dist-mobile-tauri
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.3"
+          [ -z "$VERSION" ] && VERSION="0.3.4"
 
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -name zipalign | sort -V | tail -n 1)
@@ -113,7 +113,7 @@ jobs:
 
           find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f -name "*.apk" | while read -r apk; do
             echo "Processing APK: $apk"
-            DEST="dist-mobile-tauri/Sharkord.Plus_${VERSION}.apk"
+            DEST="dist-mobile-tauri/VibeShark_${VERSION}.apk"
 
             if [ -n "$APKSIGNER" ] && "$APKSIGNER" verify "$apk" >/dev/null 2>&1; then
               echo "APK is already signed."
@@ -121,7 +121,7 @@ jobs:
             else
               echo "Signing APK with apksigner..."
               if [ -n "$ZIPALIGN" ]; then
-                "$ZIPALIGN" -f 4 "$apk" "$DEST" || cp "$apk" "$DEST"
+                "$ZIPALIGN" -f -P 16 4 "$apk" "$DEST" || "$ZIPALIGN" -f 4 "$apk" "$DEST" || cp "$apk" "$DEST"
               else
                 cp "$apk" "$DEST"
               fi
@@ -142,9 +142,12 @@ jobs:
               echo "Verifying final APK signature:"
               "$APKSIGNER" verify --verbose "$DEST"
             fi
+            # Also keep backwards-compatible Sharkord.Plus asset name
+            cp "$DEST" "dist-mobile-tauri/Sharkord.Plus_${VERSION}.apk"
           done
 
           find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f -name "*.aab" | while read -r aab; do
+            cp "$aab" "dist-mobile-tauri/VibeShark_${VERSION}.aab"
             cp "$aab" "dist-mobile-tauri/Sharkord.Plus_${VERSION}.aab"
           done
 
@@ -191,7 +194,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Sharkord Plus ${{ github.ref_name }}
+          name: VibeShark ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'release-notes.md' || '' }}
           append_body: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

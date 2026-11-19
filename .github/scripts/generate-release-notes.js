@@ -73,13 +73,13 @@ for (const commit of commits) {
   }
 }
 
-let titlePrefix = 'Sharkord Plus';
+let titlePrefix = 'VibeShark';
 if (currentTag.startsWith('mobile-v')) {
-  titlePrefix = 'Sharkord Plus Mobile';
+  titlePrefix = 'VibeShark Mobile';
 } else if (currentTag.startsWith('desktop-v')) {
-  titlePrefix = 'Sharkord Plus Desktop';
+  titlePrefix = 'VibeShark Desktop';
 } else if (currentTag.startsWith('server-v')) {
-  titlePrefix = 'Sharkord Plus Server';
+  titlePrefix = 'VibeShark Server';
 }
 
 let body = `## 🦈 ${titlePrefix} ${currentTag}\n\n`;

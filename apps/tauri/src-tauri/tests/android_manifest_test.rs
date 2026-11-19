@@ -11,6 +11,7 @@ fn test_android_manifest_permissions() {
     assert!(manifest.contains("android.permission.POST_NOTIFICATIONS"));
     assert!(manifest.contains("android.permission.INTERNET"));
     assert!(manifest.contains("VoiceForegroundService"));
+    assert!(manifest.contains("VibeSharkApp"));
 }
 
 #[test]
@@ -68,6 +69,7 @@ fn test_android_release_signing_config() {
     assert!(build_gradle.contains("compileSdk = 37"));
     assert!(build_gradle.contains("targetSdk = 34"));
     assert!(build_gradle.contains("isMinifyEnabled = false"));
+    assert!(build_gradle.contains("useLegacyPackaging = false"));
 }
 
 #[test]
@@ -85,4 +87,33 @@ fn test_capabilities_default_permissions() {
     let perms = json["permissions"].as_array().unwrap();
     assert!(perms.iter().any(|p| p == "core:default"));
     assert!(perms.iter().any(|p| p == "notification:default"));
+}
+
+#[test]
+fn test_16kb_page_size_alignment_configuration() {
+    let build_rs = include_str!("../build.rs");
+    assert!(build_rs.contains("max-page-size=16384"));
+    assert!(build_rs.contains("common-page-size=16384"));
+
+    let cargo_config = include_str!("../.cargo/config.toml");
+    assert!(cargo_config.contains("max-page-size=16384"));
+    assert!(cargo_config.contains("aarch64-linux-android"));
+}
+
+#[test]
+fn test_vibeshark_app_crash_logging() {
+    let app_kt = include_str!(
+        "../gen/android/app/src/main/java/com/sharkord/plus/VibeSharkApp.kt"
+    );
+    assert!(app_kt.contains("class VibeSharkApp : Application()"));
+    assert!(app_kt.contains("Thread.setDefaultUncaughtExceptionHandler"));
+    assert!(app_kt.contains("vibeshark_crash.log"));
+    assert!(app_kt.contains("getExternalFilesDir"));
+    assert!(app_kt.contains("VIBESHARK FATAL CRASH REPORT"));
+}
+
+#[test]
+fn test_android_app_name_strings() {
+    let strings = include_str!("../gen/android/app/src/main/res/values/strings.xml");
+    assert!(strings.contains("\"VibeShark\""));
 }

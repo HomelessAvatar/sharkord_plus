@@ -1,7 +1,7 @@
 <div align="center">
-  <h1>🦈 Sharkord Plus</h1>
+  <h1>🦈 VibeShark</h1>
   <p><strong>High-performance, lightweight, self-hosted real-time communication platform</strong></p>
-  <p><i>An enhanced community fork of <a href="https://github.com/Sharkord/sharkord">Sharkord</a> with Universal Tauri 2.0 (Desktop & Mobile), Pure Native GPUI, Full Hardware Acceleration, and Selective Window Audio Sharing.</i></p>
+  <p><i>An enhanced community fork of <a href="https://github.com/Sharkord/sharkord">Sharkord</a> (formerly Sharkord Plus) with Universal Tauri 2.0 (Desktop & Mobile), Pure Native GPUI, Full Hardware Acceleration, and Selective Window Audio Sharing.</i></p>
 
   [![CI](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/rust-ci.yml)
   [![Version](https://img.shields.io/github/v/release/HomelessAvatar/sharkord_plus?include_prereleases&label=version)](https://github.com/HomelessAvatar/sharkord_plus/releases)
@@ -22,11 +22,22 @@
 
 * **Upstream Repository:** [https://github.com/Sharkord/sharkord](https://github.com/Sharkord/sharkord)
 * **Official Website & Docs:** [https://sharkord.com](https://sharkord.com)
-* **Our Sync Philosophy:** Sharkord Plus maintains **100% backward compatibility** with standard vanilla Sharkord servers. Upstream updates, security patches, and features are selectively incorporated through a structured cherry-pick workflow. See [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md) for sync procedures.
+* **Our Sync Philosophy:** VibeShark maintains **100% backward compatibility** with standard vanilla Sharkord servers. Upstream updates, security patches, and features are selectively incorporated through a structured cherry-pick workflow. See [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md) for sync procedures.
 
 ---
 
-## ✨ What Makes Sharkord Plus Different?
+## 🤖 AI Disclaimer & Vibe Coding Transparency
+
+> [!NOTE]
+> **VibeShark** is an open-source project built with **100% vibe coding**—conceived, architected, and continuously developed in symbiotic collaboration with state-of-the-art AI agents (Google DeepMind Antigravity, Claude, and specialized reasoning tools).
+>
+> * **Radical Transparency:** Following the philosophy of pioneering AI-driven community forks (such as *VibePolla* for Sunshine/Apollo), we believe in open and honest attribution of our AI-native workflow.
+> * **Engineering Rigor:** "Vibe coding" here is paired with enterprise-grade engineering discipline: 26+ automated Rust unit & integration tests, strict TypeScript type safety, static analysis, and continuous delivery via GitHub Actions.
+> * **Upstream Respect:** We maintain full backward compatibility with upstream Sharkord instances and deeply appreciate the core architecture created by [diogomartino](https://github.com/diogomartino) and the Sharkord community.
+
+---
+
+## ✨ What Makes VibeShark Different?
 
 While standard Sharkord provides a fantastic Discord-like self-hosted experience, **Sharkord Plus** pushes performance, multi-platform client parity, and audio/video capabilities to production-grade levels:
 

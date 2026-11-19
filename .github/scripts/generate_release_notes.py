@@ -102,7 +102,7 @@ def main():
 
     sections: list[str] = []
     display_title = tag if tag else "Latest Release"
-    sections.append(f"## Sharkord Plus {display_title}\n")
+    sections.append(f"## VibeShark {display_title}\n")
     sections.append("### 📋 What's Changed\n")
 
     has_categorized = bool(features or fixes or perf or docs or maintenance)

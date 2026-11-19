@@ -25,6 +25,11 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
     signingConfigs {
         create("release") {
             val keyAliasEnv = System.getenv("ANDROID_KEY_ALIAS")
