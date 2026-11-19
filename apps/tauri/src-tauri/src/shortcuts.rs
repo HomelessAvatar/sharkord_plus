@@ -74,7 +74,7 @@ pub fn register_hotkeys<R: tauri::Runtime>(
     let mut registered_map = state.registered.lock().unwrap();
 
     // Unregister any previously registered shortcuts
-    for (shortcut, _) in registered_map.iter() {
+    for shortcut in registered_map.keys() {
         let _ = app.global_shortcut().unregister(*shortcut);
     }
     registered_map.clear();

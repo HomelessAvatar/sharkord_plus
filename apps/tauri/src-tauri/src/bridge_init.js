@@ -165,6 +165,7 @@ const DESKTOP_BRIDGE_VERSION = 1;
         invoke('set_voice_active', { active: Boolean(active) }).catch((e) => {
           console.error('[SharkordDesktop] Failed to set voice active:', e);
         });
+        invoke('set_mobile_voice_active', { active: Boolean(active) }).catch(() => {});
       },
 
       startSystemAudio: async (options) => {

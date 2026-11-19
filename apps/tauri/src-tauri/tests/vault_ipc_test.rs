@@ -108,8 +108,8 @@ fn test_vault_startup_persistence_across_separate_instances() {
 
     // Simulate startup behavior in lib.rs: load_from_path with default fallback
     {
-        let vault_instance_2 = SessionVault::load_from_path(&vault_path)
-            .unwrap_or_else(|_| SessionVault::default());
+        let vault_instance_2 =
+            SessionVault::load_from_path(&vault_path).unwrap_or_else(|_| SessionVault::default());
 
         let active = vault_instance_2.get_active_profile();
         assert!(
@@ -117,10 +117,7 @@ fn test_vault_startup_persistence_across_separate_instances() {
             "Active profile must not be lost across restarts"
         );
         assert_eq!(active.unwrap().id, "srv_persist");
-        assert_eq!(
-            active.unwrap().server_url,
-            "https://community.sharkord.com"
-        );
+        assert_eq!(active.unwrap().server_url, "https://community.sharkord.com");
 
         let profiles = vault_instance_2.list_profiles();
         assert_eq!(profiles.len(), 1);

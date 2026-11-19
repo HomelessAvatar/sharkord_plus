@@ -20,7 +20,9 @@ pub fn save_session(profile: ServerProfile, state: State<'_, VaultState>) -> Res
 #[tauri::command]
 pub fn clear_session(server_id: String, state: State<'_, VaultState>) -> Result<(), String> {
     let mut vault = state.0.lock().map_err(|e| e.to_string())?;
-    vault.remove_profile(&server_id).map_err(|e| e.to_string())?;
+    vault
+        .remove_profile(&server_id)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

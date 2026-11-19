@@ -1,4 +1,5 @@
 pub mod bridge;
+pub mod mobile_voice;
 pub mod shortcuts;
 pub mod tray;
 pub mod vault;
@@ -51,6 +52,7 @@ pub fn run() {
             bridge::show_notification,
             bridge::set_hotkeys,
             bridge::get_hotkey_capabilities,
+            mobile_voice::set_mobile_voice_active,
         ])
         .setup(|app| {
             let notif_handle = app.handle().clone();

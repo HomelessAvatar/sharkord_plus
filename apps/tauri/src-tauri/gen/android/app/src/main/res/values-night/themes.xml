@@ -1,0 +1,6 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. Pure Neutral Dark background. -->
+    <style name="Theme.sharkord_tauri" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/pure_neutral_dark</item>
+    </style>
+</resources>

@@ -20,7 +20,10 @@ pub struct NotificationState {
 
 impl NotificationState {
     pub fn store(&self, id: i32, target: serde_json::Value) {
-        self.pending_targets.lock().unwrap().insert(id, target.clone());
+        self.pending_targets
+            .lock()
+            .unwrap()
+            .insert(id, target.clone());
         *self.latest_target.lock().unwrap() = Some(target);
     }
 
@@ -77,11 +80,7 @@ pub fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn set_unread_state(
-    app: tauri::AppHandle,
-    count: u32,
-    mentioned: bool,
-) -> Result<(), String> {
+pub fn set_unread_state(app: tauri::AppHandle, count: u32, mentioned: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         if count > 0 || mentioned {
             let attention = if mentioned {
@@ -108,6 +107,7 @@ pub fn set_connection_state(app: tauri::AppHandle, state: String) -> Result<(), 
 #[tauri::command]
 pub fn set_voice_active(app: tauri::AppHandle, active: bool) -> Result<(), String> {
     tray::set_tray_voice_active(&app, active);
+    let _ = crate::mobile_voice::set_mobile_voice_active(app.clone(), active);
     Ok(())
 }
 
@@ -138,7 +138,9 @@ pub fn show_notification(
         notif_state.store(id, target_val);
     }
 
-    let mut builder = app.notification().builder()
+    let mut builder = app
+        .notification()
+        .builder()
         .id(id)
         .title(&title)
         .body(&body);
