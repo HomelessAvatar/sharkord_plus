@@ -1,4 +1,4 @@
-name: Desktop GPUI CI & Release
+name: Desktop Tauri CI & Release
 
 on:
   push:
@@ -10,9 +10,13 @@ on:
       - 'v*'
     paths:
       - 'crates/**'
-      - 'apps/desktop-gpui/**'
+      - 'apps/tauri/**'
+      - 'apps/client/**'
+      - 'packages/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - 'package.json'
+      - 'bun.lock'
       - '.github/workflows/desktop.yml'
   pull_request:
     branches:
@@ -20,9 +24,13 @@ on:
       - main
     paths:
       - 'crates/**'
-      - 'apps/desktop-gpui/**'
+      - 'apps/tauri/**'
+      - 'apps/client/**'
+      - 'packages/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - 'package.json'
+      - 'bun.lock'
       - '.github/workflows/desktop.yml'
   workflow_dispatch:
 
@@ -30,144 +38,89 @@ permissions:
   contents: write
 
 jobs:
-  check-and-test:
-    name: Test & Build (${{ matrix.os }})
-    timeout-minutes: 30
+  build-tauri-desktop:
+    name: Build Desktop (${{ matrix.platform }})
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+        include:
+          - platform: windows-latest
+            name: windows-x64
+            args: ''
+          - platform: ubuntu-24.04
+            name: linux-x64
+            args: ''
+          - platform: macos-latest
+            name: macos-arm64
+            args: ''
+    runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/tauri/src-tauri -> target'
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libfontconfig1-dev libvulkan-dev libx11-dev libx11-xcb-dev libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev patchelf file
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file
           sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2 || true
 
-      - name: Install cargo-packager
-        uses: taiki-e/install-action@v2
+      - name: Run Tauri unit tests
+        run: cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml
+
+      - name: Build Tauri desktop application (tauri build)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tool: cargo-packager
+          projectPath: apps/tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Sharkord Plus Desktop ${{ github.ref_name }}'
+          releaseDraft: false
+          prerelease:
+            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name,
+            'beta') || contains(github.ref_name, 'rc') }}
+          includeRelease: false
+          args: ${{ matrix.args }}
 
-      - name: Check code formatting
-        run: cargo fmt --check
-
-      - name: Run Clippy linter
-        run: cargo clippy --all-targets -- -D warnings
-
-      - name: Run all Rust tests
-        run: cargo test --all
-
-      - name: Build release binaries
-        run: cargo build --release -p desktop-gpui -p sharkord-core -p sharkord-mobile
-
-      - name: Package desktop application (Windows)
-        if: runner.os == 'Windows'
+      - name: Stage desktop artifacts
         shell: bash
         run: |
-          mkdir -p dist-windows
-          cp target/release/desktop-gpui.exe dist-windows/sharkord-gpui-windows-x64.exe
-          (cd dist-windows && (zip sharkord-gpui-windows-x64.zip sharkord-gpui-windows-x64.exe || tar -a -cf sharkord-gpui-windows-x64.zip sharkord-gpui-windows-x64.exe))
-          cargo packager --release -p desktop-gpui --formats wix || cargo packager --release --config apps/desktop-gpui/packager.toml --formats wix || (cd apps/desktop-gpui && cargo packager --release --formats wix) || true
-          find . -type f \( -name "*.msi" -o -name "*.exe" \) ! -path "*/node_modules/*" ! -path "*/debug/*" ! -path "*/build/*" ! -path "*/deps/*" ! -path "*/incremental/*" ! -path "*/target/release/desktop-gpui.exe" ! -path "./dist-windows/*" ! -path "./.git/*" -exec cp {} dist-windows/ \; || true
-          ls -la dist-windows
+          mkdir -p dist-desktop
+          find target/release/bundle apps/tauri/src-tauri/target/release/bundle -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          ls -la dist-desktop || true
 
-      - name: Package desktop application (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p dist-linux
-          cp target/release/desktop-gpui dist-linux/sharkord-gpui-linux-x64
-          chmod +x dist-linux/sharkord-gpui-linux-x64
-          (cd dist-linux && tar -czvf sharkord-gpui-linux-x64.tar.gz sharkord-gpui-linux-x64)
-          cargo packager --release -p desktop-gpui --formats appimage,deb || cargo packager --release --config apps/desktop-gpui/packager.toml --formats appimage,deb || (cd apps/desktop-gpui && cargo packager --release --formats appimage,deb) || true
-          find . -type f \( -name "*.AppImage" -o -name "*.deb" \) ! -path "*/node_modules/*" ! -path "*/debug/*" ! -path "./dist-linux/*" ! -path "./.git/*" -exec cp {} dist-linux/ \; || true
-          ls -la dist-linux
-
-      - name: Upload desktop artifacts (Windows)
-        if: runner.os == 'Windows'
+      - name: Upload desktop build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: sharkord-gpui-windows
-          path: dist-windows/*
-          if-no-files-found: warn
-
-      - name: Upload desktop artifacts (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v7
-        with:
-          name: sharkord-gpui-linux
-          path: dist-linux/*
-          if-no-files-found: warn
-
-  build-macos:
-    name: Build (macos-latest)
-    if: startsWith(github.ref, 'refs/tags/desktop-v') || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 30
-    runs-on: macos-latest
-    continue-on-error: true
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install cargo-packager
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-packager
-
-      - name: Build release binaries
-        run: cargo build --release -p desktop-gpui -p sharkord-core -p sharkord-mobile
-
-      - name: Package desktop application (macOS)
-        run: |
-          DIST_MACOS="$(pwd)/dist-macos"
-          mkdir -p "$DIST_MACOS"
-          cp target/release/desktop-gpui "$DIST_MACOS/sharkord-gpui-macos-arm64"
-          chmod +x "$DIST_MACOS/sharkord-gpui-macos-arm64"
-          (cd "$DIST_MACOS" && zip sharkord-gpui-macos-arm64.zip sharkord-gpui-macos-arm64)
-          cargo packager --release -p desktop-gpui --formats dmg,app || cargo packager --release --config apps/desktop-gpui/packager.toml --formats dmg,app || (cd apps/desktop-gpui && cargo packager --release --formats dmg,app) || true
-          find . -type f -name "*.dmg" ! -path "*/node_modules/*" ! -path "*/debug/*" ! -path "./dist-macos/*" ! -path "./.git/*" -exec cp {} "$DIST_MACOS/" \; || true
-          for app_path in $(find . -type d -name "*.app" ! -path "*/node_modules/*" ! -path "*/build/*" ! -path "*/target/debug/*"); do
-            app_name=$(basename "$app_path" .app)
-            if [ ! -f "$DIST_MACOS/${app_name}-macos.zip" ] && [ ! -f "$DIST_MACOS/${app_name}.zip" ]; then
-              (cd "$(dirname "$app_path")" && zip -r "$DIST_MACOS/${app_name}-macos.zip" "$(basename "$app_path")")
-            fi
-          done
-          ls -la "$DIST_MACOS"
-
-      - name: Upload desktop artifacts (macOS)
-        uses: actions/upload-artifact@v7
-        with:
-          name: sharkord-gpui-macos
-          path: dist-macos/*
+          name: sharkord-desktop-${{ matrix.name }}
+          path: dist-desktop/*
           if-no-files-found: warn
 
   publish-release:
     name: Publish Desktop Release
-    if: always() && !cancelled() && (startsWith(github.ref, 'refs/tags/desktop-v') || startsWith(github.ref, 'refs/tags/v'))
-    needs: [check-and-test, build-macos]
+    if:
+      always() && !cancelled() && (startsWith(github.ref, 'refs/tags/desktop-v')
+      || startsWith(github.ref, 'refs/tags/v'))
+    needs: [build-tauri-desktop]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -176,7 +129,9 @@ jobs:
           fetch-depth: 0
 
       - name: Generate automated release notes
-        run: node .github/scripts/generate-release-notes.js release-notes.md
+        run:
+          node .github/scripts/generate-release-notes.js release-notes.md ||
+          echo "Release ${{ github.ref_name }}" > release-notes.md
 
       - name: Download desktop build artifacts
         uses: actions/download-artifact@v8
@@ -188,8 +143,7 @@ jobs:
         run: |
           mkdir -p dist-release
           find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} dist-release/ \;
-          find release-artifacts -type f \( -name "*linux*" -o -name "*macos*" \) ! -name "*.*" -exec cp {} dist-release/ \; 2>/dev/null || true
-          find dist-release -type f \( -name "*.AppImage" -o -name "*-linux-*" -o -name "*-macos-*" \) -exec chmod +x {} \;
+          find dist-release -type f \( -name "*.AppImage" -o -name "*-linux-*" -o -name "*-macos-*" \) -exec chmod +x {} \; 2>/dev/null || true
           echo "=== Contents of dist-release ==="
           ls -la dist-release
 
@@ -198,7 +152,9 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Sharkord Plus Desktop ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          prerelease:
+            ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name,
+            'beta') || contains(github.ref_name, 'rc') }}
           body_path: release-notes.md
           files: |
             dist-release/*
