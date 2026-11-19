@@ -25,6 +25,24 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        create("release") {
+            val keyAliasEnv = System.getenv("ANDROID_KEY_ALIAS")
+            val keyPasswordEnv = System.getenv("ANDROID_KEY_PASSWORD")
+            val storeFileEnv = System.getenv("ANDROID_KEYSTORE_PATH")
+            val storePasswordEnv = System.getenv("ANDROID_STORE_PASSWORD")
+
+            if (storeFileEnv != null && file(storeFileEnv).exists()) {
+                storeFile = file(storeFileEnv)
+                storePassword = storePasswordEnv ?: "sharkord"
+                keyAlias = keyAliasEnv ?: "sharkord"
+                keyPassword = keyPasswordEnv ?: "sharkord"
+            } else {
+                // Fall back to debug signing config so release builds are always signed and installable
+                initWith(getByName("debug"))
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -39,6 +57,7 @@ android {
             }
         }
         getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
             optimization {
                enable = true
             }

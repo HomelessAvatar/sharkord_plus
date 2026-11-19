@@ -19,4 +19,7 @@ fn test_mobile_tauri_workflow_validity() {
     assert!(workflow.contains("android-actions/setup-android@v3"), "must setup android sdk");
     assert!(workflow.contains("append_body: true"), "mobile-tauri.yml release step must append body");
     assert!(!workflow.contains("always() && !cancelled()"), "mobile-tauri.yml must not publish release on build failure");
+    assert!(workflow.contains("ANDROID_KEYSTORE_PATH"), "mobile-tauri.yml must configure keystore");
+    assert!(workflow.contains("APKSIGNER"), "mobile-tauri.yml must locate and use apksigner");
+    assert!(workflow.contains("sign"), "mobile-tauri.yml must sign APK");
 }

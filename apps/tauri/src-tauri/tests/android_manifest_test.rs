@@ -59,3 +59,10 @@ fn test_android_neutral_dark_theme() {
     let themes = include_str!("../gen/android/app/src/main/res/values/themes.xml");
     assert!(themes.contains("pure_neutral_dark"));
 }
+
+#[test]
+fn test_android_release_signing_config() {
+    let build_gradle = include_str!("../gen/android/app/build.gradle.kts");
+    assert!(build_gradle.contains("signingConfigs"));
+    assert!(build_gradle.contains("signingConfig = signingConfigs.getByName(\"release\")"));
+}

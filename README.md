@@ -111,7 +111,7 @@ docker run -d \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name sharkord-plus \
-  ghcr.io/homelessavatar/sharkord_plus:0.3.1
+  ghcr.io/homelessavatar/sharkord_plus:0.3.2
 ```
 
 ### 4. Local Web & Server Development
@@ -135,7 +135,7 @@ cargo test --all
 
 Sharkord Plus follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
-* **Current Version:** `v0.3.1`
+* **Current Version:** `v0.3.2`
 * **Upstream Compatibility Matrix:**
   | Sharkord Plus Version | Compatible Sharkord Upstream Server |
   |-----------------------|-------------------------------------|

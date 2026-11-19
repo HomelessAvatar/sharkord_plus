@@ -72,20 +72,82 @@ jobs:
       - name: Build frontend client
         run: bun --filter client build
 
+      - name: Prepare Android release signing keystore
+        run: |
+          KEYSTORE_PATH="$HOME/release.keystore"
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias sharkord \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass sharkord \
+              -keypass sharkord \
+              -dname "CN=Sharkord Plus, OU=Sharkord, O=Sharkord, C=US"
+          fi
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS=sharkord" >> $GITHUB_ENV
+          echo "ANDROID_STORE_PASSWORD=sharkord" >> $GITHUB_ENV
+          echo "ANDROID_KEY_PASSWORD=sharkord" >> $GITHUB_ENV
+
       - name: Build Tauri Android APK (tauri android build)
         run: bun --filter @sharkord/tauri android:build
         env:
           NDK_HOME: ${{ env.NDK_HOME }}
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEY_ALIAS: ${{ env.ANDROID_KEY_ALIAS }}
+          ANDROID_STORE_PASSWORD: ${{ env.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD }}
 
-      - name: Stage mobile artifacts
+      - name: Stage and sign mobile artifacts
         run: |
           mkdir -p dist-mobile-tauri
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.1"
-          find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f \( -name "*.apk" -o -name "*.aab" \) | while read -r file; do
-            ext="${file##*.}"
-            cp "$file" "dist-mobile-tauri/Sharkord.Plus_${VERSION}.${ext}"
+          [ -z "$VERSION" ] && VERSION="0.3.2"
+
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
+          ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -name zipalign | sort -V | tail -n 1)
+          echo "Found apksigner at: $APKSIGNER"
+          echo "Found zipalign at: $ZIPALIGN"
+
+          find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f -name "*.apk" | while read -r apk; do
+            echo "Processing APK: $apk"
+            DEST="dist-mobile-tauri/Sharkord.Plus_${VERSION}.apk"
+
+            if [ -n "$APKSIGNER" ] && "$APKSIGNER" verify "$apk" >/dev/null 2>&1; then
+              echo "APK is already signed."
+              cp "$apk" "$DEST"
+            else
+              echo "Signing APK with apksigner..."
+              if [ -n "$ZIPALIGN" ]; then
+                "$ZIPALIGN" -f 4 "$apk" "$DEST" || cp "$apk" "$DEST"
+              else
+                cp "$apk" "$DEST"
+              fi
+              if [ -n "$APKSIGNER" ]; then
+                "$APKSIGNER" sign \
+                  --ks "$ANDROID_KEYSTORE_PATH" \
+                  --ks-pass pass:sharkord \
+                  --ks-key-alias sharkord \
+                  --key-pass pass:sharkord \
+                  --v1-signing-enabled true \
+                  --v2-signing-enabled true \
+                  --v3-signing-enabled true \
+                  "$DEST"
+              fi
+            fi
+
+            if [ -n "$APKSIGNER" ]; then
+              echo "Verifying final APK signature:"
+              "$APKSIGNER" verify --verbose "$DEST"
+            fi
           done
+
+          find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f -name "*.aab" | while read -r aab; do
+            cp "$aab" "dist-mobile-tauri/Sharkord.Plus_${VERSION}.aab"
+          done
+
           echo "=== Staged Mobile Artifacts ==="
           ls -la dist-mobile-tauri || true
 
