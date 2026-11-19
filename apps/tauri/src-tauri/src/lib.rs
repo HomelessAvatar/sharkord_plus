@@ -1,7 +1,13 @@
+pub mod bridge;
+pub mod shortcuts;
+pub mod tray;
 pub mod vault;
 
+use bridge::BridgeState;
 use sharkord_core::vault::SessionVault;
+use shortcuts::ShortcutStateMap;
 use std::sync::Mutex;
+use tauri::Manager;
 use vault::VaultState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -9,15 +15,46 @@ pub fn run() {
     let vault = SessionVault::load_from_path(SessionVault::default_path())
         .unwrap_or_else(|_| SessionVault::default());
 
+    let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
+        .with_handler(|app, shortcut, event| {
+            let state = app.state::<ShortcutStateMap>();
+            shortcuts::handle_shortcut_event(app, &state, shortcut, event);
+        })
+        .build();
+
+    let bridge_plugin = tauri::plugin::Builder::<tauri::Wry>::new("desktop-bridge")
+        .js_init_script(include_str!("bridge_init.js"))
+        .build();
+
     tauri::Builder::default()
         .manage(VaultState(Mutex::new(vault)))
+        .manage(ShortcutStateMap::default())
+        .manage(BridgeState::default())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(shortcut_plugin)
+        .plugin(bridge_plugin)
         .invoke_handler(tauri::generate_handler![
             vault::get_saved_session,
             vault::save_session,
             vault::clear_session,
             vault::list_saved_servers,
+            bridge::get_server_list_visible,
+            bridge::toggle_server_list,
+            bridge::open_settings,
+            bridge::set_unread_state,
+            bridge::set_connection_state,
+            bridge::set_voice_active,
+            bridge::start_system_audio,
+            bridge::stop_system_audio,
+            bridge::show_notification,
+            bridge::set_hotkeys,
+            bridge::get_hotkey_capabilities,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                tray::setup_tray(app.handle())?;
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
