@@ -105,12 +105,106 @@ impl VoiceBarView {
         Self { state }
     }
 
-    /// Renders the docked Voice Bar element tree.
+    /// Renders the docked Voice Bar element tree without interactive handlers.
     pub fn render_element(&self) -> impl IntoElement {
+        self.render_internal(None)
+    }
+
+    /// Renders the docked Voice Bar element tree with interactive click handlers.
+    pub fn render_interactive(
+        &self,
+        cx: &mut Context<crate::ui::WorkspaceView>,
+    ) -> impl IntoElement {
+        self.render_internal(Some(cx))
+    }
+
+    fn render_internal(
+        &self,
+        mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> impl IntoElement {
         let (mute_label, deafen_label) =
             voice_action_labels(self.state.is_muted, self.state.is_deafened);
         let dot_color = voice_status_indicator_color(&self.state.connection);
         let status_desc = voice_status_text(&self.state.connection);
+
+        let mut mute_btn = div()
+            .id("voice_bar_mute_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .flex_1()
+            .py_1()
+            .rounded_md()
+            .bg(if self.state.is_muted {
+                theme::bg_surface_4()
+            } else {
+                theme::bg_elevated()
+            })
+            .text_xs()
+            .text_color(if self.state.is_muted {
+                theme::status_dnd()
+            } else {
+                theme::text_primary()
+            })
+            .child(mute_label);
+
+        let mut deafen_btn = div()
+            .id("voice_bar_deafen_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .flex_1()
+            .py_1()
+            .rounded_md()
+            .bg(if self.state.is_deafened {
+                theme::bg_surface_4()
+            } else {
+                theme::bg_elevated()
+            })
+            .text_xs()
+            .text_color(if self.state.is_deafened {
+                theme::status_dnd()
+            } else {
+                theme::text_primary()
+            })
+            .child(deafen_label);
+
+        let mut disconnect_btn = div()
+            .id("voice_bar_disconnect_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .px_2()
+            .py_1()
+            .rounded_md()
+            .bg(theme::bg_elevated())
+            .text_xs()
+            .text_color(theme::status_dnd())
+            .child("✕");
+
+        if let Some(ref mut cx) = cx {
+            mute_btn = mute_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_mute_click(cx);
+                }),
+            );
+            deafen_btn = deafen_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_deafen_click(cx);
+                }),
+            );
+            disconnect_btn = disconnect_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_disconnect_click(cx);
+                }),
+            );
+        }
 
         div()
             .flex()
@@ -161,64 +255,9 @@ impl VoiceBarView {
                     .justify_between()
                     .mt_1()
                     .gap_1()
-                    // Mute button
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .flex_1()
-                            .py_1()
-                            .rounded_md()
-                            .bg(if self.state.is_muted {
-                                theme::bg_surface_4()
-                            } else {
-                                theme::bg_elevated()
-                            })
-                            .text_xs()
-                            .text_color(if self.state.is_muted {
-                                theme::status_dnd()
-                            } else {
-                                theme::text_primary()
-                            })
-                            .child(mute_label),
-                    )
-                    // Deafen button
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .flex_1()
-                            .py_1()
-                            .rounded_md()
-                            .bg(if self.state.is_deafened {
-                                theme::bg_surface_4()
-                            } else {
-                                theme::bg_elevated()
-                            })
-                            .text_xs()
-                            .text_color(if self.state.is_deafened {
-                                theme::status_dnd()
-                            } else {
-                                theme::text_primary()
-                            })
-                            .child(deafen_label),
-                    )
-                    // Disconnect button
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .px_2()
-                            .py_1()
-                            .rounded_md()
-                            .bg(theme::bg_elevated())
-                            .text_xs()
-                            .text_color(theme::status_dnd())
-                            .child("✕"),
-                    ),
+                    .child(mute_btn)
+                    .child(deafen_btn)
+                    .child(disconnect_btn),
             )
     }
 }

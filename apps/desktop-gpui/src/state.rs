@@ -62,6 +62,51 @@ impl AppState {
         Self::default()
     }
 
+    /// Creates a mock initialized `AppState` instance with preconfigured channels.
+    pub fn new_mock() -> Self {
+        let mut state = Self::new();
+        state.server_settings = Some(ServerSettings {
+            server_id: "sharkord-main".to_string(),
+            name: "Sharkord Plus HQ".to_string(),
+            is_plus: Some(true),
+            ..Default::default()
+        });
+        state.current_user = Some(User {
+            id: 1,
+            name: "User".to_string(),
+            status: Some("online".to_string()),
+            ..Default::default()
+        });
+        state.set_channels(vec![
+            Channel {
+                id: 1,
+                name: "general".to_string(),
+                channel_type: sharkord_core::types::ChannelType::Text,
+                topic: Some("General discussion for Sharkord Plus".to_string()),
+                private: false,
+                is_dm: false,
+                position: 0,
+                category_id: None,
+                created_at: Some(1000),
+                updated_at: None,
+            },
+            Channel {
+                id: 2,
+                name: "voice-lounge".to_string(),
+                channel_type: sharkord_core::types::ChannelType::Voice,
+                topic: None,
+                private: false,
+                is_dm: false,
+                position: 1,
+                category_id: None,
+                created_at: Some(1000),
+                updated_at: None,
+            },
+        ]);
+        state.select_channel(1);
+        state
+    }
+
     /// Sets the channels list.
     pub fn set_channels(&mut self, channels: Vec<Channel>) {
         self.channels = channels;
@@ -169,6 +214,11 @@ impl AppState {
         self.voice_bar_state.is_muted
     }
 
+    /// Toggles microphone mute (alias for `toggle_voice_mute`).
+    pub fn toggle_mute(&mut self) -> bool {
+        self.toggle_voice_mute()
+    }
+
     /// Toggles sound deafen. When deafened, microphone is also muted.
     /// Returns the new deafened state.
     pub fn toggle_voice_deafen(&mut self) -> bool {
@@ -177,6 +227,11 @@ impl AppState {
             self.voice_bar_state.is_muted = true;
         }
         self.voice_bar_state.is_deafened
+    }
+
+    /// Toggles sound deafen (alias for `toggle_voice_deafen`).
+    pub fn toggle_deafen(&mut self) -> bool {
+        self.toggle_voice_deafen()
     }
 
     /// Disconnects from active voice channel.

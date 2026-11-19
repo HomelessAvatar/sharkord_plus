@@ -88,9 +88,50 @@ impl ServerRailView {
         Self::default()
     }
 
-    /// Renders the Server Rail element tree.
+    /// Renders the Server Rail element tree without interactive handlers.
     pub fn render_element(&self) -> impl IntoElement {
+        self.render_internal(None)
+    }
+
+    /// Renders the Server Rail element tree with interactive server selection handlers.
+    pub fn render_interactive(
+        &self,
+        cx: &mut Context<crate::ui::WorkspaceView>,
+    ) -> impl IntoElement {
+        self.render_internal(Some(cx))
+    }
+
+    fn render_internal(
+        &self,
+        mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> impl IntoElement {
         let home_pill_height = server_pill_height(self.is_home_active, false);
+
+        let mut home_btn = div()
+            .id("server_rail_home_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w(px(48.0))
+            .h(px(48.0))
+            .rounded_2xl()
+            .bg(if self.is_home_active {
+                theme::accent()
+            } else {
+                theme::bg_elevated()
+            })
+            .text_color(theme::text_primary())
+            .child("💬");
+
+        if let Some(ref mut cx) = cx {
+            home_btn = home_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_server_click(None, cx);
+                }),
+            );
+        }
 
         div()
             .flex()
@@ -122,22 +163,7 @@ impl ServerRailView {
                             .bg(theme::text_primary()),
                     )
                     // Home icon avatar
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .w(px(48.0))
-                            .h(px(48.0))
-                            .rounded_2xl()
-                            .bg(if self.is_home_active {
-                                theme::accent()
-                            } else {
-                                theme::bg_elevated()
-                            })
-                            .text_color(theme::text_primary())
-                            .child("💬"),
-                    ),
+                    .child(home_btn),
             )
             // Separator divider
             .child(
@@ -161,6 +187,34 @@ impl ServerRailView {
                     .children(self.servers.iter().map(|srv| {
                         let pill_h = server_pill_height(srv.is_active, srv.has_unread);
                         let initials = server_initials(&srv.name);
+                        let srv_id = srv.id.clone();
+
+                        let mut srv_btn = div()
+                            .id(ElementId::Name(format!("server_item_{}", srv.id).into()))
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(48.0))
+                            .h(px(48.0))
+                            .rounded_2xl()
+                            .bg(if srv.is_active {
+                                theme::accent()
+                            } else {
+                                theme::bg_elevated()
+                            })
+                            .text_color(theme::text_primary())
+                            .child(initials);
+
+                        if let Some(ref mut cx) = cx {
+                            let srv_id_clone = srv_id.clone();
+                            srv_btn = srv_btn.on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |view, _, _window, cx| {
+                                    view.on_server_click(Some(srv_id_clone.clone()), cx);
+                                }),
+                            );
+                        }
 
                         div()
                             .relative()
@@ -178,22 +232,7 @@ impl ServerRailView {
                                     .rounded_r_md()
                                     .bg(theme::text_primary()),
                             )
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(48.0))
-                                    .h(px(48.0))
-                                    .rounded_2xl()
-                                    .bg(if srv.is_active {
-                                        theme::accent()
-                                    } else {
-                                        theme::bg_elevated()
-                                    })
-                                    .text_color(theme::text_primary())
-                                    .child(initials),
-                            )
+                            .child(srv_btn)
                     })),
             )
             // 3. Add server button

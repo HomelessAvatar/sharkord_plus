@@ -167,8 +167,23 @@ impl ChannelTreeView {
         }
     }
 
-    /// Renders the Channel Tree element tree.
+    /// Renders the Channel Tree element tree without interactive handlers.
     pub fn render_element(&self) -> impl IntoElement {
+        self.render_internal(None)
+    }
+
+    /// Renders the Channel Tree element tree with interactive channel selection handlers.
+    pub fn render_interactive(
+        &self,
+        cx: &mut Context<crate::ui::WorkspaceView>,
+    ) -> impl IntoElement {
+        self.render_internal(Some(cx))
+    }
+
+    fn render_internal(
+        &self,
+        mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -228,49 +243,63 @@ impl ChannelTreeView {
                             .children(group.channels.iter().map(|item| {
                                 let icon = channel_icon(item.channel.channel_type);
                                 let is_active = item.is_active;
+                                let channel_id = item.channel.id;
+
+                                let mut channel_btn = div()
+                                    .id(ElementId::Name(
+                                        format!("channel_item_{}", item.channel.id).into(),
+                                    ))
+                                    .cursor_pointer()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap_2()
+                                    .px_2()
+                                    .py_1()
+                                    .rounded_md()
+                                    .bg(if is_active {
+                                        theme::bg_elevated()
+                                    } else {
+                                        theme::bg_subsurface()
+                                    })
+                                    .text_color(if is_active {
+                                        theme::text_primary()
+                                    } else {
+                                        theme::text_secondary()
+                                    })
+                                    .child(
+                                        div()
+                                            .text_color(if is_active {
+                                                theme::text_primary()
+                                            } else {
+                                                theme::text_muted()
+                                            })
+                                            .child(icon),
+                                    )
+                                    .child(
+                                        div()
+                                            .font_weight(if is_active {
+                                                gpui::FontWeight::MEDIUM
+                                            } else {
+                                                gpui::FontWeight::NORMAL
+                                            })
+                                            .child(item.channel.name.clone()),
+                                    );
+
+                                if let Some(ref mut cx) = cx {
+                                    channel_btn = channel_btn.on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |view, _, _window, cx| {
+                                            view.on_channel_click(channel_id, cx);
+                                        }),
+                                    );
+                                }
 
                                 div()
                                     .flex()
                                     .flex_col()
                                     .w_full()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_row()
-                                            .items_center()
-                                            .gap_2()
-                                            .px_2()
-                                            .py_1()
-                                            .rounded_md()
-                                            .bg(if is_active {
-                                                theme::bg_elevated()
-                                            } else {
-                                                theme::bg_subsurface()
-                                            })
-                                            .text_color(if is_active {
-                                                theme::text_primary()
-                                            } else {
-                                                theme::text_secondary()
-                                            })
-                                            .child(
-                                                div()
-                                                    .text_color(if is_active {
-                                                        theme::text_primary()
-                                                    } else {
-                                                        theme::text_muted()
-                                                    })
-                                                    .child(icon),
-                                            )
-                                            .child(
-                                                div()
-                                                    .font_weight(if is_active {
-                                                        gpui::FontWeight::MEDIUM
-                                                    } else {
-                                                        gpui::FontWeight::NORMAL
-                                                    })
-                                                    .child(item.channel.name.clone()),
-                                            ),
-                                    )
+                                    .child(channel_btn)
                                     // Voice participants list under active voice channel
                                     .children(item.voice_participants.iter().map(|p| {
                                         let border_color = p.speaking_border_color();

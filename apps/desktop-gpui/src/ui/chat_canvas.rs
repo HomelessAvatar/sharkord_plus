@@ -400,8 +400,25 @@ impl ChatCanvasView {
         }
     }
 
-    /// Renders the Chat Canvas element tree.
+    /// Renders the Chat Canvas element tree without interactive handlers.
     pub fn render_element(&self) -> impl IntoElement {
+        self.render_internal(None, None)
+    }
+
+    /// Renders the Chat Canvas element tree with interactive composer input.
+    pub fn render_interactive(
+        &self,
+        focus_handle: Option<&FocusHandle>,
+        cx: &mut Context<crate::ui::WorkspaceView>,
+    ) -> impl IntoElement {
+        self.render_internal(focus_handle, Some(cx))
+    }
+
+    fn render_internal(
+        &self,
+        focus_handle: Option<&FocusHandle>,
+        mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> impl IntoElement {
         let placeholder = format!("Message #{}...", self.channel_name);
 
         div()
@@ -629,8 +646,10 @@ impl ChatCanvasView {
                         } else {
                             None
                         })
-                        .child(
-                            div()
+                        .child({
+                            let mut composer_container = div()
+                                .id("chat_composer_input")
+                                .cursor_text()
                                 .flex()
                                 .flex_row()
                                 .items_center()
@@ -654,22 +673,54 @@ impl ChatCanvasView {
                                         } else {
                                             self.message_draft.clone()
                                         }),
-                                )
-                                .child(
-                                    div()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .px_2()
-                                        .py_1()
-                                        .rounded_md()
-                                        .bg(theme::accent())
-                                        .text_xs()
-                                        .font_weight(gpui::FontWeight::MEDIUM)
-                                        .text_color(theme::text_primary())
-                                        .child("Send ↵"),
-                                ),
-                        ),
+                                );
+
+                            let mut send_btn = div()
+                                .id("chat_composer_send_btn")
+                                .cursor_pointer()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .px_2()
+                                .py_1()
+                                .rounded_md()
+                                .bg(theme::accent())
+                                .text_xs()
+                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .text_color(theme::text_primary())
+                                .child("Send ↵");
+
+                            if let Some(handle) = focus_handle {
+                                composer_container = composer_container.track_focus(handle);
+                            }
+
+                            if let Some(ref mut cx) = cx {
+                                composer_container = composer_container
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|view, _, window, _| {
+                                            if let Some(ref handle) = view.focus_handle {
+                                                window.focus(handle);
+                                            }
+                                        }),
+                                    )
+                                    .on_key_down(cx.listener(
+                                        |view, event: &KeyDownEvent, _, cx| {
+                                            view.on_composer_key_down(event, cx);
+                                        },
+                                    ));
+
+                                send_btn = send_btn.on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|view, _, _window, cx| {
+                                        view.send_message();
+                                        cx.notify();
+                                    }),
+                                );
+                            }
+
+                            composer_container.child(send_btn)
+                        }),
                 ),
             )
     }

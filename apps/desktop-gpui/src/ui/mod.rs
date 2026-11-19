@@ -82,6 +82,7 @@ pub struct WorkspaceView {
     pub member_list: MemberListSidebarView,
     pub quick_switcher: QuickSwitcherState,
     pub active_center_view: ActiveContentView,
+    pub focus_handle: Option<FocusHandle>,
 }
 
 impl WorkspaceView {
@@ -109,9 +110,17 @@ impl WorkspaceView {
             member_list: MemberListSidebarView::default(),
             quick_switcher,
             active_center_view,
+            focus_handle: None,
         };
 
         workspace.sync_views();
+        workspace
+    }
+
+    /// Creates a new `WorkspaceView` in a GPUI context with an active `FocusHandle`.
+    pub fn new_in_context(state: AppState, cx: &mut Context<Self>) -> Self {
+        let mut workspace = Self::new(state);
+        workspace.focus_handle = Some(cx.focus_handle());
         workspace
     }
 
@@ -295,14 +304,85 @@ impl WorkspaceView {
     pub fn toggle_update_modal(&mut self) {
         self.state.toggle_update_modal();
     }
+
+    /// Interactive handler for channel selection in the channel tree.
+    pub fn on_channel_click(&mut self, channel_id: u64, cx: &mut Context<Self>) {
+        self.select_channel(channel_id);
+        cx.notify();
+    }
+
+    /// Interactive handler for selecting a channel by its name or string ID.
+    pub fn on_channel_click_str(&mut self, channel_identifier: &str, cx: &mut Context<Self>) {
+        if let Ok(id) = channel_identifier.parse::<u64>() {
+            self.select_channel(id);
+        } else if let Some(ch) = self
+            .state
+            .channels
+            .iter()
+            .find(|c| c.name == channel_identifier)
+        {
+            self.select_channel(ch.id);
+        }
+        cx.notify();
+    }
+
+    /// Interactive handler for server rail item selection.
+    pub fn on_server_click(&mut self, server_id: Option<String>, cx: &mut Context<Self>) {
+        self.state.active_server_id = server_id;
+        self.sync_views();
+        cx.notify();
+    }
+
+    /// Interactive handler for voice mute toggle button.
+    pub fn on_mute_click(&mut self, cx: &mut Context<Self>) {
+        self.toggle_voice_mute();
+        cx.notify();
+    }
+
+    /// Interactive handler for voice deafen toggle button.
+    pub fn on_deafen_click(&mut self, cx: &mut Context<Self>) {
+        self.toggle_voice_deafen();
+        cx.notify();
+    }
+
+    /// Interactive handler for voice disconnect button.
+    pub fn on_disconnect_click(&mut self, cx: &mut Context<Self>) {
+        self.disconnect_voice();
+        cx.notify();
+    }
+
+    /// Interactive handler for keystrokes in the chat composer input field.
+    pub fn on_composer_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        let key = event.keystroke.key.as_str();
+        if key == "enter" {
+            self.send_message();
+        } else if key == "backspace" {
+            self.message_draft.pop();
+            self.chat_canvas.message_draft = self.message_draft.clone();
+        } else if let Some(ref char_str) = event.keystroke.key_char {
+            self.message_draft.push_str(char_str);
+            self.chat_canvas.message_draft = self.message_draft.clone();
+        } else if key.len() == 1 {
+            self.message_draft.push_str(key);
+            self.chat_canvas.message_draft = self.message_draft.clone();
+        }
+        cx.notify();
+    }
 }
 
 impl Render for WorkspaceView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.focus_handle.is_none() {
+            self.focus_handle = Some(cx.focus_handle());
+        }
+
         let voice_bar_view = VoiceBarView::new(self.voice_bar.clone());
 
         let center_element: AnyElement = match self.active_center_view {
-            ActiveContentView::Chat => self.chat_canvas.render_element().into_any_element(),
+            ActiveContentView::Chat => self
+                .chat_canvas
+                .render_interactive(self.focus_handle.as_ref(), cx)
+                .into_any_element(),
             ActiveContentView::VoiceStage => self.voice_stage.render_element().into_any_element(),
             ActiveContentView::ScreenShare => {
                 let tile_state = VideoTileState::new(0, "Screen Share".to_string());
@@ -327,7 +407,7 @@ impl Render for WorkspaceView {
             .h_full()
             .bg(theme::bg_base())
             // Column 1: Server Rail (72px fixed)
-            .child(self.server_rail.render_element())
+            .child(self.server_rail.render_interactive(cx))
             // Column 2: Channel Tree Sidebar (240px fixed) with docked Voice Bar
             .child(
                 div()
@@ -338,8 +418,8 @@ impl Render for WorkspaceView {
                     .bg(theme::bg_subsurface())
                     .border_r_1()
                     .border_color(theme::border_hairline())
-                    .child(self.channel_tree.render_element())
-                    .child(voice_bar_view.render_element()),
+                    .child(self.channel_tree.render_interactive(cx))
+                    .child(voice_bar_view.render_interactive(cx)),
             )
             // Column 3: Dynamic Center Content Canvas (Chat, VoiceStage, or ScreenShare)
             .child(
