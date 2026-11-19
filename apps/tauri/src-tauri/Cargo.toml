@@ -1,6 +1,6 @@
 [package]
 name = "sharkord-tauri"
-version = "0.3.0"
+version = "0.3.1"
 description = "Sharkord Plus Universal Desktop and Mobile Client"
 authors = ["Sharkord Team"]
 edition = "2021"

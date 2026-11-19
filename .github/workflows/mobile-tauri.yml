@@ -81,7 +81,7 @@ jobs:
         run: |
           mkdir -p dist-mobile-tauri
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.0"
+          [ -z "$VERSION" ] && VERSION="0.3.1"
           find apps/tauri/src-tauri/gen/android/app/build/outputs target -type f \( -name "*.apk" -o -name "*.aab" \) | while read -r file; do
             ext="${file##*.}"
             cp "$file" "dist-mobile-tauri/Sharkord.Plus_${VERSION}.${ext}"
