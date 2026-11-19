@@ -1,6 +1,6 @@
 {
   "name": "@sharkord/e2e",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "private": true,
   "scripts": {
