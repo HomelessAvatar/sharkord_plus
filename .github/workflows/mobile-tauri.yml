@@ -104,7 +104,7 @@ jobs:
         run: |
           mkdir -p dist-mobile-tauri
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.2"
+          [ -z "$VERSION" ] && VERSION="0.3.3"
 
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -name zipalign | sort -V | tail -n 1)
