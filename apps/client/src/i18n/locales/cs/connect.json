@@ -25,5 +25,14 @@
   },
   "loggingInAutomatically": "Automaticky se připojuji...",
   "loadingApp": "Načítám Sharkord",
-  "loadingPlugins": "Načítám rozšíření"
+  "loadingPlugins": "Načítám rozšíření",
+  "serverUrlLabel": "Adresa serveru",
+  "serverUrlHelp": "Zadejte adresu serveru Sharkord pro připojení",
+  "serverUrlPlaceholder": "chat.example.com nebo http://localhost:4991",
+  "connectToServer": "Připojit k serveru",
+  "serverUnreachable": "K serveru na této adrese se nelze připojit. Ujistěte se, že server běží.",
+  "invalidServerUrl": "Zadejte prosím platnou adresu serveru.",
+  "switchServer": "Změnit server",
+  "savedServers": "Uložené servery",
+  "connectingToServer": "Připojování..."
 }

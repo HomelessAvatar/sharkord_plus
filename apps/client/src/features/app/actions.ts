@@ -1,5 +1,6 @@
 import { assertNotificationsPermission } from '@/helpers/assert-notifications-permission';
 import {
+  getActiveServerUrl,
   getFileUrl,
   getUrlFromServer,
   isTauriEnvironment,
@@ -62,7 +63,7 @@ const setOrCreateLink = (rel: string, href: string) => {
   el.href = href;
 };
 
-const applyServerBranding = (info: TServerInfo) => {
+export const applyServerBranding = (info: TServerInfo) => {
   document.title = info.name;
 
   const logoUrl = info.logo
@@ -74,13 +75,19 @@ const applyServerBranding = (info: TServerInfo) => {
   setOrCreateMeta('apple-mobile-web-app-title', info.name);
 };
 
-export const fetchServerInfo = async (): Promise<TServerInfo | undefined> => {
+export const fetchServerInfo = async (
+  serverUrlOverride?: string
+): Promise<TServerInfo | undefined> => {
   try {
-    if (isTauriEnvironment()) {
+    if (isTauriEnvironment() && !serverUrlOverride) {
       await syncActiveSessionFromVault();
     }
 
-    const url = getUrlFromServer();
+    const url = serverUrlOverride || getUrlFromServer();
+    if (!url) {
+      return undefined;
+    }
+
     const response = await fetch(`${url}/info`);
 
     if (!response.ok) {
@@ -96,11 +103,21 @@ export const fetchServerInfo = async (): Promise<TServerInfo | undefined> => {
 };
 
 export const loadApp = async () => {
+  if (isTauriEnvironment()) {
+    await syncActiveSessionFromVault();
+    const activeUrl = getActiveServerUrl();
+    if (!activeUrl && import.meta.env.MODE !== 'development') {
+      setAppLoading(false);
+      return;
+    }
+  }
+
   const info = await fetchServerInfo();
 
   if (!info) {
     console.error('Failed to load server info during app load');
     toast.error(i18n.t('common:failedLoadServerInfo'));
+    setAppLoading(false);
     return;
   }
 

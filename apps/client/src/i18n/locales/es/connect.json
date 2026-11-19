@@ -25,5 +25,14 @@
   },
   "loggingInAutomatically": "Iniciando sesión automáticamente...",
   "loadingApp": "Cargando Sharkord",
-  "loadingPlugins": "Cargando plugins"
+  "loadingPlugins": "Cargando plugins",
+  "serverUrlLabel": "Dirección del servidor",
+  "serverUrlHelp": "Introduce la URL del servidor Sharkord para conectar",
+  "serverUrlPlaceholder": "chat.example.com o http://localhost:4991",
+  "connectToServer": "Conectar al servidor",
+  "serverUnreachable": "No se pudo conectar al servidor en esta dirección. Asegúrate de que el servidor esté activo.",
+  "invalidServerUrl": "Por favor introduce una URL de servidor válida.",
+  "switchServer": "Cambiar servidor",
+  "savedServers": "Servidores guardados",
+  "connectingToServer": "Conectando..."
 }

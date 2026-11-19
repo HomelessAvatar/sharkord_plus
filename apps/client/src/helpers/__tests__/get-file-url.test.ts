@@ -5,6 +5,8 @@ import {
   getHostFromServer,
   getUrlFromServer,
   isTauriEnvironment,
+  listSavedServersFromVault,
+  normalizeServerUrl,
   saveSessionToVault,
   setActiveServerUrl,
   syncActiveSessionFromVault
@@ -143,5 +145,77 @@ describe('Tauri Server Host Discovery', () => {
     expect(getHostFromServer()).toBe('192.168.1.100:4991');
 
     setActiveServerUrl(null);
+  });
+
+  test('normalizes server URLs correctly', () => {
+    expect(normalizeServerUrl('chat.example.com')).toBe(
+      'https://chat.example.com'
+    );
+    expect(normalizeServerUrl('localhost:4991')).toBe('http://localhost:4991');
+    expect(normalizeServerUrl('127.0.0.1:4991')).toBe('http://127.0.0.1:4991');
+    expect(normalizeServerUrl('192.168.1.50:4991')).toBe(
+      'http://192.168.1.50:4991'
+    );
+    expect(normalizeServerUrl('https://demo.sharkord.com/')).toBe(
+      'https://demo.sharkord.com'
+    );
+    expect(normalizeServerUrl('  http://myserver.org:8080/  ')).toBe(
+      'http://myserver.org:8080'
+    );
+    expect(normalizeServerUrl('')).toBe('');
+  });
+
+  test('returns empty string when no active server in production Tauri', () => {
+    globalThis.window = {
+      location: {
+        host: 'tauri.localhost',
+        hostname: 'tauri.localhost',
+        protocol: 'http:'
+      },
+      __TAURI_INTERNALS__: {
+        invoke: async () => null
+      }
+    } as never;
+
+    setActiveServerUrl(null);
+    expect(isTauriEnvironment()).toBe(true);
+    expect(getHostFromServer()).toBe('');
+    expect(getUrlFromServer()).toBe('');
+  });
+
+  test('lists saved servers from Tauri SessionVault invoke', async () => {
+    const mockServers = [
+      {
+        id: 'srv_1',
+        name: 'Server One',
+        serverUrl: 'https://one.sharkord.com',
+        token: 'token1'
+      },
+      {
+        id: 'srv_2',
+        name: 'Server Two',
+        serverUrl: 'https://two.sharkord.com',
+        token: 'token2'
+      }
+    ];
+
+    globalThis.window = {
+      location: {
+        host: 'tauri.localhost',
+        hostname: 'tauri.localhost',
+        protocol: 'http:'
+      },
+      __TAURI_INTERNALS__: {
+        invoke: async (cmd: string) => {
+          if (cmd === 'list_saved_servers') {
+            return mockServers;
+          }
+          return null;
+        }
+      }
+    } as never;
+
+    const list = await listSavedServersFromVault();
+    expect(list).toEqual(mockServers);
   });
 });

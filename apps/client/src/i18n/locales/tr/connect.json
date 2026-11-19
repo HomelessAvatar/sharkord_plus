@@ -25,5 +25,14 @@
   },
   "loggingInAutomatically": "Otomatik olarak giriş yapılıyor...",
   "loadingApp": "Sharkord yükleniyor",
-  "loadingPlugins": "Eklentiler yükleniyor"
+  "loadingPlugins": "Eklentiler yükleniyor",
+  "serverUrlLabel": "Sunucu Adresi",
+  "serverUrlHelp": "Bağlanmak istediğiniz Sharkord sunucusunun adresini girin",
+  "serverUrlPlaceholder": "chat.example.com veya http://localhost:4991",
+  "connectToServer": "Sunucuya Bağlan",
+  "serverUnreachable": "Bu adresteki sunucuya ulaşılamadı. Sunucunun açık olduğundan emin olun.",
+  "invalidServerUrl": "Lütfen geçerli bir sunucu adresi girin.",
+  "switchServer": "Sunucuyu Değiştir",
+  "savedServers": "Kayıtlı Sunucular",
+  "connectingToServer": "Bağlanılıyor..."
 }

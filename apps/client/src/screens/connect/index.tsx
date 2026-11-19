@@ -1,8 +1,18 @@
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
-import { connect } from '@/features/server/actions';
+import { applyServerBranding, fetchServerInfo } from '@/features/app/actions';
+import { connect, setInfo } from '@/features/server/actions';
 import { useInfo } from '@/features/server/hooks';
-import { getFileUrl, getUrlFromServer } from '@/helpers/get-file-url';
+import {
+  getActiveServerUrl,
+  getFileUrl,
+  getUrlFromServer,
+  isTauriEnvironment,
+  listSavedServersFromVault,
+  normalizeServerUrl,
+  setActiveServerUrl,
+  type TSavedServerProfile
+} from '@/helpers/get-file-url';
 import { isDesktopApp } from '@/helpers/is-desktop-app';
 import {
   getLocalStorageItem,
@@ -31,7 +41,14 @@ import {
   Spinner,
   Switch
 } from '@sharkord/ui';
-import { memo, useCallback, useMemo, useState, type FormEvent } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useOidcLogin } from './hooks/use-oidc-login';
@@ -50,6 +67,57 @@ const Connect = memo(() => {
 
   const [loading, setLoading] = useState(false);
   const info = useInfo();
+  const [isSelectingServer, setIsSelectingServer] = useState(
+    () => !info && (isTauriEnvironment() || isDesktopApp())
+  );
+  const [serverUrlInput, setServerUrlInput] = useState(
+    () => getActiveServerUrl() || ''
+  );
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isTestingServer, setIsTestingServer] = useState(false);
+  const [savedServers, setSavedServers] = useState<TSavedServerProfile[]>([]);
+
+  useEffect(() => {
+    if (isTauriEnvironment()) {
+      listSavedServersFromVault().then((list) => {
+        setSavedServers(list);
+      });
+    }
+  }, []);
+
+  const handleConnectServer = useCallback(
+    async (targetUrl?: string) => {
+      const raw = targetUrl || serverUrlInput;
+      const normalized = normalizeServerUrl(raw);
+
+      if (!normalized) {
+        setServerError(t('invalidServerUrl'));
+        return;
+      }
+
+      setIsTestingServer(true);
+      setServerError(null);
+
+      try {
+        const fetchedInfo = await fetchServerInfo(normalized);
+
+        if (!fetchedInfo) {
+          setServerError(t('serverUnreachable'));
+          return;
+        }
+
+        setActiveServerUrl(normalized);
+        setInfo(fetchedInfo);
+        applyServerBranding(fetchedInfo);
+        setIsSelectingServer(false);
+      } catch {
+        setServerError(t('serverUnreachable'));
+      } finally {
+        setIsTestingServer(false);
+      }
+    },
+    [serverUrlInput, t]
+  );
 
   const identityError = useMemo(() => {
     switch (errors.identity) {
@@ -183,119 +251,217 @@ const Connect = memo(() => {
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
         <LanguageSwitcher variant="icon" />
       </div>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="flex flex-col items-center gap-2 text-center">
-            <img
-              src={logoSrc}
-              alt="Sharkord"
-              className="block max-h-32 max-w-full rounded-[5px]"
-            />
-            {info?.name && (
+      {!info || isSelectingServer ? (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle className="flex flex-col items-center gap-2 text-center">
+              <img
+                src="/logo.webp"
+                alt="Sharkord"
+                className="block max-h-32 max-w-full rounded-[5px]"
+              />
               <span className="text-xl font-bold leading-tight">
-                {info.name}
+                {t('connectToServer')}
               </span>
-            )}
-          </CardTitle>
-          <PluginSlotRenderer slotId={PluginSlot.CONNECT_SCREEN} />
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {info?.description && (
-            <span className="text-sm text-muted-foreground">
-              {info?.description}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <span className="text-sm text-muted-foreground text-center">
+              {t('serverUrlHelp')}
             </span>
-          )}
 
-          {oidc.isLocalLoginAllowed && (
             <form
-              className="flex flex-col gap-2"
-              onSubmit={onFormSubmit}
-              data-testid={TestId.CONNECT_FORM}
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleConnectServer();
+              }}
             >
-              <Group label={t('identityLabel')} help={t('identityHelp')}>
+              <Group label={t('serverUrlLabel')}>
                 <Input
-                  {...r('identity')}
-                  error={identityError}
-                  autoComplete="username"
-                  data-testid={TestId.CONNECT_IDENTITY_INPUT}
+                  autoFocus
+                  value={serverUrlInput}
+                  onChange={(e) => setServerUrlInput(e.target.value)}
+                  placeholder={t('serverUrlPlaceholder')}
+                  error={serverError || undefined}
+                  disabled={isTestingServer}
                 />
               </Group>
-              <Group label={t('passwordLabel')}>
-                <Input
-                  {...r('password')}
-                  type="password"
-                  autoComplete="current-password"
-                  onEnter={onConnectClick}
-                  data-testid={TestId.CONNECT_PASSWORD_INPUT}
-                />
-              </Group>
+
+              <Button
+                className="w-full"
+                variant="default"
+                onClick={() => handleConnectServer()}
+                disabled={isTestingServer || !serverUrlInput.trim()}
+              >
+                {isTestingServer && <Spinner size="xxs" />}
+                {isTestingServer ? t('connectingToServer') : t('connectBtn')}
+              </Button>
             </form>
-          )}
 
-          <div
-            className="flex items-center gap-2 w-fit cursor-pointer"
-            data-testid={TestId.CONNECT_AUTO_LOGIN_SWITCH}
-            onClick={onAutoLoginToggle}
-          >
-            <Switch checked={values.autoLogin} />
-            <Label className="text-sm cursor-pointer">
-              {t('autoLoginLabel')}
-            </Label>
-          </div>
+            {savedServers.length > 0 && (
+              <div className="flex flex-col gap-2 pt-2 border-t border-border">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {t('savedServers')}
+                </span>
+                <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto">
+                  {savedServers.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      onClick={() => handleConnectServer(profile.serverUrl)}
+                      className="flex flex-col items-start p-2 rounded bg-card hover:bg-accent border border-border text-left transition-colors w-full cursor-pointer"
+                    >
+                      <span className="font-medium text-sm truncate w-full">
+                        {profile.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate w-full">
+                        {profile.serverUrl}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          <div className="flex flex-col gap-2">
-            {!window.isSecureContext && (
-              <Alert variant="destructive">
-                <AlertTitle>{t('insecureTitle')}</AlertTitle>
-                <AlertDescription>{t('insecureDesc')}</AlertDescription>
-              </Alert>
+            {info && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSelectingServer(false)}
+              >
+                {t('common:cancel')}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-sm">
+          <CardHeader>
+            <CardTitle className="flex flex-col items-center gap-2 text-center">
+              <img
+                src={logoSrc}
+                alt="Sharkord"
+                className="block max-h-32 max-w-full rounded-[5px]"
+              />
+              {info?.name && (
+                <span className="text-xl font-bold leading-tight">
+                  {info.name}
+                </span>
+              )}
+              {(isTauriEnvironment() || isDesktopApp()) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServerUrlInput(getUrlFromServer());
+                    setIsSelectingServer(true);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 cursor-pointer"
+                >
+                  {t('switchServer')}
+                </button>
+              )}
+            </CardTitle>
+            <PluginSlotRenderer slotId={PluginSlot.CONNECT_SCREEN} />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            {info?.description && (
+              <span className="text-sm text-muted-foreground">
+                {info?.description}
+              </span>
             )}
 
             {oidc.isLocalLoginAllowed && (
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={onConnectClick}
-                disabled={loading || !values.identity || !values.password}
-                data-testid={TestId.CONNECT_BUTTON}
+              <form
+                className="flex flex-col gap-2"
+                onSubmit={onFormSubmit}
+                data-testid={TestId.CONNECT_FORM}
               >
-                {t('connectBtn')}
-              </Button>
+                <Group label={t('identityLabel')} help={t('identityHelp')}>
+                  <Input
+                    {...r('identity')}
+                    error={identityError}
+                    autoComplete="username"
+                    data-testid={TestId.CONNECT_IDENTITY_INPUT}
+                  />
+                </Group>
+                <Group label={t('passwordLabel')}>
+                  <Input
+                    {...r('password')}
+                    type="password"
+                    autoComplete="current-password"
+                    onEnter={onConnectClick}
+                    data-testid={TestId.CONNECT_PASSWORD_INPUT}
+                  />
+                </Group>
+              </form>
             )}
 
-            {oidc.isEnabled && (
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={oidc.startLogin}
-                disabled={loading}
-                data-testid={TestId.CONNECT_OIDC_BUTTON}
-              >
-                {t('oidcBtn')}
-              </Button>
-            )}
+            <div
+              className="flex items-center gap-2 w-fit cursor-pointer"
+              data-testid={TestId.CONNECT_AUTO_LOGIN_SWITCH}
+              onClick={onAutoLoginToggle}
+            >
+              <Switch checked={values.autoLogin} />
+              <Label className="text-sm cursor-pointer">
+                {t('autoLoginLabel')}
+              </Label>
+            </div>
 
-            {oidc.isLocalLoginAllowed &&
-              !info?.allowNewUsers &&
-              !inviteCode && (
-                <span className="text-xs text-muted-foreground text-center">
-                  {t('registrationDisabled')}
-                </span>
+            <div className="flex flex-col gap-2">
+              {!window.isSecureContext && (
+                <Alert variant="destructive">
+                  <AlertTitle>{t('insecureTitle')}</AlertTitle>
+                  <AlertDescription>{t('insecureDesc')}</AlertDescription>
+                </Alert>
               )}
 
-            {inviteCode && (
-              <Alert variant="info">
-                <AlertTitle>{t('invitedTitle')}</AlertTitle>
-                <AlertDescription>
-                  <span className="font-mono text-xs">
-                    {t('inviteCode', { code: inviteCode })}
+              {oidc.isLocalLoginAllowed && (
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={onConnectClick}
+                  disabled={loading || !values.identity || !values.password}
+                  data-testid={TestId.CONNECT_BUTTON}
+                >
+                  {t('connectBtn')}
+                </Button>
+              )}
+
+              {oidc.isEnabled && (
+                <Button
+                  className="w-full"
+                  variant="secondary"
+                  onClick={oidc.startLogin}
+                  disabled={loading}
+                  data-testid={TestId.CONNECT_OIDC_BUTTON}
+                >
+                  {t('oidcBtn')}
+                </Button>
+              )}
+
+              {oidc.isLocalLoginAllowed &&
+                !info?.allowNewUsers &&
+                !inviteCode && (
+                  <span className="text-xs text-muted-foreground text-center">
+                    {t('registrationDisabled')}
                   </span>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                )}
+
+              {inviteCode && (
+                <Alert variant="info">
+                  <AlertTitle>{t('invitedTitle')}</AlertTitle>
+                  <AlertDescription>
+                    <span className="font-mono text-xs">
+                      {t('inviteCode', { code: inviteCode })}
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!isDesktopApp() && (
         <a

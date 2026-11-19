@@ -120,6 +120,57 @@ export const clearSessionFromVault = async (
   }
 };
 
+export const listSavedServersFromVault = async (): Promise<
+  TSavedServerProfile[]
+> => {
+  if (!isTauriEnvironment()) return [];
+
+  try {
+    const invoke =
+      window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
+
+    if (typeof invoke === 'function') {
+      const servers = (await invoke(
+        'list_saved_servers'
+      )) as TSavedServerProfile[];
+      return Array.isArray(servers) ? servers : [];
+    }
+  } catch (error) {
+    console.warn(
+      'Failed to list saved servers from Tauri SessionVault:',
+      error
+    );
+  }
+
+  return [];
+};
+
+export const normalizeServerUrl = (raw: string): string => {
+  let trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  trimmed = trimmed.replace(/\/+$/, '');
+
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    if (
+      trimmed.startsWith('localhost') ||
+      trimmed.startsWith('127.0.0.1') ||
+      /^\d+\.\d+\.\d+\.\d+/.test(trimmed)
+    ) {
+      trimmed = `http://${trimmed}`;
+    } else {
+      trimmed = `https://${trimmed}`;
+    }
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.origin;
+  } catch {
+    return trimmed;
+  }
+};
+
 const getHostFromServer = () => {
   if (isTauriEnvironment()) {
     const activeUrl = getActiveServerUrl();
@@ -138,15 +189,7 @@ const getHostFromServer = () => {
       return 'localhost:4991';
     }
 
-    if (
-      typeof window !== 'undefined' &&
-      (window.location.host.includes('tauri.localhost') ||
-        window.location.hostname === 'tauri.localhost')
-    ) {
-      return 'localhost:4991';
-    }
-
-    return window.location.host;
+    return '';
   }
 
   if (import.meta.env.MODE === 'development') {
@@ -174,17 +217,7 @@ const getUrlFromServer = () => {
       return 'http://localhost:4991';
     }
 
-    if (
-      typeof window !== 'undefined' &&
-      (window.location.host.includes('tauri.localhost') ||
-        window.location.hostname === 'tauri.localhost')
-    ) {
-      return 'http://localhost:4991';
-    }
-
-    const host = window.location.host;
-    const currentProtocol = window.location.protocol;
-    return `${currentProtocol}//${host}`;
+    return '';
   }
 
   if (import.meta.env.MODE === 'development') {

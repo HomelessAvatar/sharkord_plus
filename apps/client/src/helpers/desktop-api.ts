@@ -15,8 +15,13 @@ const connectDesktop = () => {
 };
 
 // keep this at the module level
-const desktopApi = connectDesktop();
+let desktopApi = connectDesktop();
 
-const getDesktopApi = () => desktopApi;
+const getDesktopApi = () => {
+  if (!desktopApi) {
+    desktopApi = connectDesktop();
+  }
+  return desktopApi;
+};
 
 export { getDesktopApi };
