@@ -63,20 +63,20 @@ pub fn run() {
             mobile_voice::set_mobile_voice_active,
         ])
         .setup(|app| {
-            let notif_handle = app.handle().clone();
-            let _ = app.notification().on_action(move |performed| {
-                if performed.action_id() == "tap" {
-                    tray::show_main_window(&notif_handle);
-                    let notif_state = notif_handle.state::<NotificationState>();
-                    let maybe_id = performed.notification().map(|n| n.id());
-                    if let Some(target) = notif_state.get_or_latest(maybe_id) {
-                        let _ = notif_handle.emit("desktop:notification-click", target);
-                    }
-                }
-            });
-
             #[cfg(desktop)]
             {
+                let notif_handle = app.handle().clone();
+                let _ = app.notification().on_action(move |performed| {
+                    if performed.action_id() == "tap" {
+                        tray::show_main_window(&notif_handle);
+                        let notif_state = notif_handle.state::<NotificationState>();
+                        let maybe_id = performed.notification().map(|n| n.id());
+                        if let Some(target) = notif_state.get_or_latest(maybe_id) {
+                            let _ = notif_handle.emit("desktop:notification-click", target);
+                        }
+                    }
+                });
+
                 tray::setup_tray(app.handle())?;
             }
             Ok(())

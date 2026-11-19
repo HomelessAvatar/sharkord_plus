@@ -65,4 +65,24 @@ fn test_android_release_signing_config() {
     let build_gradle = include_str!("../gen/android/app/build.gradle.kts");
     assert!(build_gradle.contains("signingConfigs"));
     assert!(build_gradle.contains("signingConfig = signingConfigs.getByName(\"release\")"));
+    assert!(build_gradle.contains("compileSdk = 34"));
+    assert!(build_gradle.contains("targetSdk = 34"));
+    assert!(build_gradle.contains("isMinifyEnabled = false"));
+}
+
+#[test]
+fn test_android_proguard_rules() {
+    let rules = include_str!("../gen/android/app/proguard-rules.pro");
+    assert!(rules.contains("-keep class app.tauri.** { *; }"));
+    assert!(rules.contains("-keep class com.sharkord.plus.** { *; }"));
+    assert!(rules.contains("-keep class androidx.webkit.** { *; }"));
+}
+
+#[test]
+fn test_capabilities_default_permissions() {
+    let cap_str = include_str!("../capabilities/default.json");
+    let json: serde_json::Value = serde_json::from_str(cap_str).unwrap();
+    let perms = json["permissions"].as_array().unwrap();
+    assert!(perms.iter().any(|p| p == "core:default"));
+    assert!(perms.iter().any(|p| p == "notification:default"));
 }

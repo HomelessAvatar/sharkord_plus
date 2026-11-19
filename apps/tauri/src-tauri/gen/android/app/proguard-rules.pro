@@ -1,21 +1,26 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Tauri Core & JNI Bridge
+-keep class app.tauri.** { *; }
+-dontwarn app.tauri.**
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Sharkord Plus application classes and services
+-keep class com.sharkord.plus.** { *; }
+-dontwarn com.sharkord.plus.**
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# AndroidX WebKit, Activity, and AppCompat
+-keep class androidx.webkit.** { *; }
+-dontwarn androidx.webkit.**
+-keep class androidx.activity.** { *; }
+-dontwarn androidx.activity.**
+-keep class androidx.appcompat.** { *; }
+-dontwarn androidx.appcompat.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Preserve annotations for Tauri IPC and plugin reflection
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+-keep class app.tauri.annotation.** { *; }
+-keep class * implements app.tauri.plugin.Plugin { *; }
+
+-keepclassmembers class * {
+    @app.tauri.annotation.Command <methods>;
+    @app.tauri.annotation.InvokeArg <fields>;
+    @app.tauri.annotation.InvokeArg <methods>;
+}

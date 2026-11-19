@@ -13,7 +13,11 @@ class MainActivity : TauriActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    enableEdgeToEdge()
+    try {
+      enableEdgeToEdge()
+    } catch (_: Throwable) {
+      // Graceful fallback for OEM skins (e.g. Xiaomi HyperOS/MIUI) with custom window insets
+    }
     super.onCreate(savedInstanceState)
     instance = this
   }
