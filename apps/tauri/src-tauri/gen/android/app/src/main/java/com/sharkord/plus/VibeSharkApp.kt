@@ -20,6 +20,16 @@ class VibeSharkApp : Application() {
     override fun onCreate() {
         super.onCreate()
         setupCrashLogging()
+        preloadNativeLibraries()
+    }
+
+    private fun preloadNativeLibraries() {
+        try {
+            System.loadLibrary("c++_shared")
+            Log.i(TAG, "Successfully preloaded libc++_shared.so")
+        } catch (t: Throwable) {
+            Log.w(TAG, "Notice: libc++_shared.so preload attempt: ${t.message}")
+        }
     }
 
     private fun setupCrashLogging() {

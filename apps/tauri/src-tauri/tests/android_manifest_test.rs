@@ -70,6 +70,7 @@ fn test_android_release_signing_config() {
     assert!(build_gradle.contains("targetSdk = 34"));
     assert!(build_gradle.contains("isMinifyEnabled = false"));
     assert!(build_gradle.contains("useLegacyPackaging = false"));
+    assert!(build_gradle.contains("copyNdkSharedLibs"));
 }
 
 #[test]
@@ -94,10 +95,12 @@ fn test_16kb_page_size_alignment_configuration() {
     let build_rs = include_str!("../build.rs");
     assert!(build_rs.contains("max-page-size=16384"));
     assert!(build_rs.contains("common-page-size=16384"));
+    assert!(build_rs.contains("c++_shared"));
 
     let cargo_config = include_str!("../.cargo/config.toml");
     assert!(cargo_config.contains("max-page-size=16384"));
     assert!(cargo_config.contains("aarch64-linux-android"));
+    assert!(cargo_config.contains("lc++_shared"));
 }
 
 #[test]
@@ -110,6 +113,7 @@ fn test_vibeshark_app_crash_logging() {
     assert!(app_kt.contains("vibeshark_crash.log"));
     assert!(app_kt.contains("getExternalFilesDir"));
     assert!(app_kt.contains("VIBESHARK FATAL CRASH REPORT"));
+    assert!(app_kt.contains("c++_shared"));
 }
 
 #[test]

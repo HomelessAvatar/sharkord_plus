@@ -10,6 +10,13 @@ class MainActivity : TauriActivity() {
   companion object {
     @JvmStatic
     var instance: MainActivity? = null
+
+    init {
+      try {
+        System.loadLibrary("c++_shared")
+      } catch (_: Throwable) {
+      }
+    }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {

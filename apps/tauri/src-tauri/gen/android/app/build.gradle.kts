@@ -70,6 +70,11 @@ android {
             )
         }
     }
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -101,3 +106,35 @@ dependencies {
 }
 
 apply(from = file("tauri.build.gradle.kts"))
+
+tasks.register("copyNdkSharedLibs") {
+    doFirst {
+        val envNdk = System.getenv("NDK_HOME") ?: System.getenv("ANDROID_NDK_HOME")
+        val ndkDir = if (!envNdk.isNullOrBlank()) file(envNdk) else (android.ndkDirectory ?: file(""))
+        if (ndkDir.exists()) {
+            val abiMap = mapOf(
+                "arm64-v8a" to "aarch64-linux-android",
+                "armeabi-v7a" to "arm-linux-androideabi",
+                "x86" to "i686-linux-android",
+                "x86_64" to "x86_64-linux-android"
+            )
+            val prebuiltDir = file("${ndkDir}/toolchains/llvm/prebuilt")
+            val hostDir = prebuiltDir.listFiles()?.firstOrNull()
+            val llvmLibDir = hostDir?.resolve("sysroot/usr/lib")
+            if (llvmLibDir != null && llvmLibDir.exists()) {
+                abiMap.forEach { (abi, triple) ->
+                    val srcLib = File(llvmLibDir, "$triple/libc++_shared.so")
+                    if (srcLib.exists()) {
+                        val destDir = file("src/main/jniLibs/$abi")
+                        destDir.mkdirs()
+                        srcLib.copyTo(File(destDir, "libc++_shared.so"), overwrite = true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("merge") && it.name.contains("JniLibFolders") }.configureEach {
+    dependsOn("copyNdkSharedLibs")
+}

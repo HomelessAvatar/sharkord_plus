@@ -26,4 +26,6 @@ fn test_mobile_tauri_workflow_validity() {
     assert!(workflow.contains("ANDROID_KEYSTORE_PATH"), "mobile-tauri.yml must configure keystore");
     assert!(workflow.contains("APKSIGNER"), "mobile-tauri.yml must locate and use apksigner");
     assert!(workflow.contains("sign"), "mobile-tauri.yml must sign APK");
+    assert!(workflow.contains("libc++_shared.so"), "mobile-tauri.yml must bundle libc++_shared.so");
+    assert!(workflow.contains("ndk;27."), "mobile-tauri.yml must use NDK r27 for 16kb page-size support");
 }
