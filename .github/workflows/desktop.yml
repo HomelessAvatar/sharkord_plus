@@ -80,6 +80,11 @@ jobs:
         run: |
           mkdir -p dist-desktop
           find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          if [ -f dist-desktop/sharkord-tauri.exe ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            [ -z "$VERSION" ] && VERSION="0.3.0"
+            mv dist-desktop/sharkord-tauri.exe "dist-desktop/Sharkord.Plus_${VERSION}_x64-portable.exe"
+          fi
           echo "=== Staged Desktop Artifacts ==="
           ls -la dist-desktop || true
 
@@ -119,6 +124,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Sharkord Plus ${{ github.ref_name }}
           append_body: true
+          generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           files: |
             dist-release/*
