@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Mutex;
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -131,7 +131,7 @@ pub fn handle_shortcut_event<R: tauri::Runtime>(
             ShortcutState::Released => "up",
         };
 
-        // Emit through Tauri pub-sub event system
+        // Standard single dispatch path through Tauri event bus
         let _ = app.emit(
             "desktop:hotkey",
             serde_json::json!({
@@ -139,14 +139,5 @@ pub fn handle_shortcut_event<R: tauri::Runtime>(
                 "phase": phase,
             }),
         );
-
-        // Also dispatch directly into webview for synchronous handling
-        if let Some(window) = app.get_webview_window("main") {
-            let js = format!(
-                "if (window.__sharkordDesktopDispatch) window.__sharkordDesktopDispatch('hotkey', {{ actionId: '{}', phase: '{}' }});",
-                action_id, phase
-            );
-            let _ = window.eval(&js);
-        }
     }
 }

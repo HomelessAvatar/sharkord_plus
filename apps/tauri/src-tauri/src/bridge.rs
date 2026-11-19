@@ -1,13 +1,41 @@
 use crate::shortcuts::{self, HotkeyBinding, HotkeyError, ShortcutStateMap};
 use crate::tray;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 #[derive(Default)]
 pub struct BridgeState {
     pub server_list_visible: AtomicBool,
+}
+
+#[derive(Default)]
+pub struct NotificationState {
+    pub pending_targets: Mutex<HashMap<i32, serde_json::Value>>,
+    pub latest_target: Mutex<Option<serde_json::Value>>,
+}
+
+impl NotificationState {
+    pub fn store(&self, id: i32, target: serde_json::Value) {
+        self.pending_targets.lock().unwrap().insert(id, target.clone());
+        *self.latest_target.lock().unwrap() = Some(target);
+    }
+
+    pub fn take_by_id(&self, id: i32) -> Option<serde_json::Value> {
+        self.pending_targets.lock().unwrap().remove(&id)
+    }
+
+    pub fn get_or_latest(&self, maybe_id: Option<i32>) -> Option<serde_json::Value> {
+        if let Some(id) = maybe_id {
+            if let Some(target) = self.take_by_id(id) {
+                return Some(target);
+            }
+        }
+        self.latest_target.lock().unwrap().clone()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -38,14 +66,6 @@ pub fn toggle_server_list(
     state.server_list_visible.store(next, Ordering::SeqCst);
 
     let _ = app.emit("desktop:server-list-visible", next);
-    if let Some(window) = app.get_webview_window("main") {
-        let js = format!(
-            "if (window.__sharkordDesktopDispatch) window.__sharkordDesktopDispatch('server-list-visible', {});",
-            next
-        );
-        let _ = window.eval(&js);
-    }
-
     Ok(next)
 }
 
@@ -53,11 +73,6 @@ pub fn toggle_server_list(
 pub fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
     tray::show_main_window(&app);
     let _ = app.emit("desktop:open-settings", ());
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.eval(
-            "if (window.__sharkordDesktopDispatch) window.__sharkordDesktopDispatch('open-settings');",
-        );
-    }
     Ok(())
 }
 
@@ -114,8 +129,19 @@ pub fn show_notification(
     body: String,
     icon: Option<String>,
     target: Option<serde_json::Value>,
+    notif_state: tauri::State<'_, NotificationState>,
 ) -> Result<(), String> {
-    let mut builder = app.notification().builder().title(&title).body(&body);
+    static NEXT_ID: AtomicI32 = AtomicI32::new(1);
+    let id = NEXT_ID.fetch_add(1, Ordering::SeqCst);
+
+    if let Some(target_val) = target {
+        notif_state.store(id, target_val);
+    }
+
+    let mut builder = app.notification().builder()
+        .id(id)
+        .title(&title)
+        .body(&body);
 
     if let Some(ref icon_str) = icon {
         builder = builder.icon(icon_str);
@@ -123,11 +149,8 @@ pub fn show_notification(
 
     builder.show().map_err(|e| e.to_string())?;
 
-    // If target exists, register target for possible notification clicks
-    if let Some(t) = target {
-        let _ = app.emit("desktop:notification-target", &t);
-    }
-
+    // Note: Do not emit click event here.
+    // The click event is emitted exclusively in on_action when the user clicks the notification.
     Ok(())
 }
 

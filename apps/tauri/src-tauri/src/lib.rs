@@ -3,11 +3,12 @@ pub mod shortcuts;
 pub mod tray;
 pub mod vault;
 
-use bridge::BridgeState;
+use bridge::{BridgeState, NotificationState};
 use sharkord_core::vault::SessionVault;
 use shortcuts::ShortcutStateMap;
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 use vault::VaultState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,6 +31,7 @@ pub fn run() {
         .manage(VaultState(Mutex::new(vault)))
         .manage(ShortcutStateMap::default())
         .manage(BridgeState::default())
+        .manage(NotificationState::default())
         .plugin(tauri_plugin_notification::init())
         .plugin(shortcut_plugin)
         .plugin(bridge_plugin)
@@ -51,6 +53,18 @@ pub fn run() {
             bridge::get_hotkey_capabilities,
         ])
         .setup(|app| {
+            let notif_handle = app.handle().clone();
+            let _ = app.notification().on_action(move |performed| {
+                if performed.action_id() == "tap" {
+                    tray::show_main_window(&notif_handle);
+                    let notif_state = notif_handle.state::<NotificationState>();
+                    let maybe_id = performed.notification().map(|n| n.id());
+                    if let Some(target) = notif_state.get_or_latest(maybe_id) {
+                        let _ = notif_handle.emit("desktop:notification-click", target);
+                    }
+                }
+            });
+
             #[cfg(desktop)]
             {
                 tray::setup_tray(app.handle())?;

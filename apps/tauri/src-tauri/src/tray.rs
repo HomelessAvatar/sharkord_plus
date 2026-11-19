@@ -4,6 +4,14 @@ use tauri::{Emitter, Manager};
 
 pub const TRAY_ID: &str = "main";
 
+/// Generates a press-and-release pair of hotkey phases for discrete tray actions.
+pub fn create_toggle_events(action_id: &str) -> [(String, &'static str); 2] {
+    [
+        (action_id.to_string(), "down"),
+        (action_id.to_string(), "up"),
+    ]
+}
+
 pub fn setup_tray<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -26,30 +34,26 @@ pub fn setup_tray<R: tauri::Runtime>(
                         show_main_window(app);
                     }
                     "mute" => {
-                        let _ = app.emit(
-                            "desktop:hotkey",
-                            serde_json::json!({
-                                "actionId": "core:toggle-mic",
-                                "phase": "down"
-                            }),
-                        );
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.eval(
-                                "if (window.__sharkordDesktopDispatch) window.__sharkordDesktopDispatch('hotkey', { actionId: 'core:toggle-mic', phase: 'down' });",
+                        // Discrete click must emit down followed by up to complete the cycle
+                        for (action_id, phase) in create_toggle_events("core:toggle-mic") {
+                            let _ = app.emit(
+                                "desktop:hotkey",
+                                serde_json::json!({
+                                    "actionId": action_id,
+                                    "phase": phase
+                                }),
                             );
                         }
                     }
                     "deafen" => {
-                        let _ = app.emit(
-                            "desktop:hotkey",
-                            serde_json::json!({
-                                "actionId": "core:toggle-sound",
-                                "phase": "down"
-                            }),
-                        );
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.eval(
-                                "if (window.__sharkordDesktopDispatch) window.__sharkordDesktopDispatch('hotkey', { actionId: 'core:toggle-sound', phase: 'down' });",
+                        // Discrete click must emit down followed by up to complete the cycle
+                        for (action_id, phase) in create_toggle_events("core:toggle-sound") {
+                            let _ = app.emit(
+                                "desktop:hotkey",
+                                serde_json::json!({
+                                    "actionId": action_id,
+                                    "phase": phase
+                                }),
                             );
                         }
                     }

@@ -22,8 +22,8 @@ const DESKTOP_BRIDGE_VERSION = 1;
   const serverListVisibleListeners = new Set();
   let serverListVisible = false;
 
-  // Global event dispatcher called from Rust or local events
-  window.__sharkordDesktopDispatch = function (event, payload) {
+  // Single event dispatcher for incoming desktop events
+  function dispatchDesktopEvent(event, payload) {
     if (event === 'hotkey') {
       if (payload && typeof payload.actionId === 'string' && typeof payload.phase === 'string') {
         hotkeyListeners.forEach((listener) => {
@@ -63,7 +63,10 @@ const DESKTOP_BRIDGE_VERSION = 1;
         }
       });
     }
-  };
+  }
+
+  // Exposed on window for debugging or manual testing if needed
+  window.__sharkordDesktopDispatch = dispatchDesktopEvent;
 
   const setupTauriEventListeners = () => {
     const listen =
@@ -73,25 +76,25 @@ const DESKTOP_BRIDGE_VERSION = 1;
     if (typeof listen === 'function') {
       listen('desktop:hotkey', (e) => {
         if (e && e.payload) {
-          window.__sharkordDesktopDispatch('hotkey', e.payload);
+          dispatchDesktopEvent('hotkey', e.payload);
         }
       });
 
       listen('desktop:hotkey-errors', (e) => {
         if (e && e.payload) {
-          window.__sharkordDesktopDispatch('hotkey-errors', e.payload);
+          dispatchDesktopEvent('hotkey-errors', e.payload);
         }
       });
 
       listen('desktop:notification-click', (e) => {
         if (e && e.payload) {
-          window.__sharkordDesktopDispatch('notification-click', e.payload);
+          dispatchDesktopEvent('notification-click', e.payload);
         }
       });
 
       listen('desktop:server-list-visible', (e) => {
         if (e && e.payload !== undefined) {
-          window.__sharkordDesktopDispatch('server-list-visible', e.payload);
+          dispatchDesktopEvent('server-list-visible', e.payload);
         }
       });
     }
@@ -129,13 +132,10 @@ const DESKTOP_BRIDGE_VERSION = 1;
           const next = await invoke('toggle_server_list');
           if (typeof next === 'boolean') {
             serverListVisible = next;
-          } else {
-            serverListVisible = !serverListVisible;
           }
-        } catch {
-          serverListVisible = !serverListVisible;
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to toggle server list:', e);
         }
-        window.__sharkordDesktopDispatch('server-list-visible', serverListVisible);
       },
 
       openSettings: async () => {
