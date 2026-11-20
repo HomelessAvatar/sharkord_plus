@@ -51,8 +51,7 @@ const TopBar = memo(({ onToggleRightSidebar, isOpen }: TTopBarProps) => {
   return (
     <div
       className={cn(
-        'h-12 w-full grid-cols-[1fr_minmax(320px,1.4fr)_1fr] items-center border-b border-border bg-card px-4 transition-all duration-300 ease-in-out gap-2',
-        isDesktop ? 'grid' : 'hidden lg:grid'
+        'h-12 w-full grid-cols-[1fr_minmax(320px,1.4fr)_1fr] items-center border-b border-border bg-card px-4 transition-all duration-300 ease-in-out gap-2 hidden lg:grid'
       )}
     >
       <div className="flex min-w-0 items-center gap-2">

@@ -1,21 +1,24 @@
 import { TextChannel } from '@/components/channel-view/text';
 import { VoiceChannel } from '@/components/channel-view/voice';
+import { Dialog } from '@/components/dialogs/dialogs';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
 import { ThreadContent } from '@/components/thread-sidebar/thread-content';
 import { setSelectedThread } from '@/features/app/actions';
 import { useSelectedThread } from '@/features/app/hooks';
+import { openDialog } from '@/features/dialogs/actions';
 import {
   useSelectedChannelId,
   useSelectedChannelType
 } from '@/features/server/channels/hooks';
 import {
   useActiveFullscreenPluginId,
+  usePublicServerSettings,
   useServerName
 } from '@/features/server/hooks';
 import { useThreadsOpen } from '@/features/server/threads/hooks';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
-import { Button } from '@sharkord/ui';
-import { Hash, Menu, Users } from 'lucide-react';
+import { Button, IconButton } from '@sharkord/ui';
+import { Hash, Menu, Search, Users } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMobileDrawer } from './mobile-drawer-context';
@@ -32,9 +35,14 @@ const ContentWrapper = memo(
     const selectedChannelType = useSelectedChannelType();
     const serverName = useServerName();
     const activeFullscreenPluginId = useActiveFullscreenPluginId();
+    const publicSettings = usePublicServerSettings();
     const threadsOpen = useThreadsOpen();
     const selectedThread = useSelectedThread();
     const { openMobileMenu, openMobileUsers } = useMobileDrawer();
+
+    const openSearchDialog = useCallback(() => {
+      openDialog(Dialog.SEARCH);
+    }, []);
 
     const onCloseThread = useCallback(() => setSelectedThread(undefined), []);
 
@@ -65,8 +73,19 @@ const ContentWrapper = memo(
         );
       } else {
         content = (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {t('selectThreadPrompt')}
+          <div className="flex flex-col h-full w-full">
+            <div className="md:hidden flex h-12 items-center px-3 border-b border-border bg-card w-full shrink-0">
+              <IconButton
+                icon={Menu}
+                size="sm"
+                variant="ghost"
+                className="-ml-1 text-muted-foreground hover:text-foreground"
+                onClick={openMobileMenu}
+              />
+            </div>
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              {t('selectThreadPrompt')}
+            </div>
           </div>
         );
       }
@@ -88,8 +107,19 @@ const ContentWrapper = memo(
         );
       } else {
         content = (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            {t('selectDmPrompt')}
+          <div className="flex flex-col h-full w-full">
+            <div className="md:hidden flex h-12 items-center px-3 border-b border-border bg-card w-full shrink-0">
+              <IconButton
+                icon={Menu}
+                size="sm"
+                variant="ghost"
+                className="-ml-1 text-muted-foreground hover:text-foreground"
+                onClick={openMobileMenu}
+              />
+            </div>
+            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+              {t('selectDmPrompt')}
+            </div>
           </div>
         );
       }
@@ -113,11 +143,41 @@ const ContentWrapper = memo(
       }
     } else {
       content = (
-        <>
+        <div className="flex flex-col h-full w-full">
           <div className="flex-col gap-2 h-full w-full hidden lg:flex overflow-auto">
             <PluginSlotRenderer slotId={PluginSlot.HOME_SCREEN} />
           </div>
-          <div className="flex flex-col items-center justify-center h-full gap-5 p-6 text-center md:hidden">
+          <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
+            <IconButton
+              icon={Menu}
+              size="sm"
+              variant="ghost"
+              className="-ml-1 text-muted-foreground hover:text-foreground"
+              onClick={openMobileMenu}
+            />
+            <span className="font-semibold text-xs text-muted-foreground truncate max-w-48">
+              {serverName}
+            </span>
+            <div className="flex items-center gap-1">
+              {publicSettings?.enableSearch && (
+                <IconButton
+                  icon={Search}
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={openSearchDialog}
+                />
+              )}
+              <IconButton
+                icon={Users}
+                size="sm"
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={openMobileUsers}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col items-center justify-center flex-1 gap-5 p-6 text-center md:hidden">
             <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
               <Hash className="w-8 h-8 text-primary" />
             </div>
@@ -150,7 +210,7 @@ const ContentWrapper = memo(
               </Button>
             </div>
           </div>
-        </>
+        </div>
       );
     }
 
