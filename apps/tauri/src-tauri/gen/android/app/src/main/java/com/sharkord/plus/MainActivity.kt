@@ -5,6 +5,8 @@ import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
   companion object {
@@ -27,6 +29,17 @@ class MainActivity : TauriActivity() {
     }
     super.onCreate(savedInstanceState)
     instance = this
+
+    findViewById<android.view.View>(android.R.id.content)?.let { contentView ->
+      ViewCompat.setOnApplyWindowInsetsListener(contentView) { view, insets ->
+        val bars = insets.getInsets(
+          WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )
+        view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+        insets
+      }
+      ViewCompat.requestApplyInsets(contentView)
+    }
   }
 
   override fun onDestroy() {

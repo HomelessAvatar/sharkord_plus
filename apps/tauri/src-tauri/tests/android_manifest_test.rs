@@ -121,3 +121,17 @@ fn test_android_app_name_strings() {
     let strings = include_str!("../gen/android/app/src/main/res/values/strings.xml");
     assert!(strings.contains("\"VibeShark\""));
 }
+
+#[test]
+fn test_android_window_insets_safe_area() {
+    let main_activity =
+        include_str!("../gen/android/app/src/main/java/com/sharkord/plus/MainActivity.kt");
+    assert!(main_activity.contains("setOnApplyWindowInsetsListener"));
+    assert!(main_activity.contains("WindowInsetsCompat"));
+    assert!(main_activity.contains("systemBars"));
+    assert!(main_activity.contains("displayCutout"));
+    assert!(main_activity.contains("requestApplyInsets"));
+
+    let manifest = include_str!("../gen/android/app/src/main/AndroidManifest.xml");
+    assert!(manifest.contains("android:windowSoftInputMode=\"adjustResize\""));
+}
