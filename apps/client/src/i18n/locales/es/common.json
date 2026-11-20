@@ -16,6 +16,8 @@
   "mobileNotOptimized": "Sharkord aún no está optimizado para dispositivos móviles. La experiencia no será ideal.",
   "swipeRightForChannels": "Desliza a la derecha para abrir la lista de canales",
   "swipeLeftForUsers": "Desliza a la izquierda para abrir la lista de usuarios",
+  "viewChannels": "Ver canales",
+  "viewMembers": "Ver miembros",
   "deleteMessageTitle": "Eliminar mensaje",
   "deleteMessageConfirm": "¿Estás seguro de que quieres eliminar este mensaje? Esta acción es irreversible.",
   "deleteLabel": "Eliminar",

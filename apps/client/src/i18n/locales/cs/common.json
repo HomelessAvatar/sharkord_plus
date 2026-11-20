@@ -16,6 +16,8 @@
   "mobileNotOptimized": "Sharkord ještě není optimalizovaný pro telefony, ne všechno bude fungovat elegantně.",
   "swipeRightForChannels": "Přejetím doprava otevřete seznam kanálů",
   "swipeLeftForUsers": "Přejetím doleva otevřete seznam uživatelů",
+  "viewChannels": "Zobrazit kanály",
+  "viewMembers": "Zobrazit členy",
   "deleteMessageTitle": "Odstranit zprávu",
   "deleteMessageConfirm": "Opravdu chcete tuto zprávu odstranit? Tato akce je nevratná.",
   "deleteLabel": "Odstranit",

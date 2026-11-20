@@ -1,5 +1,7 @@
+import { ServerScreen } from '@/components/server-screens/screens';
 import { toggleVoiceChatSidebar } from '@/features/app/actions';
 import { useVoiceChatSidebar } from '@/features/app/hooks';
+import { openServerScreen } from '@/features/server-screens/actions';
 import { useChannelById } from '@/features/server/channels/hooks';
 import {
   useHasUnreadMentions,
@@ -15,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMobileDrawer } from '@/screens/server-view/mobile-drawer-context';
 import { Button, IconButton, UnreadCount } from '@sharkord/ui';
-import { Menu, MessageSquare, Users, Volume2 } from 'lucide-react';
+import { Menu, MessageSquare, Settings, Users, Volume2 } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 import { ControlsBar } from './controls-bar';
 import { ExternalStreamCard } from './external-stream-card';
@@ -48,6 +50,10 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
   const handleToggleVoiceChat = useCallback(() => {
     toggleVoiceChatSidebar(channelId);
   }, [channelId]);
+
+  const openUserSettings = useCallback(() => {
+    openServerScreen(ServerScreen.USER_SETTINGS);
+  }, []);
 
   const cards = useMemo(() => {
     const cards: React.ReactNode[] = [];
@@ -142,25 +148,23 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
   if (voiceUsers.length === 0) {
     return (
       <div className="flex-1 flex flex-col size-full relative">
-        <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card">
+        <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card">
           <IconButton
             icon={Menu}
-            size="sm"
             variant="ghost"
-            className="-ml-1 text-muted-foreground hover:text-foreground"
+            className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
             onClick={toggleMobileMenu}
           />
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-            <Volume2 className="w-3.5 h-3.5" />
-            <span className="truncate max-w-40">{channel?.name}</span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground truncate max-w-44">
+            <Volume2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">{channel?.name}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
-              size="sm"
               className={cn(
-                'h-8 px-2 text-muted-foreground hover:text-foreground relative',
-                isThisVoiceChatOpen && 'text-foreground'
+                'size-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 relative flex items-center justify-center p-0',
+                isThisVoiceChatOpen && 'text-foreground bg-muted/30'
               )}
               onClick={handleToggleVoiceChat}
               aria-label="Voice Chat"
@@ -168,22 +172,28 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
               <div className="relative flex items-center justify-center">
                 <MessageSquare
                   className={cn(
-                    'w-4 h-4 transition-all duration-200 ease-in-out',
+                    'w-5 h-5 transition-all duration-200 ease-in-out',
                     isThisVoiceChatOpen && 'fill-current'
                   )}
                 />
                 <UnreadCount
                   count={unreadCount}
                   hasMention={hasMentions}
-                  className="absolute -top-2 -right-3 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
+                  className="absolute -top-2 -right-2.5 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
                 />
               </div>
             </Button>
             <IconButton
-              icon={Users}
-              size="sm"
+              icon={Settings}
               variant="ghost"
-              className="text-muted-foreground hover:text-foreground"
+              className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+              onClick={openUserSettings}
+              aria-label="Ayarlar"
+            />
+            <IconButton
+              icon={Users}
+              variant="ghost"
+              className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
               onClick={toggleMobileUsers}
             />
           </div>
@@ -204,25 +214,23 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   return (
     <div className="flex flex-col size-full relative bg-background overflow-hidden group/voice-stage">
-      <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card shrink-0 z-10">
+      <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card shrink-0 z-10">
         <IconButton
           icon={Menu}
-          size="sm"
           variant="ghost"
-          className="-ml-1 text-muted-foreground hover:text-foreground"
+          className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
           onClick={toggleMobileMenu}
         />
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <Volume2 className="w-3.5 h-3.5" />
-          <span className="truncate max-w-40">{channel?.name}</span>
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground truncate max-w-44">
+          <Volume2 className="w-4 h-4 shrink-0" />
+          <span className="truncate">{channel?.name}</span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
-            size="sm"
             className={cn(
-              'h-8 px-2 text-muted-foreground hover:text-foreground relative',
-              isThisVoiceChatOpen && 'text-foreground'
+              'size-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 relative flex items-center justify-center p-0',
+              isThisVoiceChatOpen && 'text-foreground bg-muted/30'
             )}
             onClick={handleToggleVoiceChat}
             aria-label="Voice Chat"
@@ -230,22 +238,28 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
             <div className="relative flex items-center justify-center">
               <MessageSquare
                 className={cn(
-                  'w-4 h-4 transition-all duration-200 ease-in-out',
+                  'w-5 h-5 transition-all duration-200 ease-in-out',
                   isThisVoiceChatOpen && 'fill-current'
                 )}
               />
               <UnreadCount
                 count={unreadCount}
                 hasMention={hasMentions}
-                className="absolute -top-2 -right-3 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
+                className="absolute -top-2 -right-2.5 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
               />
             </div>
           </Button>
           <IconButton
-            icon={Users}
-            size="sm"
+            icon={Settings}
             variant="ghost"
-            className="text-muted-foreground hover:text-foreground"
+            className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+            onClick={openUserSettings}
+            aria-label="Ayarlar"
+          />
+          <IconButton
+            icon={Users}
+            variant="ghost"
+            className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
             onClick={toggleMobileUsers}
           />
         </div>

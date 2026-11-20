@@ -2,10 +2,12 @@ import { TextChannel } from '@/components/channel-view/text';
 import { VoiceChannel } from '@/components/channel-view/voice';
 import { Dialog } from '@/components/dialogs/dialogs';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
+import { ServerScreen } from '@/components/server-screens/screens';
 import { ThreadContent } from '@/components/thread-sidebar/thread-content';
 import { setSelectedThread } from '@/features/app/actions';
 import { useSelectedThread } from '@/features/app/hooks';
 import { openDialog } from '@/features/dialogs/actions';
+import { openServerScreen } from '@/features/server-screens/actions';
 import {
   useSelectedChannelId,
   useSelectedChannelType
@@ -18,7 +20,7 @@ import {
 import { useThreadsOpen } from '@/features/server/threads/hooks';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
 import { Button, IconButton } from '@sharkord/ui';
-import { Hash, Menu, Search, Users } from 'lucide-react';
+import { Hash, Menu, Search, Settings, Users } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMobileDrawer } from './mobile-drawer-context';
@@ -42,6 +44,10 @@ const ContentWrapper = memo(
 
     const openSearchDialog = useCallback(() => {
       openDialog(Dialog.SEARCH);
+    }, []);
+
+    const openUserSettings = useCallback(() => {
+      openServerScreen(ServerScreen.USER_SETTINGS);
     }, []);
 
     const onCloseThread = useCallback(() => setSelectedThread(undefined), []);
@@ -74,13 +80,20 @@ const ContentWrapper = memo(
       } else {
         content = (
           <div className="flex flex-col h-full w-full">
-            <div className="md:hidden flex h-12 items-center px-3 border-b border-border bg-card w-full shrink-0">
+            <div className="md:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
               <IconButton
                 icon={Menu}
-                size="sm"
                 variant="ghost"
-                className="-ml-1 text-muted-foreground hover:text-foreground"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                 onClick={openMobileMenu}
+                aria-label={t('viewChannels')}
+              />
+              <IconButton
+                icon={Settings}
+                variant="ghost"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+                onClick={openUserSettings}
+                aria-label="Ayarlar"
               />
             </div>
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -108,13 +121,20 @@ const ContentWrapper = memo(
       } else {
         content = (
           <div className="flex flex-col h-full w-full">
-            <div className="md:hidden flex h-12 items-center px-3 border-b border-border bg-card w-full shrink-0">
+            <div className="md:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
               <IconButton
                 icon={Menu}
-                size="sm"
                 variant="ghost"
-                className="-ml-1 text-muted-foreground hover:text-foreground"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                 onClick={openMobileMenu}
+                aria-label={t('viewChannels')}
+              />
+              <IconButton
+                icon={Settings}
+                variant="ghost"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+                onClick={openUserSettings}
+                aria-label="Ayarlar"
               />
             </div>
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
@@ -147,33 +167,40 @@ const ContentWrapper = memo(
           <div className="flex-col gap-2 h-full w-full hidden lg:flex overflow-auto">
             <PluginSlotRenderer slotId={PluginSlot.HOME_SCREEN} />
           </div>
-          <div className="md:hidden flex h-12 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
+          <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card w-full shrink-0">
             <IconButton
               icon={Menu}
-              size="sm"
               variant="ghost"
-              className="-ml-1 text-muted-foreground hover:text-foreground"
+              className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
               onClick={openMobileMenu}
+              aria-label={t('viewChannels')}
             />
-            <span className="font-semibold text-xs text-muted-foreground truncate max-w-48">
+            <span className="font-semibold text-sm text-foreground truncate max-w-44 text-center">
               {serverName}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2.5">
               {publicSettings?.enableSearch && (
                 <IconButton
                   icon={Search}
-                  size="sm"
                   variant="ghost"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                   onClick={openSearchDialog}
+                  aria-label="Arama"
                 />
               )}
               <IconButton
-                icon={Users}
-                size="sm"
+                icon={Settings}
                 variant="ghost"
-                className="text-muted-foreground hover:text-foreground"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+                onClick={openUserSettings}
+                aria-label="Ayarlar"
+              />
+              <IconButton
+                icon={Users}
+                variant="ghost"
+                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                 onClick={openMobileUsers}
+                aria-label={t('viewMembers')}
               />
             </div>
           </div>
@@ -193,20 +220,20 @@ const ContentWrapper = memo(
               <Button
                 variant="default"
                 size="default"
-                className="w-full justify-center gap-2 font-medium"
+                className="w-full justify-center gap-2 font-medium h-11 text-sm rounded-lg"
                 onClick={openMobileMenu}
               >
                 <Menu className="w-4 h-4" />
-                <span>{t('swipeRightForChannels')}</span>
+                <span>{t('viewChannels')}</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-center gap-2 text-muted-foreground"
+                className="w-full justify-center gap-2 text-muted-foreground h-10 text-sm rounded-lg"
                 onClick={openMobileUsers}
               >
                 <Users className="w-4 h-4" />
-                <span>{t('swipeLeftForUsers')}</span>
+                <span>{t('viewMembers')}</span>
               </Button>
             </div>
           </div>

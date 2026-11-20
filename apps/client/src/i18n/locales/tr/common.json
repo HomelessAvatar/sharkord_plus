@@ -16,6 +16,8 @@
   "mobileNotOptimized": "Sharkord henüz mobil cihazlar için optimize edilmedi. Deneyim ideal olmayacaktır.",
   "swipeRightForChannels": "Kanal listesini açmak için sağa kaydırın",
   "swipeLeftForUsers": "Kullanıcı listesini açmak için sola kaydırın",
+  "viewChannels": "Kanalları Gör",
+  "viewMembers": "Üyeleri Gör",
   "deleteMessageTitle": "Mesajı Sil",
   "deleteMessageConfirm": "Bu mesajı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   "deleteLabel": "Sil",
