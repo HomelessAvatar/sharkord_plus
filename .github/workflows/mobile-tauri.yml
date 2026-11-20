@@ -82,9 +82,20 @@ jobs:
         run: bun --filter client build
 
       - name: Prepare Android release signing keystore
+        env:
+          ANDROID_SIGNING_KEY_BASE64: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
         run: |
-          KEYSTORE_PATH="$HOME/release.keystore"
-          if [ ! -f "$KEYSTORE_PATH" ]; then
+          REPO_KEYSTORE="$GITHUB_WORKSPACE/apps/tauri/src-tauri/gen/android/release.keystore"
+          if [ -n "$ANDROID_SIGNING_KEY_BASE64" ]; then
+            echo "Using custom secret ANDROID_SIGNING_KEY_BASE64..."
+            KEYSTORE_PATH="$HOME/release.keystore"
+            echo "$ANDROID_SIGNING_KEY_BASE64" | base64 -d > "$KEYSTORE_PATH"
+          elif [ -f "$REPO_KEYSTORE" ]; then
+            echo "Using persistent repository release keystore..."
+            KEYSTORE_PATH="$REPO_KEYSTORE"
+          else
+            echo "Generating fallback keystore..."
+            KEYSTORE_PATH="$HOME/release.keystore"
             keytool -genkeypair -v \
               -keystore "$KEYSTORE_PATH" \
               -alias sharkord \
@@ -93,7 +104,7 @@ jobs:
               -validity 10000 \
               -storepass sharkord \
               -keypass sharkord \
-              -dname "CN=Sharkord Plus, OU=Sharkord, O=Sharkord, C=US"
+              -dname "CN=VibeShark, OU=VibeShark, O=VibeShark, C=US"
           fi
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> $GITHUB_ENV
           echo "ANDROID_KEY_ALIAS=sharkord" >> $GITHUB_ENV

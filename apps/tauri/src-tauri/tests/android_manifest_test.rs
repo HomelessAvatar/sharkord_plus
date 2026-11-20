@@ -66,11 +66,15 @@ fn test_android_release_signing_config() {
     let build_gradle = include_str!("../gen/android/app/build.gradle.kts");
     assert!(build_gradle.contains("signingConfigs"));
     assert!(build_gradle.contains("signingConfig = signingConfigs.getByName(\"release\")"));
+    assert!(build_gradle.contains("defaultKeystore"));
     assert!(build_gradle.contains("compileSdk = 37"));
     assert!(build_gradle.contains("targetSdk = 34"));
     assert!(build_gradle.contains("isMinifyEnabled = false"));
     assert!(build_gradle.contains("useLegacyPackaging = false"));
     assert!(build_gradle.contains("jniLibs.srcDirs(\"src/main/jniLibs\")"));
+
+    let keystore = include_bytes!("../gen/android/release.keystore");
+    assert!(!keystore.is_empty());
 }
 
 #[test]

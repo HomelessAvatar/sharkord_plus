@@ -37,8 +37,14 @@ android {
             val storeFileEnv = System.getenv("ANDROID_KEYSTORE_PATH")
             val storePasswordEnv = System.getenv("ANDROID_STORE_PASSWORD")
 
+            val defaultKeystore = file("../release.keystore")
             if (storeFileEnv != null && file(storeFileEnv).exists()) {
                 storeFile = file(storeFileEnv)
+                storePassword = storePasswordEnv ?: "sharkord"
+                keyAlias = keyAliasEnv ?: "sharkord"
+                keyPassword = keyPasswordEnv ?: "sharkord"
+            } else if (defaultKeystore.exists()) {
+                storeFile = defaultKeystore
                 storePassword = storePasswordEnv ?: "sharkord"
                 keyAlias = keyAliasEnv ?: "sharkord"
                 keyPassword = keyPasswordEnv ?: "sharkord"
