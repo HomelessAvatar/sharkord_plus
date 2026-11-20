@@ -1,3 +1,11 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 plugins {
     `kotlin-dsl`
 }
@@ -14,6 +22,7 @@ gradlePlugin {
 repositories {
     google()
     mavenCentral()
+    gradlePluginPortal()
 }
 
 dependencies {

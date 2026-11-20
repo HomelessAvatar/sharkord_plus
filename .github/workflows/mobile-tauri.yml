@@ -47,9 +47,15 @@ jobs:
       - name: Install Android NDK and SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-34" "build-tools;35.0.0" "build-tools;34.0.0" "ndk;27.2.12479018" || sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;27.0.12077973"
-          NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
-          echo "Found NDK at: $NDK_DIR"
+          sdkmanager "platforms;android-34" "build-tools;35.0.0" "build-tools;34.0.0" "ndk;27.2.12479018" || sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;27.0.12077973" || sdkmanager "platforms;android-34" "build-tools;35.0.0" "ndk;26.1.10909125"
+          # Remove untested experimental/preview NDK versions (such as NDK 30) pre-installed on the runner image
+          rm -rf "$ANDROID_HOME/ndk/30*" || true
+          rm -rf "$ANDROID_HOME/ndk/28*" || true
+          NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -name "27.*" -type d | sort -V | tail -n 1)
+          if [ -z "$NDK_DIR" ]; then
+            NDK_DIR=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -name "26.*" -type d | sort -V | tail -n 1)
+          fi
+          echo "Selected NDK at: $NDK_DIR"
           echo "NDK_HOME=$NDK_DIR" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$NDK_DIR" >> $GITHUB_ENV
 
@@ -99,17 +105,26 @@ jobs:
           for abi in arm64-v8a armeabi-v7a x86 x86_64; do
             mkdir -p apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/$abi
           done
-          find "$NDK_HOME" -name "libc++_shared.so" | while read -r lib; do
-            if [[ "$lib" == *"aarch64"* ]]; then
-              cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/
-            elif [[ "$lib" == *"arm-linux"* ]]; then
-              cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/armeabi-v7a/
-            elif [[ "$lib" == *"i686"* ]]; then
-              cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86/
-            elif [[ "$lib" == *"x86_64"* ]]; then
-              cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86_64/
-            fi
-          done
+          # Copy exact arch-specific libc++_shared.so from NDK sysroot
+          SYSROOT="$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib"
+          if [ -d "$SYSROOT" ]; then
+            cp -v "$SYSROOT/aarch64-linux-android/libc++_shared.so" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/ || true
+            cp -v "$SYSROOT/arm-linux-androideabi/libc++_shared.so" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/armeabi-v7a/ || true
+            cp -v "$SYSROOT/i686-linux-android/libc++_shared.so" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86/ || true
+            cp -v "$SYSROOT/x86_64-linux-android/libc++_shared.so" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86_64/ || true
+          else
+            find "$NDK_HOME" -name "libc++_shared.so" | while read -r lib; do
+              if [[ "$lib" == *"aarch64-linux-android"* ]]; then
+                cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/
+              elif [[ "$lib" == *"arm-linux-androideabi"* ]]; then
+                cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/armeabi-v7a/
+              elif [[ "$lib" == *"i686-linux-android"* ]]; then
+                cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86/
+              elif [[ "$lib" == *"x86_64-linux-android"* ]]; then
+                cp -v "$lib" apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/x86_64/
+              fi
+            done
+          fi
           ls -la apps/tauri/src-tauri/gen/android/app/src/main/jniLibs/* || true
 
       - name: Build Tauri Android APK (tauri android build)

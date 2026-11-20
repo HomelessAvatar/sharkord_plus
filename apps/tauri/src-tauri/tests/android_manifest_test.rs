@@ -70,7 +70,7 @@ fn test_android_release_signing_config() {
     assert!(build_gradle.contains("targetSdk = 34"));
     assert!(build_gradle.contains("isMinifyEnabled = false"));
     assert!(build_gradle.contains("useLegacyPackaging = false"));
-    assert!(build_gradle.contains("copyNdkSharedLibs"));
+    assert!(build_gradle.contains("jniLibs.srcDirs(\"src/main/jniLibs\")"));
 }
 
 #[test]
