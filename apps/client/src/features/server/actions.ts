@@ -7,7 +7,7 @@ import {
   saveSessionToVault,
   syncActiveSessionFromVault
 } from '@/helpers/get-file-url';
-import { isDesktopApp } from '@/helpers/is-desktop-app';
+import { isStandaloneApp } from '@/helpers/is-desktop-app';
 import { playSound } from '@/helpers/sounds';
 import { getSessionStorageItem, SessionStorageKey } from '@/helpers/storage';
 import { pushVoiceDebugEvent } from '@/helpers/voice-debug';
@@ -95,7 +95,7 @@ export const connect = async () => {
 
   if (
     !import.meta.env.DEV &&
-    !isDesktopApp() &&
+    !isStandaloneApp() &&
     serverVersion !== VITE_APP_VERSION
   ) {
     openDialog(Dialog.SERVER_UPDATED);

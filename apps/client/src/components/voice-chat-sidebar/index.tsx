@@ -17,21 +17,32 @@ const VoiceChatSidebar = memo(() => {
   }
 
   return (
-    <ResizableSidebar
-      storageKey={LocalStorageKey.VOICE_CHAT_SIDEBAR_WIDTH}
-      minWidth={MIN_WIDTH}
-      maxWidth={MAX_WIDTH}
-      defaultWidth={DEFAULT_WIDTH}
-      edge="left"
-      isOpen={isOpen}
-      className="hidden lg:flex"
-    >
-      <div className="flex flex-col h-full w-full">
-        <div className="flex-1 flex flex-col overflow-hidden">
+    <>
+      <ResizableSidebar
+        storageKey={LocalStorageKey.VOICE_CHAT_SIDEBAR_WIDTH}
+        minWidth={MIN_WIDTH}
+        maxWidth={MAX_WIDTH}
+        defaultWidth={DEFAULT_WIDTH}
+        edge="left"
+        isOpen={isOpen}
+        className="hidden lg:flex"
+      >
+        <div className="flex flex-col h-full w-full">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <TextChannel
+              channelId={channelId}
+              onClose={closeVoiceChatSidebar}
+            />
+          </div>
+        </div>
+      </ResizableSidebar>
+
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background">
           <TextChannel channelId={channelId} onClose={closeVoiceChatSidebar} />
         </div>
-      </div>
-    </ResizableSidebar>
+      )}
+    </>
   );
 });
 

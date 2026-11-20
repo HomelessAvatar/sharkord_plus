@@ -1,7 +1,10 @@
+import { Dialog } from '@/components/dialogs/dialogs';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
 import { toggleChannelMuted } from '@/features/app/actions';
 import { useIsChannelMuted } from '@/features/app/hooks';
+import { openDialog } from '@/features/dialogs/actions';
 import { useChannelById } from '@/features/server/channels/hooks';
+import { usePublicServerSettings } from '@/features/server/hooks';
 import { useMobileDrawer } from '@/screens/server-view/mobile-drawer-context';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
 import { IconButton, Tooltip } from '@sharkord/ui';
@@ -10,6 +13,7 @@ import {
   Hash,
   Menu,
   MessageCircleMore,
+  Search,
   Users,
   Volume2,
   X
@@ -29,7 +33,12 @@ const TextTopbar = memo(
     const { t } = useTranslation();
     const channel = useChannelById(channelId);
     const isMuted = useIsChannelMuted(channelId);
+    const publicSettings = usePublicServerSettings();
     const { toggleMobileMenu, toggleMobileUsers } = useMobileDrawer();
+
+    const openSearchDialog = useCallback(() => {
+      openDialog(Dialog.SEARCH);
+    }, []);
 
     const onUnmuteClick = useCallback(() => {
       toggleChannelMuted(channelId);
@@ -110,6 +119,15 @@ const TextTopbar = memo(
               </Tooltip>
             )}
             <PinnedMessagesPopover onScrollToMessage={onScrollToMessage} />
+            {publicSettings?.enableSearch && (
+              <IconButton
+                icon={Search}
+                size="sm"
+                variant="ghost"
+                className="lg:hidden text-muted-foreground hover:text-foreground"
+                onClick={openSearchDialog}
+              />
+            )}
             <IconButton
               icon={Users}
               size="sm"

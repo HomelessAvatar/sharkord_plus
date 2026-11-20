@@ -56,7 +56,7 @@ const TopBar = memo(({ onToggleRightSidebar, isOpen }: TTopBarProps) => {
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
-        {isDesktop && (
+        {isDesktop && desktopApi && (
           <>
             <Button
               variant="ghost"
@@ -86,7 +86,7 @@ const TopBar = memo(({ onToggleRightSidebar, isOpen }: TTopBarProps) => {
         )}
       </div>
 
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center min-w-0">
         {settings?.enableSearch && <ServerSearch />}
       </div>
 

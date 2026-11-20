@@ -1,15 +1,22 @@
+import { toggleVoiceChatSidebar } from '@/features/app/actions';
+import { useVoiceChatSidebar } from '@/features/app/hooks';
 import { useChannelById } from '@/features/server/channels/hooks';
-import { useVoiceUsersByChannelId } from '@/features/server/hooks';
+import {
+  useHasUnreadMentions,
+  useUnreadMessagesCount,
+  useVoiceUsersByChannelId
+} from '@/features/server/hooks';
 import { useOwnUserId } from '@/features/server/users/hooks';
 import {
   useHideNonVideoParticipants,
   useHideOwnScreenShare,
   useVoiceChannelExternalStreamsList
 } from '@/features/server/voice/hooks';
+import { cn } from '@/lib/utils';
 import { useMobileDrawer } from '@/screens/server-view/mobile-drawer-context';
-import { IconButton } from '@sharkord/ui';
-import { Menu, Users, Volume2 } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { Button, IconButton, UnreadCount } from '@sharkord/ui';
+import { Menu, MessageSquare, Users, Volume2 } from 'lucide-react';
+import { memo, useCallback, useMemo } from 'react';
 import { ControlsBar } from './controls-bar';
 import { ExternalStreamCard } from './external-stream-card';
 import { usePinCardController } from './hooks/use-pin-card-controller';
@@ -31,6 +38,16 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
   const ownUserId = useOwnUserId();
   const { toggleMobileMenu, toggleMobileUsers } = useMobileDrawer();
   const isAnyCardPinned = pinnedCard !== undefined;
+  const { isOpen: isVoiceChatOpen, channelId: openVoiceChatChannelId } =
+    useVoiceChatSidebar();
+  const isThisVoiceChatOpen =
+    isVoiceChatOpen && openVoiceChatChannelId === channelId;
+  const unreadCount = useUnreadMessagesCount(channelId);
+  const hasMentions = useHasUnreadMentions(channelId);
+
+  const handleToggleVoiceChat = useCallback(() => {
+    toggleVoiceChatSidebar(channelId);
+  }, [channelId]);
 
   const cards = useMemo(() => {
     const cards: React.ReactNode[] = [];
@@ -137,13 +154,39 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
             <Volume2 className="w-3.5 h-3.5" />
             <span className="truncate max-w-40">{channel?.name}</span>
           </div>
-          <IconButton
-            icon={Users}
-            size="sm"
-            variant="ghost"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={toggleMobileUsers}
-          />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'h-8 px-2 text-muted-foreground hover:text-foreground relative',
+                isThisVoiceChatOpen && 'text-foreground'
+              )}
+              onClick={handleToggleVoiceChat}
+              aria-label="Voice Chat"
+            >
+              <div className="relative flex items-center justify-center">
+                <MessageSquare
+                  className={cn(
+                    'w-4 h-4 transition-all duration-200 ease-in-out',
+                    isThisVoiceChatOpen && 'fill-current'
+                  )}
+                />
+                <UnreadCount
+                  count={unreadCount}
+                  hasMention={hasMentions}
+                  className="absolute -top-2 -right-3 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
+                />
+              </div>
+            </Button>
+            <IconButton
+              icon={Users}
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={toggleMobileUsers}
+            />
+          </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -173,13 +216,39 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
           <Volume2 className="w-3.5 h-3.5" />
           <span className="truncate max-w-40">{channel?.name}</span>
         </div>
-        <IconButton
-          icon={Users}
-          size="sm"
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground"
-          onClick={toggleMobileUsers}
-        />
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'h-8 px-2 text-muted-foreground hover:text-foreground relative',
+              isThisVoiceChatOpen && 'text-foreground'
+            )}
+            onClick={handleToggleVoiceChat}
+            aria-label="Voice Chat"
+          >
+            <div className="relative flex items-center justify-center">
+              <MessageSquare
+                className={cn(
+                  'w-4 h-4 transition-all duration-200 ease-in-out',
+                  isThisVoiceChatOpen && 'fill-current'
+                )}
+              />
+              <UnreadCount
+                count={unreadCount}
+                hasMention={hasMentions}
+                className="absolute -top-2 -right-3 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
+              />
+            </div>
+          </Button>
+          <IconButton
+            icon={Users}
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={toggleMobileUsers}
+          />
+        </div>
       </div>
       <VoiceGrid pinnedCardId={pinnedCard?.id}>{cards}</VoiceGrid>
       <ControlsBar channelId={channelId} />

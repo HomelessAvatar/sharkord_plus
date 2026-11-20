@@ -1,6 +1,12 @@
 import { Protect } from '@/components/protect';
+import { toggleVoiceChatSidebar } from '@/features/app/actions';
+import { useVoiceChatSidebar } from '@/features/app/hooks';
 import { useIsCurrentVoiceChannelSelected } from '@/features/server/channels/hooks';
-import { useChannelCan } from '@/features/server/hooks';
+import {
+  useChannelCan,
+  useHasUnreadMentions,
+  useUnreadMessagesCount
+} from '@/features/server/hooks';
 import { leaveVoice } from '@/features/server/voice/actions';
 import {
   useAlwaysShowVoiceControls,
@@ -9,10 +15,11 @@ import {
 } from '@/features/server/voice/hooks';
 import { cn } from '@/lib/utils';
 import { ChannelPermission, Permission } from '@sharkord/shared';
-import { Button, Tooltip } from '@sharkord/ui';
+import { Button, Tooltip, UnreadCount } from '@sharkord/ui';
 import {
   HeadphoneOff,
   Headphones,
+  MessageSquare,
   Mic,
   MicOff,
   Monitor,
@@ -41,6 +48,16 @@ const ControlsBar = memo(({ channelId }: TControlsBarProps) => {
   const channelCan = useChannelCan(channelId);
   const alwaysShowControls = useAlwaysShowVoiceControls();
   const isConnectedToThisChannel = useIsCurrentVoiceChannelSelected();
+  const { isOpen: isVoiceChatOpen, channelId: openVoiceChatChannelId } =
+    useVoiceChatSidebar();
+  const isThisVoiceChatOpen =
+    isVoiceChatOpen && openVoiceChatChannelId === channelId;
+  const unreadCount = useUnreadMessagesCount(channelId);
+  const hasMentions = useHasUnreadMentions(channelId);
+
+  const handleToggleVoiceChat = useCallback(() => {
+    toggleVoiceChatSidebar(channelId);
+  }, [channelId]);
 
   const permissions = useMemo(
     () => ({
@@ -123,6 +140,34 @@ const ControlsBar = memo(({ channelId }: TControlsBarProps) => {
             disabled={!permissions.canShareScreen}
           />
         )}
+
+        <Tooltip content={isThisVoiceChatOpen ? 'Close Chat' : 'Open Chat'}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'inline-flex size-9 items-center justify-center rounded p-0 text-muted-foreground hover:text-foreground relative transition-colors',
+              isThisVoiceChatOpen &&
+                'bg-primary/20 text-primary hover:bg-primary/30 hover:text-primary'
+            )}
+            onClick={handleToggleVoiceChat}
+            aria-label="Toggle Voice Chat"
+          >
+            <div className="relative flex items-center justify-center">
+              <MessageSquare
+                className={cn(
+                  'size-4 transition-all duration-200',
+                  isThisVoiceChatOpen && 'fill-current'
+                )}
+              />
+              <UnreadCount
+                count={unreadCount}
+                hasMention={hasMentions}
+                className="absolute -top-2 -right-2 ml-0 min-w-3.5 h-3.5 px-0.5 text-[9px] leading-none"
+              />
+            </div>
+          </Button>
+        </Tooltip>
 
         {isConnectedToThisChannel && (
           <Protect permission={Permission.SEND_VOICE_REACTION}>
