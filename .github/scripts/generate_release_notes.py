@@ -60,7 +60,13 @@ def main():
     # Determine previous tag to compute range
     prev_tag = ""
     if tag:
-        prev_tag = run_command(["git", "describe", "--tags", "--abbrev=0", f"{tag}^"])
+        all_tags = [t.strip() for t in run_command(["git", "tag", "-l", "v*", "--sort=-v:refname"]).splitlines() if t.strip()]
+        if tag in all_tags:
+            idx = all_tags.index(tag)
+            if idx + 1 < len(all_tags):
+                prev_tag = all_tags[idx + 1]
+        if not prev_tag:
+            prev_tag = run_command(["git", "describe", "--tags", "--abbrev=0", f"{tag}^"])
 
     if tag and prev_tag:
         git_range = f"{prev_tag}..{tag}"
