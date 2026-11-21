@@ -8,6 +8,7 @@ import { setSelectedThread } from '@/features/app/actions';
 import { useSelectedThread } from '@/features/app/hooks';
 import { openDialog } from '@/features/dialogs/actions';
 import { openServerScreen } from '@/features/server-screens/actions';
+import { setSelectedChannelId } from '@/features/server/channels/actions';
 import {
   useSelectedChannelId,
   useSelectedChannelType
@@ -21,7 +22,7 @@ import { useThreadsOpen } from '@/features/server/threads/hooks';
 import { ChannelType, PluginSlot } from '@sharkord/shared';
 import { Button, IconButton } from '@sharkord/ui';
 import { Hash, Menu, Search, Settings, Users } from 'lucide-react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MobileActiveVoicePill } from './mobile-active-voice-pill';
 import { useMobileDrawer } from './mobile-drawer-context';
@@ -52,6 +53,26 @@ const ContentWrapper = memo(
     }, []);
 
     const onCloseThread = useCallback(() => setSelectedThread(undefined), []);
+
+    const isTextChannelBeingShown =
+      !activeFullscreenPluginId &&
+      !threadsOpen &&
+      !isDmMode &&
+      selectedChannelType === ChannelType.TEXT;
+
+    useEffect(() => {
+      if (!isTextChannelBeingShown) return;
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+
+        setSelectedChannelId(undefined);
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isTextChannelBeingShown]);
 
     if (activeFullscreenPluginId) {
       return (

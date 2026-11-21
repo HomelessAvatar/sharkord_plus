@@ -63,7 +63,7 @@ import {
 } from './controls-bridge';
 import { FloatingPinnedCard } from './floating-pinned-card';
 import {
-  getPreferredVideoCodec,
+  getPreferredScreenCodec,
   getRemoteConsumerTypeKey,
   getScreenShareSimulcastEncodings,
   getSimulcastCodec,
@@ -75,6 +75,7 @@ import {
   normalizeStreamQuality,
   savePausedStreamToStorage,
   saveStreamQualitiesToStorage,
+  setRecordFlag,
   type TRemoteConsumerTypes,
   type TRemoteQualityLayers,
   type TStreamQualitySettings
@@ -139,6 +140,7 @@ export type TVoiceProvider = {
   ) => Promise<void>;
   isSimulcastConsumer: (remoteId: number, kind: StreamKind) => boolean;
   isStreamPaused: (remoteId: number, kind: StreamKind) => boolean;
+  isStreamUnplayable: (remoteId: number, kind: StreamKind) => boolean;
   setStreamPaused: (
     remoteId: number,
     kind: TPausableStreamKind,
@@ -185,6 +187,7 @@ const VoiceProviderContext = createContext<TVoiceProvider>({
   setStreamQuality: () => Promise.resolve(),
   isSimulcastConsumer: () => false,
   isStreamPaused: () => false,
+  isStreamUnplayable: () => false,
   setStreamPaused: () => Promise.resolve(),
   setStreamVisible: () => Promise.resolve(),
   init: () => Promise.resolve(),
@@ -219,6 +222,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   );
   const routerRtpCapabilities = useRef<RtpCapabilities | null>(null);
   const deviceRtpCapabilities = useRef<RtpCapabilities | null>(null);
+  const sendRtpCapabilities = useRef<RtpCapabilities | null>(null);
   const audioVideoRefsMap = useRef<Map<TRefsKey, AudioVideoRefs>>(new Map());
   const previousVoiceChannelIdRef = useRef<number | undefined>(undefined);
   const [streamQualities, setStreamQualities] =
@@ -228,6 +232,9 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   const [remoteQualityLayers, setRemoteQualityLayers] =
     useState<TRemoteQualityLayers>({});
   const [remotePausedStreams, setRemotePausedStreams] = useState<
+    Record<string, boolean>
+  >({});
+  const [remoteUnplayableStreams, setRemoteUnplayableStreams] = useState<
     Record<string, boolean>
   >({});
   const currentVoiceChannelId = useCurrentVoiceChannelId();
@@ -282,19 +289,29 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     (remoteId: number, kind: StreamKind, paused: boolean) => {
       const key = getRemoteConsumerTypeKey(remoteId, kind);
 
-      setRemotePausedStreams((prev) => {
-        if (!paused) {
-          const next = { ...prev };
-
-          delete next[key];
-
-          return next;
-        }
-
-        return { ...prev, [key]: true };
-      });
+      setRemotePausedStreams((prev) => setRecordFlag(prev, key, paused));
     },
     []
+  );
+
+  const setRemoteStreamUnplayable = useCallback(
+    (remoteId: number, kind: StreamKind, unplayable: boolean) => {
+      const key = getRemoteConsumerTypeKey(remoteId, kind);
+
+      setRemoteUnplayableStreams((prev) =>
+        setRecordFlag(prev, key, unplayable)
+      );
+    },
+    []
+  );
+
+  const isStreamUnplayable = useCallback(
+    (remoteId: number, kind: StreamKind): boolean => {
+      const key = getRemoteConsumerTypeKey(remoteId, kind);
+
+      return !!remoteUnplayableStreams[key];
+    },
+    [remoteUnplayableStreams]
   );
 
   const remotePausedStreamsRef = useRef(remotePausedStreams);
@@ -326,6 +343,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     setRemoteConsumerTypes({});
     setRemoteQualityLayers({});
     setRemotePausedStreams({});
+    setRemoteUnplayableStreams({});
   }, []);
 
   const shouldShowQualityPicker = useCallback(
@@ -481,6 +499,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     setRemoteConsumerType,
     setRemoteStreamQualityLayers,
     setRemoteStreamPaused,
+    setRemoteStreamUnplayable,
     clearRemoteConsumerMetadata,
     isStreamHidden
   });
@@ -1159,15 +1178,16 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
           let preferredCodec: RtpCodecCapability | undefined;
 
-          if (routerRtpCapabilities.current?.codecs) {
-            preferredCodec = getPreferredVideoCodec(
-              routerRtpCapabilities.current.codecs,
+          if (!simulcastEnabled && screenSettings.screenCodec) {
+            preferredCodec = getPreferredScreenCodec(
+              sendRtpCapabilities.current,
               screenSettings.screenCodec
             );
 
             if (preferredCodec && !simulcastEnabled) {
               voiceLogger.info('screen: using preferred codec', {
-                codec: preferredCodec.mimeType
+                codec: preferredCodec.mimeType,
+                parameters: preferredCodec.parameters
               });
             }
           }
@@ -1382,6 +1402,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     clearExternalStreams();
     cleanupTransports();
     deviceRtpCapabilities.current = null;
+    sendRtpCapabilities.current = null;
 
     setConnectionStatus(ConnectionStatus.DISCONNECTED);
   }, [
@@ -1432,6 +1453,8 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
           throw new Error('Failed to load device RTP capabilities');
         }
 
+        sendRtpCapabilities.current = device.sendRtpCapabilities;
+
         await createProducerTransport(device);
         await createConsumerTransport(device);
 
@@ -1480,7 +1503,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     });
 
   useVoiceHotkeys({ toggleMic, toggleSound });
-  useVoiceSessionRecovery({ init });
+  useVoiceSessionRecovery({ init, cleanup });
 
   const setMicMutedForBridge = useCallback(
     async (muted: boolean) => {
@@ -1514,6 +1537,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     removeRemoteUserStream,
     removeExternalStreamTrack,
     removeExternalStream,
+    setRemoteStreamUnplayable,
     clearRemoteUserStreamsForUser,
     stopClosedOwnStreamRef,
     rtpCapabilitiesRef: deviceRtpCapabilities,
@@ -1637,6 +1661,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       setStreamQuality,
       isSimulcastConsumer,
       isStreamPaused,
+      isStreamUnplayable,
       setStreamPaused,
       setStreamVisible,
       init,
@@ -1666,6 +1691,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       setStreamQuality,
       isSimulcastConsumer,
       isStreamPaused,
+      isStreamUnplayable,
       setStreamPaused,
       setStreamVisible,
       init,
