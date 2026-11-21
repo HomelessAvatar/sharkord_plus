@@ -38,7 +38,7 @@ const VoiceChatSidebar = memo(() => {
       </ResizableSidebar>
 
       {isOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background">
           <TextChannel channelId={channelId} onClose={closeVoiceChatSidebar} />
         </div>
       )}

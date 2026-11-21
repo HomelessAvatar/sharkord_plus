@@ -142,7 +142,7 @@ const ServerView = memo(() => {
       <MobileDrawerContext.Provider value={drawerContextValue}>
         <div
           data-testid={TestId.SERVER_VIEW}
-          className="flex h-dvh flex-col bg-background text-foreground dark pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="flex h-dvh flex-col bg-background text-foreground dark"
           {...swipeHandlers}
         >
           <TopBar
@@ -168,7 +168,7 @@ const ServerView = memo(() => {
 
             <LeftSidebar
               className={cn(
-                'md:relative md:flex fixed inset-0 left-0 h-full z-40 md:z-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] md:pt-0 md:pb-0',
+                'md:relative md:flex fixed inset-0 left-0 h-full z-40 md:z-0 transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none',
                 isMobileMenuOpen
                   ? 'translate-x-0'
                   : '-translate-x-full md:translate-x-0'
@@ -186,7 +186,7 @@ const ServerView = memo(() => {
 
             <RightSidebar
               className={cn(
-                'fixed top-0 bottom-0 right-0 h-full z-40 shadow-2xl lg:shadow-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] lg:pt-0 lg:pb-0',
+                'fixed top-0 bottom-0 right-0 h-full z-40 shadow-2xl lg:shadow-none',
                 'lg:relative lg:z-0 transition-transform duration-300 ease-in-out',
                 isMobileUsersOpen
                   ? 'translate-x-0 lg:translate-x-0'
