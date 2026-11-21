@@ -4,16 +4,9 @@ import { isTauriEnvironment } from './get-file-url';
 const isMobileDevice = (): boolean => {
   if (typeof navigator === 'undefined') return false;
   const userAgent = navigator.userAgent || '';
-  const isMobileUA =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
-      userAgent
-    );
-  const isSmallScreen =
-    typeof window !== 'undefined' &&
-    window.matchMedia &&
-    window.matchMedia('(max-width: 1023px)').matches;
-
-  return isMobileUA || Boolean(isSmallScreen);
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+    userAgent
+  );
 };
 
 const isDesktopApp = (): boolean => {

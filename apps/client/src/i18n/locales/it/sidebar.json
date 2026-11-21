@@ -84,5 +84,7 @@
   "failedLoadThreads": "Impossibile caricare i thread",
   "loadMoreThreads": "Carica altri",
   "closeConversation": "Chiudi conversazione",
-  "couldNotCloseDM": "Impossibile chiudere il messaggio diretto"
+  "couldNotCloseDM": "Impossibile chiudere il messaggio diretto",
+  "online": "Online — {{count}}",
+  "offline": "Offline — {{count}}"
 }

@@ -38,17 +38,25 @@ type TThreadSidebarProps = {
 
 const ThreadSidebar = memo(({ isOpen }: TThreadSidebarProps) => {
   return (
-    <ResizableSidebar
-      storageKey={LocalStorageKey.THREAD_SIDEBAR_WIDTH}
-      minWidth={MIN_WIDTH}
-      maxWidth={MAX_WIDTH}
-      defaultWidth={DEFAULT_WIDTH}
-      edge="left"
-      isOpen={isOpen}
-      className="hidden lg:flex"
-    >
-      <ThreadContentWrapper />
-    </ResizableSidebar>
+    <>
+      <ResizableSidebar
+        storageKey={LocalStorageKey.THREAD_SIDEBAR_WIDTH}
+        minWidth={MIN_WIDTH}
+        maxWidth={MAX_WIDTH}
+        defaultWidth={DEFAULT_WIDTH}
+        edge="left"
+        isOpen={isOpen}
+        className="hidden lg:flex"
+      >
+        <ThreadContentWrapper />
+      </ResizableSidebar>
+
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+          <ThreadContentWrapper />
+        </div>
+      )}
+    </>
   );
 });
 

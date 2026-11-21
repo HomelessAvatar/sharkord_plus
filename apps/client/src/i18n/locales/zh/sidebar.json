@@ -84,5 +84,7 @@
   "failedLoadThreads": "加载话题失败",
   "loadMoreThreads": "加载更多",
   "closeConversation": "关闭会话",
-  "couldNotCloseDM": "无法关闭私信"
+  "couldNotCloseDM": "无法关闭私信",
+  "online": "在线 — {{count}}",
+  "offline": "离线 — {{count}}"
 }

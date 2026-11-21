@@ -23,6 +23,7 @@ import { Button, IconButton } from '@sharkord/ui';
 import { Hash, Menu, Search, Settings, Users } from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MobileActiveVoicePill } from './mobile-active-voice-pill';
 import { useMobileDrawer } from './mobile-drawer-context';
 
 type TContentWrapperProps = {
@@ -80,11 +81,11 @@ const ContentWrapper = memo(
       } else {
         content = (
           <div className="flex flex-col h-full w-full">
-            <div className="md:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
+            <div className="lg:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
               <IconButton
                 icon={Menu}
                 variant="ghost"
-                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+                className="md:hidden size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                 onClick={openMobileMenu}
                 aria-label={t('viewChannels')}
               />
@@ -105,6 +106,7 @@ const ContentWrapper = memo(
 
       return (
         <main className="flex flex-1 flex-col bg-background relative min-w-0 min-h-0">
+          <MobileActiveVoicePill />
           {content}
         </main>
       );
@@ -121,11 +123,11 @@ const ContentWrapper = memo(
       } else {
         content = (
           <div className="flex flex-col h-full w-full">
-            <div className="md:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
+            <div className="lg:hidden flex h-14 items-center justify-between px-3 border-b border-border bg-card w-full shrink-0">
               <IconButton
                 icon={Menu}
                 variant="ghost"
-                className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+                className="md:hidden size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
                 onClick={openMobileMenu}
                 aria-label={t('viewChannels')}
               />
@@ -146,6 +148,7 @@ const ContentWrapper = memo(
 
       return (
         <main className="flex flex-1 flex-col bg-background relative min-w-0 min-h-0">
+          <MobileActiveVoicePill />
           {content}
         </main>
       );
@@ -167,11 +170,11 @@ const ContentWrapper = memo(
           <div className="flex-col gap-2 h-full w-full hidden lg:flex overflow-auto">
             <PluginSlotRenderer slotId={PluginSlot.HOME_SCREEN} />
           </div>
-          <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card w-full shrink-0">
+          <div className="lg:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card w-full shrink-0">
             <IconButton
               icon={Menu}
               variant="ghost"
-              className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+              className="md:hidden size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
               onClick={openMobileMenu}
               aria-label={t('viewChannels')}
             />
@@ -204,7 +207,7 @@ const ContentWrapper = memo(
               />
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center flex-1 gap-5 p-6 text-center md:hidden">
+          <div className="flex flex-col items-center justify-center flex-1 gap-5 p-6 text-center lg:hidden">
             <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center shadow-lg">
               <Hash className="w-8 h-8 text-primary" />
             </div>
@@ -220,7 +223,7 @@ const ContentWrapper = memo(
               <Button
                 variant="default"
                 size="default"
-                className="w-full justify-center gap-2 font-medium h-11 text-sm rounded-lg"
+                className="md:hidden w-full justify-center gap-2 font-medium h-11 text-sm rounded-lg"
                 onClick={openMobileMenu}
               >
                 <Menu className="w-4 h-4" />
@@ -243,6 +246,7 @@ const ContentWrapper = memo(
 
     return (
       <main className="flex flex-1 flex-col bg-background relative min-w-0 min-h-0">
+        <MobileActiveVoicePill />
         {content}
       </main>
     );

@@ -84,5 +84,7 @@
   "failedLoadThreads": "Nepodařilo se načíst vlákna",
   "loadMoreThreads": "Načíst další",
   "closeConversation": "Zavřít konverzaci",
-  "couldNotCloseDM": "Nepodařilo se zavřít přímou zprávu"
+  "couldNotCloseDM": "Nepodařilo se zavřít přímou zprávu",
+  "online": "Online — {{count}}",
+  "offline": "Offline — {{count}}"
 }

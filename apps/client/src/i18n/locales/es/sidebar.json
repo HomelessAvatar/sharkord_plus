@@ -84,5 +84,7 @@
   "failedLoadThreads": "No se pudieron cargar los hilos",
   "loadMoreThreads": "Cargar más",
   "closeConversation": "Cerrar conversación",
-  "couldNotCloseDM": "No se pudo cerrar el mensaje directo"
+  "couldNotCloseDM": "No se pudo cerrar el mensaje directo",
+  "online": "En línea — {{count}}",
+  "offline": "Desconectado — {{count}}"
 }

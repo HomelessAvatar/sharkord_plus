@@ -18,6 +18,8 @@
   "swipeLeftForUsers": "Swipe left to open the user list",
   "viewChannels": "View Channels",
   "viewMembers": "View Members",
+  "tapToReturn": "Tap to return",
+  "activeVoice": "Voice Connected",
   "deleteMessageTitle": "Delete Message",
   "deleteMessageConfirm": "Are you sure you want to delete this message? This action is irreversible.",
   "deleteLabel": "Delete",

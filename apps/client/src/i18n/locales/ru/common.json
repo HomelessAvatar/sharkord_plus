@@ -161,5 +161,7 @@
   "formatItalic": "Курсив",
   "formatCode": "Код",
   "formatCodeBlock": "Блок кода",
-  "playVideo": "Воспроизвести видео"
+  "playVideo": "Воспроизвести видео",
+  "tapToReturn": "Нажмите, чтобы вернуться",
+  "activeVoice": "Голос подключен"
 }

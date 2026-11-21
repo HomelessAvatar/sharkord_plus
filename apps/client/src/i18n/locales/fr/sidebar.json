@@ -84,5 +84,7 @@
   "failedLoadThreads": "Impossible de charger les fils",
   "loadMoreThreads": "Charger plus",
   "closeConversation": "Fermer la conversation",
-  "couldNotCloseDM": "Impossible de fermer le message privé"
+  "couldNotCloseDM": "Impossible de fermer le message privé",
+  "online": "En ligne — {{count}}",
+  "offline": "Hors ligne — {{count}}"
 }

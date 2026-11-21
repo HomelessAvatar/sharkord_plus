@@ -161,5 +161,7 @@
   "formatItalic": "斜体",
   "formatCode": "代码",
   "formatCodeBlock": "代码块",
-  "playVideo": "播放视频"
+  "playVideo": "播放视频",
+  "tapToReturn": "点击返回",
+  "activeVoice": "语音已连接"
 }

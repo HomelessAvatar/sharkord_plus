@@ -161,5 +161,7 @@
   "formatItalic": "Kurzíva",
   "formatCode": "Kód",
   "formatCodeBlock": "Blok kódu",
-  "playVideo": "Přehrát video"
+  "playVideo": "Přehrát video",
+  "tapToReturn": "Klepnutím se vrátíte",
+  "activeVoice": "Hlas připojen"
 }

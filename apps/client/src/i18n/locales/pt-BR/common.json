@@ -161,5 +161,7 @@
   "formatItalic": "Itálico",
   "formatCode": "Código",
   "formatCodeBlock": "Bloco de código",
-  "playVideo": "Reproduzir vídeo"
+  "playVideo": "Reproduzir vídeo",
+  "tapToReturn": "Toque para voltar",
+  "activeVoice": "Voz conectada"
 }

@@ -84,5 +84,7 @@
   "failedLoadThreads": "Не удалось загрузить ветки",
   "loadMoreThreads": "Загрузить ещё",
   "closeConversation": "Закрыть беседу",
-  "couldNotCloseDM": "Не удалось закрыть личное сообщение"
+  "couldNotCloseDM": "Не удалось закрыть личное сообщение",
+  "online": "В сети — {{count}}",
+  "offline": "Не в сети — {{count}}"
 }

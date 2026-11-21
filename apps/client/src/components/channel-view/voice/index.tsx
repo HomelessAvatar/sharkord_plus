@@ -148,11 +148,11 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
   if (voiceUsers.length === 0) {
     return (
       <div className="flex-1 flex flex-col size-full relative">
-        <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card">
+        <div className="lg:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card">
           <IconButton
             icon={Menu}
             variant="ghost"
-            className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+            className="md:hidden size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
             onClick={toggleMobileMenu}
           />
           <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground truncate max-w-44">
@@ -214,11 +214,11 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   return (
     <div className="flex flex-col size-full relative bg-background overflow-hidden group/voice-stage">
-      <div className="md:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card shrink-0 z-10">
+      <div className="lg:hidden flex h-14 items-center justify-between px-3.5 border-b border-border bg-card shrink-0 z-10">
         <IconButton
           icon={Menu}
           variant="ghost"
-          className="size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
+          className="md:hidden size-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/40 [&_svg]:size-5"
           onClick={toggleMobileMenu}
         />
         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground truncate max-w-44">

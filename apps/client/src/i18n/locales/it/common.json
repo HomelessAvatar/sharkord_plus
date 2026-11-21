@@ -161,5 +161,7 @@
   "formatItalic": "Corsivo",
   "formatCode": "Codice",
   "formatCodeBlock": "Blocco di codice",
-  "playVideo": "Riproduci video"
+  "playVideo": "Riproduci video",
+  "tapToReturn": "Tocca per tornare",
+  "activeVoice": "Voce connessa"
 }

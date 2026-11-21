@@ -18,6 +18,8 @@
   "swipeLeftForUsers": "Kullanıcı listesini açmak için sola kaydırın",
   "viewChannels": "Kanalları Gör",
   "viewMembers": "Üyeleri Gör",
+  "tapToReturn": "Dönmek için dokunun",
+  "activeVoice": "Seste",
   "deleteMessageTitle": "Mesajı Sil",
   "deleteMessageConfirm": "Bu mesajı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   "deleteLabel": "Sil",
