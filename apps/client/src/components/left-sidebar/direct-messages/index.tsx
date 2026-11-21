@@ -58,16 +58,20 @@ const DirectMessageItem = memo(({ dm, selected }: TDirectMessageItemProps) => {
     <div
       data-testid={TestId.DM_ITEM}
       className={cn(
-        'group flex w-full items-center rounded text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+        'group flex w-full items-center min-h-[44px] md:min-h-0 rounded-md text-[15px] md:text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
         selected && 'bg-accent text-accent-foreground'
       )}
     >
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5"
+        className="flex min-w-0 flex-1 items-center gap-3 md:gap-2 px-2.5 py-2 md:px-2 md:py-1.5"
         onClick={onSelect}
       >
-        <UserAvatar userId={user.id} className="h-6 w-6" showUserPopover />
+        <UserAvatar
+          userId={user.id}
+          className="h-8 w-8 md:h-6 md:w-6 shrink-0"
+          showUserPopover
+        />
         <span className="truncate flex-1 text-left">{user.name}</span>
         <UnreadCount count={unreadCount} />
       </button>
@@ -78,7 +82,7 @@ const DirectMessageItem = memo(({ dm, selected }: TDirectMessageItemProps) => {
         title={t('closeConversation')}
         onClick={onClose}
         data-testid={TestId.DM_CLOSE}
-        className="mr-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        className="mr-2 opacity-70 hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 size-8 md:size-7 flex items-center justify-center"
       />
     </div>
   );

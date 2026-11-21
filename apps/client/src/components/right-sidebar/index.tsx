@@ -32,12 +32,12 @@ const User = memo(({ userId, name, banned }: TUserProps) => {
     <UserPopover userId={userId}>
       <div
         data-testid={TestId.MEMBER_ITEM}
-        className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-accent select-none min-w-0"
+        className="flex items-center gap-3 rounded-md min-h-[44px] md:min-h-0 px-2.5 py-2 md:px-2 md:py-1.5 hover:bg-accent select-none min-w-0 cursor-pointer"
       >
         <UserAvatar userId={userId} className="h-8 w-8 shrink-0" />
         <span
           className={cn(
-            'text-sm text-foreground truncate',
+            'text-[15px] md:text-sm text-foreground truncate',
             banned && 'line-through text-muted-foreground'
           )}
         >

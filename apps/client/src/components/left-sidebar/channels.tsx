@@ -134,7 +134,7 @@ const Voice = memo(
           {isVoiceActive ? (
             <Waveform isScreenSharing={someoneIsSharingScreen} />
           ) : (
-            <Volume2 className="h-4 w-4" />
+            <Volume2 className="h-4.5 w-4.5 md:h-4 md:w-4 shrink-0" />
           )}
 
           <span className={cn('flex-1 truncate', { 'opacity-50': isMuted })}>
@@ -192,7 +192,7 @@ const Text = memo(({ channel, ...props }: TTextProps) => {
 
   return (
     <ItemWrapper {...props}>
-      <Hash className="h-4 w-4" />
+      <Hash className="h-4.5 w-4.5 md:h-4 md:w-4 shrink-0" />
       <span className={cn('flex-1', { 'opacity-50': isMuted })}>
         {channel.name}
       </span>
@@ -243,7 +243,7 @@ const ItemWrapper = memo(
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground select-none cursor-pointer',
+          'flex w-full items-center min-h-[44px] md:min-h-0 gap-2.5 md:gap-2 rounded-md px-2.5 py-2.5 md:px-2 md:py-1.5 text-[15px] md:text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground select-none cursor-pointer',
           {
             'bg-accent text-accent-foreground': isSelected,
             'cursor-default opacity-50 hover:bg-transparent hover:text-muted-foreground':

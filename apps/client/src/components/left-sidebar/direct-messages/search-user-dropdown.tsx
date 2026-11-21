@@ -48,6 +48,7 @@ const SearchUserDropdown = memo(
             size="sm"
             icon={Plus}
             title={t('startNewConversation')}
+            className="size-7 md:size-6"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -69,14 +70,18 @@ const SearchUserDropdown = memo(
             </div>
           )}
           {allUsers.map((user) => (
-            <DropdownMenuItem key={user.id} onClick={() => onStartDm(user.id)}>
+            <DropdownMenuItem
+              key={user.id}
+              onClick={() => onStartDm(user.id)}
+              className="min-h-[40px] md:min-h-0 cursor-pointer"
+            >
               <div className="flex items-center gap-2">
                 <UserAvatar
                   userId={user.id}
-                  className="h-5 w-5"
+                  className="h-6 w-6 md:h-5 md:w-5 shrink-0"
                   showUserPopover
                 />
-                <span>{user.name}</span>
+                <span className="text-[14px] md:text-sm">{user.name}</span>
               </div>
             </DropdownMenuItem>
           ))}

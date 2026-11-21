@@ -78,7 +78,7 @@ const Category = memo(({ categoryId }: TCategoryProps) => {
       data-testid={TestId.CATEGORY_ITEM}
       data-category-id={category.id}
     >
-      <div className="mb-1 flex w-full items-center px-2 py-1 text-xs font-semibold text-muted-foreground">
+      <div className="mb-1 flex w-full items-center min-h-[38px] md:min-h-0 px-2.5 py-1.5 md:px-2 md:py-1 text-[13px] md:text-xs font-semibold text-muted-foreground">
         <div className="flex w-full items-stretch gap-1">
           <IconButton
             variant="ghost"
@@ -86,6 +86,7 @@ const Category = memo(({ categoryId }: TCategoryProps) => {
             icon={ChevronIcon}
             onClick={toggleExpanded}
             title={expanded ? t('collapseCategory') : t('expandCategory')}
+            className="size-7 md:size-6"
           />
           <CategoryContextMenu categoryId={category.id}>
             <span
@@ -113,6 +114,7 @@ const Category = memo(({ categoryId }: TCategoryProps) => {
             icon={Plus}
             onClick={onCreateChannelClick}
             title={t('createChannel')}
+            className="size-7 md:size-6"
           />
         </Protect>
       </div>

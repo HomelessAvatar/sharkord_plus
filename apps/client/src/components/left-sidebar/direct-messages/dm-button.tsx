@@ -28,14 +28,14 @@ const DmButton = memo(() => {
         type="button"
         onClick={onToggleDmMode}
         className={cn(
-          'flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          'flex w-full items-center min-h-[44px] md:min-h-0 gap-2.5 md:gap-2 rounded-md px-2.5 py-2.5 md:px-2 md:py-1.5 text-[15px] md:text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground',
           isActive &&
             'bg-accent text-accent-foreground ring-1 ring-inset ring-primary/30'
         )}
       >
-        <MessageCircleMore className="h-4 w-4" />
+        <MessageCircleMore className="h-5 w-5 md:h-4 md:w-4 shrink-0" />
         <span className="flex-1 text-left">{t('directMessages')}</span>
-        {isActive && <X className="h-4 w-4" />}
+        {isActive && <X className="h-5 w-5 md:h-4 md:w-4 shrink-0" />}
         <UnreadCount count={directMessagesUnreadCount} />
       </button>
     </Tooltip>
