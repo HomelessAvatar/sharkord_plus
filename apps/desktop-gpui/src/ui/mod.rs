@@ -3,6 +3,7 @@
 //! according to the Pure Neutral Dark design specification.
 
 pub mod audio_settings;
+pub mod auth_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
 pub mod member_list;
@@ -27,6 +28,7 @@ pub use audio_settings::{
     AudioSettingsState, AudioSettingsView, DEFAULT_INPUT_VOLUME, DEFAULT_OUTPUT_VOLUME,
     DEFAULT_VAD_THRESHOLD,
 };
+pub use auth_modal::{AuthModalState, AuthModalView, AuthTab, ServerConnectView};
 pub use channel_tree::{
     channel_icon, compose_channel_tree, CategorizedChannelGroup, ChannelDisplayItem,
     ChannelTreeView,
@@ -81,6 +83,7 @@ pub struct WorkspaceView {
     pub voice_stage: VoiceStageView,
     pub member_list: MemberListSidebarView,
     pub quick_switcher: QuickSwitcherState,
+    pub auth_modal: AuthModalState,
     pub active_center_view: ActiveContentView,
     pub focus_handle: Option<FocusHandle>,
 }
@@ -91,6 +94,7 @@ impl WorkspaceView {
         let voice_bar = VoiceBarState::new();
         let message_draft = String::new();
         let quick_switcher = QuickSwitcherState::new(&state.channels);
+        let auth_modal = AuthModalState::new();
 
         let active_center_view = match state.active_channel() {
             Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
@@ -109,6 +113,7 @@ impl WorkspaceView {
             voice_stage: VoiceStageView::default(),
             member_list: MemberListSidebarView::default(),
             quick_switcher,
+            auth_modal,
             active_center_view,
             focus_handle: None,
         };
@@ -305,6 +310,44 @@ impl WorkspaceView {
         self.state.toggle_update_modal();
     }
 
+    /// Sets connection progress state.
+    pub fn set_connecting(&mut self, connecting: bool) {
+        self.state.set_connecting(connecting);
+        self.auth_modal.set_loading(connecting);
+    }
+
+    /// Sets authentication modal visibility.
+    pub fn set_auth_modal_open(&mut self, open: bool) {
+        self.state.set_auth_modal_open(open);
+    }
+
+    /// Toggles the authentication modal open state.
+    pub fn toggle_auth_modal(&mut self) {
+        self.state.toggle_auth_modal();
+    }
+
+    /// Bootstraps server settings, channels, and messages from the server,
+    /// transitioning connection state and updating child views.
+    pub fn bootstrap_from_server(
+        &mut self,
+        settings: impl Into<Option<sharkord_core::types::ServerSettings>>,
+        channels: Vec<sharkord_core::types::Channel>,
+        messages: Vec<sharkord_core::types::Message>,
+    ) {
+        self.state.bootstrap_from_server(settings, channels, messages);
+        self.auth_modal.set_loading(false);
+        self.auth_modal.clear_error();
+        self.sync_views();
+    }
+
+    /// Bootstraps server state using a `BootstrapData` payload.
+    pub fn bootstrap_from_data(&mut self, data: crate::network::BootstrapData) {
+        self.state.bootstrap_from_data(data);
+        self.auth_modal.set_loading(false);
+        self.auth_modal.clear_error();
+        self.sync_views();
+    }
+
     /// Interactive handler for channel selection in the channel tree.
     pub fn on_channel_click(&mut self, channel_id: u64, cx: &mut Context<Self>) {
         self.select_channel(channel_id);
@@ -449,6 +492,44 @@ impl Render for WorkspaceView {
 
         if self.state.is_update_modal_open {
             root = root.child(UpdaterModalView::new(&self.state.update_status).render_element());
+        }
+
+        if self.state.is_auth_modal_open {
+            root = root.child(AuthModalView::new(self.auth_modal.clone()).render_element());
+        }
+
+        if self.state.is_connecting && !self.state.is_auth_modal_open {
+            root = root.child(
+                div()
+                    .absolute()
+                    .top_4()
+                    .right_4()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_2()
+                    .px_3()
+                    .py_1p5()
+                    .rounded_full()
+                    .bg(theme::bg_elevated())
+                    .border_1()
+                    .border_color(theme::border_subtle())
+                    .shadow_lg()
+                    .child(
+                        div()
+                            .w(px(8.0))
+                            .h(px(8.0))
+                            .rounded_full()
+                            .bg(theme::accent()),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::MEDIUM)
+                            .text_color(theme::text_primary())
+                            .child("Connecting to server..."),
+                    ),
+            );
         }
 
         root
