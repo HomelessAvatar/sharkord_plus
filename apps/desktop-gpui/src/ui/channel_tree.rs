@@ -1,6 +1,6 @@
 //! Channel Tree sidebar view component (240px fixed width, bg_subsurface).
-//! Renders the server header, categorized text and voice channels, active channel
-//! selection highlights, and unread badges.
+//! Renders the server header, collapsible categorized text and voice channels,
+//! active channel selection highlights, unread count badges, and channel creation button.
 
 use gpui::prelude::*;
 use gpui::*;
@@ -47,11 +47,51 @@ pub struct ChannelDisplayItem {
     pub voice_participants: Vec<VoiceParticipantDisplay>,
 }
 
-/// A group of channels under a named category.
+/// A group of channels under a named category with collapsible state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CategorizedChannelGroup {
     pub category_name: String,
+    pub name: String,
+    pub is_open: bool,
     pub channels: Vec<ChannelDisplayItem>,
+    pub unread_count: usize,
+}
+
+impl CategorizedChannelGroup {
+    /// Creates a new open channel group with zero unread channels.
+    pub fn new(name: impl Into<String>) -> Self {
+        let name_str = name.into();
+        Self {
+            category_name: name_str.clone(),
+            name: name_str,
+            is_open: true,
+            channels: Vec::new(),
+            unread_count: 0,
+        }
+    }
+
+    /// Toggles the collapsible open/closed state.
+    pub fn toggle(&mut self) {
+        self.is_open = !self.is_open;
+    }
+
+    /// Explicitly sets the collapsible open/closed state.
+    pub fn set_open(&mut self, is_open: bool) {
+        self.is_open = is_open;
+    }
+
+    /// Adds a channel to this category group and aggregates unread status.
+    pub fn add_channel(&mut self, channel: ChannelDisplayItem) {
+        if channel.has_unread {
+            self.unread_count += 1;
+        }
+        self.channels.push(channel);
+    }
+
+    /// Recalculates the aggregated unread count from the current channel list.
+    pub fn recalculate_unread(&mut self) {
+        self.unread_count = self.channels.iter().filter(|c| c.has_unread).count();
+    }
 }
 
 /// Composes and categorizes a flat list of channels for hierarchical sidebar display.
@@ -102,9 +142,13 @@ pub fn compose_channel_tree_with_participants(
     // 1. Uncategorized top-level channels
     if !uncategorized.is_empty() {
         uncategorized.sort_by_key(|i| (i.channel.position, i.channel.id));
+        let unread = uncategorized.iter().filter(|i| i.has_unread).count();
         groups.push(CategorizedChannelGroup {
             category_name: "CHANNELS".to_string(),
+            name: "CHANNELS".to_string(),
+            is_open: true,
             channels: uncategorized,
+            unread_count: unread,
         });
     }
 
@@ -126,9 +170,13 @@ pub fn compose_channel_tree_with_participants(
             format!("CATEGORY {cat_id}")
         };
 
+        let unread = items.iter().filter(|i| i.has_unread).count();
         groups.push(CategorizedChannelGroup {
-            category_name,
+            category_name: category_name.clone(),
+            name: category_name,
+            is_open: true,
             channels: items,
+            unread_count: unread,
         });
     }
 
@@ -164,6 +212,28 @@ impl ChannelTreeView {
             server_name: server_name.into(),
             groups,
             active_channel_id: active_id,
+        }
+    }
+
+    /// Toggles the collapsible open/closed state of a named category.
+    pub fn toggle_category(&mut self, category_name: &str) {
+        if let Some(group) = self
+            .groups
+            .iter_mut()
+            .find(|g| g.category_name == category_name || g.name == category_name)
+        {
+            group.toggle();
+        }
+    }
+
+    /// Sets the open/closed state of a named category.
+    pub fn set_category_open(&mut self, category_name: &str, is_open: bool) {
+        if let Some(group) = self
+            .groups
+            .iter_mut()
+            .find(|g| g.category_name == category_name || g.name == category_name)
+        {
+            group.set_open(is_open);
         }
     }
 
@@ -210,7 +280,7 @@ impl ChannelTreeView {
                     )
                     .child(div().text_color(theme::text_muted()).child("▼")),
             )
-            // 2. Channel categories and list
+            // 2. Channel categories and collapsible list
             .child(
                 div()
                     .id("channel_tree_list")
@@ -220,27 +290,103 @@ impl ChannelTreeView {
                     .p_3()
                     .flex_1()
                     .overflow_y_scroll()
-                    .children(self.groups.iter().map(|group| {
-                        div()
+                    .children(self.groups.iter().enumerate().map(|(group_idx, group)| {
+                        let is_open = group.is_open;
+                        let unread_count = group.unread_count;
+                        let cat_name = group.category_name.clone();
+
+                        let mut header = div()
+                            .id(ElementId::Name(format!("category_header_{}", group_idx).into()))
+                            .cursor_pointer()
                             .flex()
-                            .flex_col()
-                            .gap_1()
-                            // Category header
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .py_1()
+                            .px_1()
+                            .rounded_sm()
+                            .hover(|s| s.bg(theme::bg_surface_4()))
+                            // Left side: chevron, title, unread count badge
                             .child(
                                 div()
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap_1()
-                                    .py_1()
-                                    .px_1()
+                                    .gap_1p5()
+                                    // Chevron indicator (rotated when collapsed/expanded)
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(theme::text_muted())
+                                            .child(if is_open { "▼" } else { "▶" }),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(theme::text_muted())
+                                            .child(group.category_name.clone()),
+                                    )
+                                    // Unread badge when collapsed and unread_count > 0
+                                    .children(if !is_open && unread_count > 0 {
+                                        Some(
+                                            div()
+                                                .px_1p5()
+                                                .py_0p5()
+                                                .rounded_full()
+                                                .bg(theme::accent())
+                                                .text_xs()
+                                                .font_weight(gpui::FontWeight::BOLD)
+                                                .text_color(theme::text_primary())
+                                                .child(unread_count.to_string()),
+                                        )
+                                    } else {
+                                        None
+                                    }),
+                            )
+                            // Right side: Admin '+' vector button for channel creation
+                            .child(
+                                div()
+                                    .id(ElementId::Name(
+                                        format!("create_channel_btn_{}", group_idx).into(),
+                                    ))
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(16.0))
+                                    .h(px(16.0))
+                                    .rounded_sm()
                                     .text_xs()
                                     .font_weight(gpui::FontWeight::BOLD)
                                     .text_color(theme::text_muted())
-                                    .child(group.category_name.clone()),
-                            )
-                            // Channels in this category
-                            .children(group.channels.iter().map(|item| {
+                                    .hover(|s| {
+                                        s.text_color(theme::text_primary())
+                                            .bg(theme::bg_elevated())
+                                    })
+                                    .child("+"),
+                            );
+
+                        if let Some(ref mut cx) = cx {
+                            let cat_toggle = cat_name.clone();
+                            header = header.on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |view, _, _window, cx| {
+                                    view.toggle_channel_category(&cat_toggle, cx);
+                                }),
+                            );
+                        }
+
+                        let mut group_container = div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(header);
+
+                        // Only render channels if category is open
+                        if is_open {
+                            group_container = group_container.children(group.channels.iter().map(|item| {
                                 let icon = channel_icon(item.channel.channel_type);
                                 let is_active = item.is_active;
                                 let channel_id = item.channel.id;
@@ -363,7 +509,7 @@ impl ChannelTreeView {
                                                     .children(if p.is_deafened {
                                                         Some(
                                                             div()
-                                                                .text_xs()
+                                                                  .text_xs()
                                                                 .text_color(theme::status_dnd())
                                                                 .child("🎧"),
                                                         )
@@ -379,7 +525,10 @@ impl ChannelTreeView {
                                                     }),
                                             )
                                     }))
-                            }))
+                            }));
+                        }
+
+                        group_container
                     })),
             )
     }

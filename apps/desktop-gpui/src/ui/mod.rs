@@ -52,7 +52,10 @@ pub use member_list::{
     compose_member_groups, status_indicator_color, CategorizedMemberGroup, MemberListSidebarView,
 };
 pub use pip_player::{PipPlayerState, PipPlayerView};
-pub use quick_switcher::{QuickSwitcherItem, QuickSwitcherState, QuickSwitcherView};
+pub use quick_switcher::{
+    default_command_palette_items, QuickSwitcherItem, QuickSwitcherItemType, QuickSwitcherState,
+    QuickSwitcherView,
+};
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use updater_modal::{UpdaterBadgeView, UpdaterModalView};
@@ -104,7 +107,9 @@ impl WorkspaceView {
     pub fn new(state: AppState) -> Self {
         let voice_bar = VoiceBarState::new();
         let message_draft = String::new();
-        let quick_switcher = QuickSwitcherState::new(&state.channels);
+        let mut quick_switcher = QuickSwitcherState::new();
+        quick_switcher.set_channels(&state.channels);
+        quick_switcher.set_members(&state.users);
         let auth_modal = AuthModalState::new();
 
         let active_center_view = match state.active_channel() {
@@ -245,6 +250,7 @@ impl WorkspaceView {
 
         // 6. Sync Quick Switcher
         self.quick_switcher.set_channels(&self.state.channels);
+        self.quick_switcher.set_members(&self.state.users);
     }
 
     /// Selects a channel by ID, auto-switches center view mode based on channel type,
@@ -390,6 +396,38 @@ impl WorkspaceView {
     /// Toggles the quick switcher command palette modal dialog.
     pub fn toggle_quick_switcher(&mut self) {
         self.state.toggle_quick_switcher();
+        if self.state.is_quick_switcher_open {
+            self.quick_switcher.open();
+        } else {
+            self.quick_switcher.close();
+        }
+    }
+
+    /// Interactive handler for toggling a channel category collapsible state.
+    pub fn toggle_channel_category(&mut self, category_name: &str, cx: &mut Context<Self>) {
+        self.channel_tree.toggle_category(category_name);
+        cx.notify();
+    }
+
+    /// Interactive handler for selecting an item in the quick switcher command palette.
+    pub fn select_quick_switcher_item(&mut self, item: QuickSwitcherItem, cx: &mut Context<Self>) {
+        match item.item_type {
+            QuickSwitcherItemType::Channel | QuickSwitcherItemType::VoiceRoom => {
+                self.select_channel(item.id);
+            }
+            QuickSwitcherItemType::Command => match item.title.as_str() {
+                "/mute" => self.toggle_voice_mute(),
+                "/deafen" => self.toggle_voice_deafen(),
+                "/settings" => self.set_center_view(ActiveContentView::Chat),
+                "/status" => {}
+                _ => {}
+            },
+            QuickSwitcherItemType::Member => {}
+        }
+        self.state.is_quick_switcher_open = false;
+        self.quick_switcher.close();
+        self.sync_views();
+        cx.notify();
     }
 
     /// Toggles the in-app update modal dialog open state.
@@ -579,7 +617,7 @@ impl Render for WorkspaceView {
         }
 
         if self.state.is_quick_switcher_open {
-            root = root.child(QuickSwitcherView::new(self.quick_switcher.clone()).render_element());
+            root = root.child(QuickSwitcherView::new(self.quick_switcher.clone()).render_interactive(cx));
         }
 
         if self.state.is_update_modal_open {
