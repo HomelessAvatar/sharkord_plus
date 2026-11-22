@@ -415,7 +415,7 @@ git commit -m "feat(desktop-gpui): implement VirtualList feed, gpui-component Te
 - Consumes: `rfd::FileDialog`, `SharkordClient::upload_file`, `gpui_component::Attachment`, `gpui_component::Dialog`
 - Produces: `LightboxModalView`, `ChatCanvasView::handle_file_drop`
 
-- [ ] **Step 1: Write failing test for attachment and lightbox state**
+- [x] **Step 1: Write failing test for attachment and lightbox state**
 
 ```rust
 // apps/desktop-gpui/tests/attachment_upload_test.rs
@@ -431,20 +431,20 @@ fn test_lightbox_open_and_close() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 Run: `cargo test -p desktop-gpui --test attachment_upload_test`
 
-- [ ] **Step 3: Implement native file dialog upload and image lightbox**
+- [x] **Step 3: Implement native file dialog upload and image lightbox**
 
 Add `+` vector button opening `rfd::FileDialog`, upload file via `SharkordClient::upload_file`, render `gpui_component::Attachment` surface, and display `gpui_component::Dialog` lightbox on click.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cargo test -p desktop-gpui --test attachment_upload_test`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/desktop-gpui/src/ui/lightbox_modal.rs apps/desktop-gpui/src/ui/chat_canvas.rs apps/desktop-gpui/tests/attachment_upload_test.rs
