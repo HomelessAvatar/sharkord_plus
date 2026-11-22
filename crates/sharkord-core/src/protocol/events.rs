@@ -14,6 +14,13 @@ pub enum EventType {
     UserCreated,
     UserDeleted,
     VoiceStateUpdated,
+    ReactionAdded,
+    ReactionRemoved,
+    ChannelCreated,
+    ChannelUpdated,
+    ChannelDeleted,
+    UserPresenceChanged,
+    UserTyping,
     Unknown(String),
 }
 
@@ -29,6 +36,13 @@ impl EventType {
             EventType::UserCreated => "userCreated",
             EventType::UserDeleted => "userDeleted",
             EventType::VoiceStateUpdated => "voiceStateUpdated",
+            EventType::ReactionAdded => "reactionAdded",
+            EventType::ReactionRemoved => "reactionRemoved",
+            EventType::ChannelCreated => "channelCreated",
+            EventType::ChannelUpdated => "channelUpdated",
+            EventType::ChannelDeleted => "channelDeleted",
+            EventType::UserPresenceChanged => "userPresenceChanged",
+            EventType::UserTyping => "userTyping",
             EventType::Unknown(s) => s.as_str(),
         }
     }
@@ -48,6 +62,17 @@ impl From<&str> for EventType {
             "voiceStateUpdated" | "userVoiceStateUpdate" | "voiceChannelStateUpdate" => {
                 EventType::VoiceStateUpdated
             }
+            "reactionAdded" | "reactionAdd" | "reaction:added" => EventType::ReactionAdded,
+            "reactionRemoved" | "reactionRemove" | "reaction:removed" => {
+                EventType::ReactionRemoved
+            }
+            "channelCreated" | "channelCreate" => EventType::ChannelCreated,
+            "channelUpdated" | "channelUpdate" => EventType::ChannelUpdated,
+            "channelDeleted" | "channelDelete" => EventType::ChannelDeleted,
+            "userPresenceChanged" | "presenceUpdate" | "userPresenceUpdate" => {
+                EventType::UserPresenceChanged
+            }
+            "userTyping" | "messageTyping" => EventType::UserTyping,
             other => EventType::Unknown(other.to_string()),
         }
     }
@@ -253,7 +278,24 @@ mod tests {
         assert_eq!(EventType::from("userCreate"), EventType::UserCreated);
         assert_eq!(EventType::from("userDeleted"), EventType::UserDeleted);
         assert_eq!(EventType::from("userDelete"), EventType::UserDeleted);
+        assert_eq!(EventType::from("reactionAdded"), EventType::ReactionAdded);
+        assert_eq!(EventType::from("reactionAdd"), EventType::ReactionAdded);
+        assert_eq!(EventType::from("reactionRemoved"), EventType::ReactionRemoved);
+        assert_eq!(EventType::from("reactionRemove"), EventType::ReactionRemoved);
+        assert_eq!(EventType::from("channelCreated"), EventType::ChannelCreated);
+        assert_eq!(EventType::from("channelCreate"), EventType::ChannelCreated);
+        assert_eq!(EventType::from("channelUpdated"), EventType::ChannelUpdated);
+        assert_eq!(EventType::from("channelUpdate"), EventType::ChannelUpdated);
+        assert_eq!(EventType::from("channelDeleted"), EventType::ChannelDeleted);
+        assert_eq!(EventType::from("channelDelete"), EventType::ChannelDeleted);
+        assert_eq!(EventType::from("userPresenceChanged"), EventType::UserPresenceChanged);
+        assert_eq!(EventType::from("presenceUpdate"), EventType::UserPresenceChanged);
+        assert_eq!(EventType::from("userPresenceUpdate"), EventType::UserPresenceChanged);
+        assert_eq!(EventType::from("userTyping"), EventType::UserTyping);
+        assert_eq!(EventType::from("messageTyping"), EventType::UserTyping);
         assert_eq!(EventType::UserUpdated.as_str(), "userUpdated");
+        assert_eq!(EventType::ReactionAdded.as_str(), "reactionAdded");
+        assert_eq!(EventType::ChannelCreated.as_str(), "channelCreated");
     }
 
     #[test]
