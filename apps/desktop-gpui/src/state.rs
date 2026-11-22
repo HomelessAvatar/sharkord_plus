@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::{Channel, Message, ServerSettings, User};
 use sharkord_core::updater::UpdateStatus;
+use sharkord_core::vault::SavedServerSession;
 
 use crate::ui::pip_player::PipPlayerState;
 use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
@@ -30,6 +31,8 @@ pub struct AppState {
     pub is_quick_switcher_open: bool,
     pub update_status: UpdateStatus,
     pub is_update_modal_open: bool,
+    pub is_connecting: bool,
+    pub is_auth_modal_open: bool,
 }
 
 impl Default for AppState {
@@ -52,6 +55,8 @@ impl Default for AppState {
             is_quick_switcher_open: false,
             update_status: UpdateStatus::Idle,
             is_update_modal_open: false,
+            is_connecting: false,
+            is_auth_modal_open: false,
         }
     }
 }
@@ -288,5 +293,72 @@ impl AppState {
     /// Sets the current application update status.
     pub fn set_update_status(&mut self, status: UpdateStatus) {
         self.update_status = status;
+    }
+
+    /// Applies a saved server session to the application state.
+    pub fn apply_saved_session(&mut self, session: &SavedServerSession) {
+        self.active_server_id = Some(session.server_id.clone());
+        self.current_user = Some(User {
+            id: session.user_id,
+            name: session.username.clone(),
+            identity: Some(session.display_name.clone()),
+            status: Some("online".to_string()),
+            ..Default::default()
+        });
+        if let Some(ref mut settings) = self.server_settings {
+            settings.server_id = session.server_id.clone();
+            settings.name = session.server_name.clone();
+        } else {
+            self.server_settings = Some(ServerSettings {
+                server_id: session.server_id.clone(),
+                name: session.server_name.clone(),
+                ..Default::default()
+            });
+        }
+    }
+
+    /// Sets connection progress state.
+    pub fn set_connecting(&mut self, connecting: bool) {
+        self.is_connecting = connecting;
+    }
+
+    /// Sets authentication modal visibility.
+    pub fn set_auth_modal_open(&mut self, open: bool) {
+        self.is_auth_modal_open = open;
+    }
+
+    /// Toggles the authentication modal open state.
+    pub fn toggle_auth_modal(&mut self) {
+        self.is_auth_modal_open = !self.is_auth_modal_open;
+    }
+
+    /// Bootstraps server settings, channels, and messages from the server.
+    pub fn bootstrap_from_server(
+        &mut self,
+        settings: impl Into<Option<ServerSettings>>,
+        channels: Vec<Channel>,
+        messages: Vec<Message>,
+    ) {
+        if let Some(s) = settings.into() {
+            self.server_settings = Some(s);
+        }
+        self.channels = channels;
+        self.messages = messages;
+        if self.active_channel_id.is_none()
+            || !self.channels.iter().any(|c| Some(c.id) == self.active_channel_id)
+        {
+            self.active_channel_id = self.channels.first().map(|c| c.id);
+        }
+        self.is_connecting = false;
+        self.is_auth_modal_open = false;
+    }
+
+    /// Bootstraps server state using a `BootstrapData` payload.
+    pub fn bootstrap_from_data(&mut self, data: crate::network::BootstrapData) {
+        let active_id = data.active_channel_id;
+        self.bootstrap_from_server(Some(data.settings), data.channels, data.initial_messages);
+        if let Some(id) = active_id {
+            self.active_channel_id = Some(id);
+        }
     }
 }
