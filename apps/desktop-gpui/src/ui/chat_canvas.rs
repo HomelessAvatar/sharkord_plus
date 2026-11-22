@@ -4,13 +4,15 @@
 //! composer input bar. Adheres strictly to the Pure Neutral Dark design specification.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use gpui::prelude::*;
 use gpui::*;
 use serde::{Deserialize, Serialize};
-use sharkord_core::types::{InteractiveComponent, Message, PluginCommand};
+use sharkord_core::types::{InteractiveComponent, Message, MessageFile, PluginCommand};
 
 use crate::theme;
+use crate::ui::lightbox_modal::{LightboxModalView, LightboxState};
 use crate::ui::markdown::render_markdown_element;
 use crate::ui::server_rail::server_initials;
 
@@ -177,6 +179,262 @@ impl ComposerTextarea {
     pub fn line_count(&self) -> usize {
         self.text.split('\n').count().max(1)
     }
+}
+
+/// Formats a file size in bytes to a human-readable string (B, KB, MB, GB).
+pub fn format_file_size(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes < KB {
+        format!("{} B", bytes)
+    } else if bytes < MB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else if bytes < GB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else {
+        format!("{:.2} GB", bytes as f64 / GB as f64)
+    }
+}
+
+/// Returns true if the file extension is a recognized image format.
+pub fn is_image_extension(ext: &str) -> bool {
+    matches!(
+        ext.to_ascii_lowercase().as_str(),
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "bmp" | "ico"
+    )
+}
+
+/// Pending attachment queued in the composer before sending.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PendingAttachment {
+    pub id: String,
+    pub path: PathBuf,
+    pub filename: String,
+    pub size_bytes: u64,
+    pub is_image: bool,
+    pub is_uploading: bool,
+    pub progress: f32,
+    pub uploaded_url: Option<String>,
+}
+
+impl PendingAttachment {
+    /// Creates a new `PendingAttachment` from a file path.
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        let filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        let is_image = is_image_extension(&ext);
+        let size_bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        let id = format!("att_{}_{}", filename, size_bytes);
+
+        Self {
+            id,
+            path,
+            filename,
+            size_bytes,
+            is_image,
+            is_uploading: false,
+            progress: 0.0,
+            uploaded_url: None,
+        }
+    }
+
+    /// Sets the file size in bytes builder-style.
+    pub fn with_size(mut self, size: u64) -> Self {
+        self.size_bytes = size;
+        self
+    }
+
+    /// Sets upload progress (0.0 to 1.0) and updates uploading status.
+    pub fn with_progress(mut self, progress: f32) -> Self {
+        self.progress = progress;
+        self.is_uploading = progress < 1.0;
+        self
+    }
+
+    /// Formats the file size in human-readable notation.
+    pub fn formatted_size(&self) -> String {
+        format_file_size(self.size_bytes)
+    }
+}
+
+/// Renders a clean vector upload (+) icon.
+pub fn render_upload_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(16.0))
+        .h(px(16.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                .child(
+                    // Horizontal bar
+                    div()
+                        .absolute()
+                        .top(px(5.0))
+                        .left(px(1.0))
+                        .w(px(10.0))
+                        .h(px(2.0))
+                        .rounded_xs()
+                        .bg(theme::text_secondary()),
+                )
+                .child(
+                    // Vertical bar
+                    div()
+                        .absolute()
+                        .top(px(1.0))
+                        .left(px(5.0))
+                        .w(px(2.0))
+                        .h(px(10.0))
+                        .rounded_xs()
+                        .bg(theme::text_secondary()),
+                ),
+        )
+}
+
+/// Renders file attachments for a message natively (image preview cards or file download pills).
+pub fn render_message_attachments(files: &[MessageFile]) -> Vec<AnyElement> {
+    if files.is_empty() {
+        return Vec::new();
+    }
+
+    files
+        .iter()
+        .map(|file| {
+            let is_img = is_image_extension(&file.extension);
+            let formatted_size = format_file_size(file.size.max(0) as u64);
+            let file_name = if !file.original_name.is_empty() {
+                file.original_name.clone()
+            } else {
+                file.name.clone()
+            };
+
+            if is_img {
+                div()
+                    .id(ElementId::Name(format!("msg_img_attachment_{}", file.id).into()))
+                    .cursor_pointer()
+                    .flex()
+                    .flex_col()
+                    .max_w(px(380.0))
+                    .my_1()
+                    .rounded_lg()
+                    .bg(theme::bg_surface_4())
+                    .border_1()
+                    .border_color(theme::border_hairline())
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .h(px(140.0))
+                            .bg(theme::bg_base())
+                            .text_2xl()
+                            .child("🖼"),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .justify_between()
+                            .px_3()
+                            .py_2()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(theme::text_primary())
+                                    .child(file_name),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .child(formatted_size),
+                            ),
+                    )
+                    .into_any_element()
+            } else {
+                div()
+                    .id(ElementId::Name(format!("msg_file_attachment_{}", file.id).into()))
+                    .cursor_pointer()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .max_w(px(340.0))
+                    .my_1()
+                    .px_3()
+                    .py_2()
+                    .rounded_lg()
+                    .bg(theme::bg_surface_4())
+                    .border_1()
+                    .border_color(theme::border_hairline())
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap_2p5()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(28.0))
+                                    .h(px(28.0))
+                                    .rounded_md()
+                                    .bg(theme::bg_elevated())
+                                    .text_xs()
+                                    .text_color(theme::accent())
+                                    .child("📄"),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme::text_primary())
+                                            .child(file_name),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme::text_muted())
+                                            .child(formatted_size),
+                                    ),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(theme::text_muted())
+                            .child("⬇"),
+                    )
+                    .into_any_element()
+            }
+        })
+        .collect()
 }
 
 /// Formats a unix timestamp into an HH:MM string.
@@ -641,6 +899,8 @@ pub struct ChatCanvasView {
     pub textarea: ComposerTextarea,
     pub virtual_viewport_offset: usize,
     pub virtual_viewport_size: usize,
+    pub pending_attachments: Vec<PendingAttachment>,
+    pub lightbox: LightboxState,
 }
 
 impl Default for ChatCanvasView {
@@ -657,6 +917,8 @@ impl Default for ChatCanvasView {
             textarea: ComposerTextarea::default(),
             virtual_viewport_offset: 0,
             virtual_viewport_size: 50,
+            pending_attachments: Vec::new(),
+            lightbox: LightboxState::new(),
         }
     }
 }
@@ -683,12 +945,59 @@ impl ChatCanvasView {
             textarea: ComposerTextarea::with_text(draft_str),
             virtual_viewport_offset: 0,
             virtual_viewport_size: 50,
+            pending_attachments: Vec::new(),
+            lightbox: LightboxState::new(),
         }
     }
 
     pub fn with_commands(mut self, commands: Vec<PluginCommand>) -> Self {
         self.available_commands = commands;
         self
+    }
+
+    /// Adds a pending file attachment to the composer queue.
+    pub fn add_pending_attachment(&mut self, attachment: PendingAttachment) {
+        self.pending_attachments.push(attachment);
+    }
+
+    /// Removes a pending attachment from the composer queue by its ID.
+    pub fn remove_pending_attachment(&mut self, id: &str) {
+        self.pending_attachments.retain(|a| a.id != id);
+    }
+
+    /// Clears all pending attachments from the composer queue.
+    pub fn clear_pending_attachments(&mut self) {
+        self.pending_attachments.clear();
+    }
+
+    /// Handles file drop events by wrapping each dropped path into a `PendingAttachment`.
+    pub fn handle_file_drop(&mut self, paths: &[PathBuf]) {
+        for path in paths {
+            self.add_pending_attachment(PendingAttachment::new(path));
+        }
+    }
+
+    /// Opens the native OS file picker dialog via `rfd` and queues selected files.
+    pub fn pick_files_dialog(&mut self) {
+        if let Some(files) = rfd::FileDialog::new().pick_files() {
+            for path in files {
+                self.add_pending_attachment(PendingAttachment::new(path));
+            }
+        }
+    }
+
+    /// Opens the image lightbox modal dialog for the specified URL and optional name.
+    pub fn open_lightbox(&mut self, url: impl Into<String>, name: Option<String>) {
+        if let Some(n) = name {
+            self.lightbox.open_with_name(url, n);
+        } else {
+            self.lightbox.open(url);
+        }
+    }
+
+    /// Closes the image lightbox modal dialog.
+    pub fn close_lightbox(&mut self) {
+        self.lightbox.close();
     }
 
     /// Sets the initial loading skeleton state.
@@ -801,7 +1110,8 @@ impl ChatCanvasView {
             &self.groups
         };
 
-        div()
+        let mut root = div()
+            .relative()
             .flex()
             .flex_col()
             .flex_1()
@@ -956,6 +1266,7 @@ impl ChatCanvasView {
                                             .children(render_interactive_components(
                                                 &msg.components,
                                             ))
+                                            .children(render_message_attachments(&msg.files))
                                     })),
                             )
                     }))
@@ -1027,7 +1338,105 @@ impl ChatCanvasView {
                         } else {
                             None
                         })
+                        .children(if !self.pending_attachments.is_empty() {
+                            Some(
+                                div()
+                                    .id("composer_pending_attachments_strip")
+                                    .flex()
+                                    .flex_row()
+                                    .gap_2()
+                                    .p_2()
+                                    .mb_2()
+                                    .rounded_lg()
+                                    .bg(theme::bg_subsurface())
+                                    .border_1()
+                                    .border_color(theme::border_hairline())
+                                    .overflow_x_scroll()
+                                    .children(self.pending_attachments.iter().map(|att| {
+                                        let icon_char = if att.is_image { "🖼" } else { "📄" };
+                                        let size_str = att.formatted_size();
+                                        let att_id = att.id.clone();
+
+                                        div()
+                                            .id(ElementId::Name(format!("pending_att_{}", att_id).into()))
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap_2()
+                                            .px_3()
+                                            .py_2()
+                                            .rounded_md()
+                                            .bg(theme::bg_elevated())
+                                            .border_1()
+                                            .border_color(theme::border_hairline())
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .w(px(24.0))
+                                                    .h(px(24.0))
+                                                    .rounded_sm()
+                                                    .bg(theme::bg_surface_4())
+                                                    .text_xs()
+                                                    .child(icon_char),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_0p5()
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                                            .text_color(theme::text_primary())
+                                                            .child(att.filename.clone()),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(theme::text_muted())
+                                                            .child(size_str),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id(ElementId::Name(format!("remove_pending_{}", att_id).into()))
+                                                    .cursor_pointer()
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .w(px(18.0))
+                                                    .h(px(18.0))
+                                                    .rounded_full()
+                                                    .bg(theme::bg_surface_4())
+                                                    .hover(|s| s.bg(theme::bg_surface()))
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::BOLD)
+                                                    .text_color(theme::text_muted())
+                                                    .child("×"),
+                                            )
+                                    })),
+                            )
+                        } else {
+                            None
+                        })
                         .child({
+                            let upload_btn = div()
+                                .id("composer_upload_btn")
+                                .cursor_pointer()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .w(px(28.0))
+                                .h(px(28.0))
+                                .mr_2()
+                                .rounded_md()
+                                .bg(theme::bg_surface_4())
+                                .hover(|s| s.bg(theme::bg_surface()))
+                                .child(render_upload_icon());
+
                             let mut composer_container = div()
                                 .id("chat_composer_input")
                                 .cursor_text()
@@ -1041,6 +1450,7 @@ impl ChatCanvasView {
                                 .bg(theme::bg_elevated())
                                 .border_1()
                                 .border_color(theme::border_hairline())
+                                .child(upload_btn)
                                 .child(
                                     div()
                                         .flex()
@@ -1144,7 +1554,13 @@ impl ChatCanvasView {
                                 ),
                         ),
                 ),
-            )
+            );
+
+        if self.lightbox.is_open {
+            root = root.child(LightboxModalView::new(self.lightbox.clone()).render_element());
+        }
+
+        root
     }
 }
 

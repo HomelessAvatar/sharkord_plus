@@ -109,6 +109,21 @@ pub struct Message {
     pub components: Vec<InteractiveComponent>,
     #[serde(default)]
     pub reactions: Vec<MessageReaction>,
+    #[serde(default)]
+    pub files: Vec<MessageFile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageFile {
+    pub id: u64,
+    pub name: String,
+    pub original_name: String,
+    pub size: i64,
+    pub mime_type: String,
+    pub extension: String,
+    #[serde(default)]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]

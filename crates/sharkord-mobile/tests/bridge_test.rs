@@ -156,6 +156,7 @@ fn test_core_type_conversions() {
         updated_at: None,
         components: Vec::new(),
         reactions: Vec::new(),
+        files: Vec::new(),
     };
 
     let mobile_msg: MobileMessage = core_msg.into();

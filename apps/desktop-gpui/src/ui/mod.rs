@@ -6,6 +6,7 @@ pub mod audio_settings;
 pub mod auth_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod lightbox_modal;
 pub mod markdown;
 pub mod member_list;
 pub mod pip_player;
@@ -38,6 +39,7 @@ pub use chat_canvas::{
     format_message_timestamp, group_messages_for_feed, render_channel_welcome_card,
     ChannelWelcomeCard, ChatCanvasView, ComposerAction, ComposerTextarea, MessageFeedGroup,
 };
+pub use lightbox_modal::{LightboxModalView, LightboxState};
 pub use markdown::{
     parse_markdown_tokens, render_code_block, render_markdown_element, MarkdownToken, SpoilerState,
 };
@@ -199,6 +201,9 @@ impl WorkspaceView {
             .cloned()
             .collect();
 
+        let existing_pending = std::mem::take(&mut self.chat_canvas.pending_attachments);
+        let existing_lightbox = self.chat_canvas.lightbox.clone();
+
         self.chat_canvas = ChatCanvasView::new(
             ch_name,
             ch_topic,
@@ -206,6 +211,8 @@ impl WorkspaceView {
             &users_map,
             &self.message_draft,
         );
+        self.chat_canvas.pending_attachments = existing_pending;
+        self.chat_canvas.lightbox = existing_lightbox;
 
         // 4. Sync Voice Stage
         let (voice_ch_id, voice_ch_name) = match self.state.active_channel() {
@@ -261,12 +268,37 @@ impl WorkspaceView {
     /// and clearing the draft. Returns the created `Message` if a channel was active.
     pub fn send_message(&mut self) -> Option<Message> {
         let channel_id = self.state.active_channel_id?;
-        if self.message_draft.trim().is_empty() {
+        if self.message_draft.trim().is_empty() && self.chat_canvas.pending_attachments.is_empty() {
             return None;
         }
 
         let next_id = (self.state.messages.len() as u64) + 1;
         let user_id = self.state.current_user.as_ref().map(|u| u.id);
+
+        let files: Vec<sharkord_core::types::MessageFile> = self
+            .chat_canvas
+            .pending_attachments
+            .iter()
+            .enumerate()
+            .map(|(idx, att)| sharkord_core::types::MessageFile {
+                id: next_id * 100 + idx as u64,
+                name: att.filename.clone(),
+                original_name: att.filename.clone(),
+                size: att.size_bytes as i64,
+                mime_type: if att.is_image {
+                    "image/png".to_string()
+                } else {
+                    "application/octet-stream".to_string()
+                },
+                extension: att
+                    .path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("")
+                    .to_string(),
+                url: att.uploaded_url.clone(),
+            })
+            .collect();
 
         let msg = Message {
             id: next_id,
@@ -274,11 +306,13 @@ impl WorkspaceView {
             user_id,
             content: Some(self.message_draft.clone()),
             created_at: Some(1000), // Placeholder or current timestamp
+            files,
             ..Default::default()
         };
 
         self.state.add_message(msg.clone());
         self.message_draft.clear();
+        self.chat_canvas.clear_pending_attachments();
         self.sync_views();
 
         Some(msg)
