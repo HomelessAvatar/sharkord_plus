@@ -6,6 +6,7 @@ pub mod audio_settings;
 pub mod auth_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod markdown;
 pub mod member_list;
 pub mod pip_player;
 pub mod quick_switcher;
@@ -35,7 +36,10 @@ pub use channel_tree::{
 };
 pub use chat_canvas::{
     format_message_timestamp, group_messages_for_feed, render_channel_welcome_card,
-    ChannelWelcomeCard, ChatCanvasView, MessageFeedGroup,
+    ChannelWelcomeCard, ChatCanvasView, ComposerAction, ComposerTextarea, MessageFeedGroup,
+};
+pub use markdown::{
+    parse_markdown_tokens, render_code_block, render_markdown_element, MarkdownToken, SpoilerState,
 };
 pub use member_list::{
     compose_member_groups, status_indicator_color, CategorizedMemberGroup, MemberListSidebarView,
@@ -250,7 +254,7 @@ impl WorkspaceView {
     /// Updates the draft text in the composer.
     pub fn set_message_draft(&mut self, draft: impl Into<String>) {
         self.message_draft = draft.into();
-        self.chat_canvas.message_draft = self.message_draft.clone();
+        self.chat_canvas.set_message_draft(&self.message_draft);
     }
 
     /// Submits the current message draft, appending it to the state messages list
@@ -397,17 +401,21 @@ impl WorkspaceView {
     /// Interactive handler for keystrokes in the chat composer input field.
     pub fn on_composer_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
         let key = event.keystroke.key.as_str();
-        if key == "enter" {
+        let is_shift = event.keystroke.modifiers.shift;
+        if key == "enter" && !is_shift {
             self.send_message();
+        } else if key == "enter" && is_shift {
+            self.message_draft.push('\n');
+            self.chat_canvas.set_message_draft(&self.message_draft);
         } else if key == "backspace" {
             self.message_draft.pop();
-            self.chat_canvas.message_draft = self.message_draft.clone();
+            self.chat_canvas.set_message_draft(&self.message_draft);
         } else if let Some(ref char_str) = event.keystroke.key_char {
             self.message_draft.push_str(char_str);
-            self.chat_canvas.message_draft = self.message_draft.clone();
+            self.chat_canvas.set_message_draft(&self.message_draft);
         } else if key.len() == 1 {
             self.message_draft.push_str(key);
-            self.chat_canvas.message_draft = self.message_draft.clone();
+            self.chat_canvas.set_message_draft(&self.message_draft);
         }
         cx.notify();
     }
