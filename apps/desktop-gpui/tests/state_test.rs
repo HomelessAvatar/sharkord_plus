@@ -207,6 +207,7 @@ fn test_user_state_mutations() {
         created_at: Some(1000),
         role_ids: vec![1, 2],
         status: Some("ONLINE".to_string()),
+        session_count: None,
     };
 
     state.current_user = Some(user1.clone());

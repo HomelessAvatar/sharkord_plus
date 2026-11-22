@@ -613,7 +613,7 @@ impl SharkordClient {
         Ok(())
     }
 
-    /// Edits an existing message's text content (`messages.editMessage` or `messages.edit`).
+    /// Edits an existing message's text content (`messages.edit` or `messages.editMessage`).
     pub async fn edit_message(
         &self,
         message_id: u64,
@@ -625,8 +625,8 @@ impl SharkordClient {
         });
         let body_str = self
             .post_trpc_mutation(
-                "messages.editMessage",
-                Some("messages.edit"),
+                "messages.edit",
+                Some("messages.editMessage"),
                 Some(&input),
             )
             .await?;
@@ -648,15 +648,15 @@ impl SharkordClient {
         }
     }
 
-    /// Deletes a message by ID (`messages.deleteMessage` or `messages.delete`).
+    /// Deletes a message by ID (`messages.delete` or `messages.deleteMessage`).
     pub async fn delete_message(&self, message_id: u64) -> Result<(), SharkordError> {
         let input = serde_json::json!({
             "messageId": message_id
         });
         let body_str = self
             .post_trpc_mutation(
-                "messages.deleteMessage",
-                Some("messages.delete"),
+                "messages.delete",
+                Some("messages.deleteMessage"),
                 Some(&input),
             )
             .await?;
@@ -664,7 +664,7 @@ impl SharkordClient {
         Ok(())
     }
 
-    /// Pins or unpins a message (`messages.pinMessage` or `messages.togglePin`).
+    /// Pins or unpins a message (`messages.togglePin` or `messages.pinMessage`).
     pub async fn pin_message(&self, message_id: u64, pinned: bool) -> Result<(), SharkordError> {
         let input = serde_json::json!({
             "messageId": message_id,
@@ -672,8 +672,8 @@ impl SharkordClient {
         });
         let body_str = self
             .post_trpc_mutation(
-                "messages.pinMessage",
-                Some("messages.togglePin"),
+                "messages.togglePin",
+                Some("messages.pinMessage"),
                 Some(&input),
             )
             .await?;
@@ -681,7 +681,7 @@ impl SharkordClient {
         Ok(())
     }
 
-    /// Creates a new channel (`channels.createChannel` or `channels.add`).
+    /// Creates a new channel (`channels.add` or `channels.createChannel`).
     pub async fn create_channel(
         &self,
         name: &str,
@@ -697,8 +697,8 @@ impl SharkordClient {
         }
         let body_str = self
             .post_trpc_mutation(
-                "channels.createChannel",
-                Some("channels.add"),
+                "channels.add",
+                Some("channels.createChannel"),
                 Some(&input),
             )
             .await?;
@@ -724,7 +724,7 @@ impl SharkordClient {
         }
     }
 
-    /// Updates a channel's name and/or topic (`channels.updateChannel` or `channels.update`).
+    /// Updates a channel's name and/or topic (`channels.update` or `channels.updateChannel`).
     pub async fn update_channel(
         &self,
         id: u64,
@@ -743,8 +743,8 @@ impl SharkordClient {
         }
         let body_str = self
             .post_trpc_mutation(
-                "channels.updateChannel",
-                Some("channels.update"),
+                "channels.update",
+                Some("channels.updateChannel"),
                 Some(&input),
             )
             .await?;
@@ -759,7 +759,7 @@ impl SharkordClient {
         }
     }
 
-    /// Deletes a channel by ID (`channels.deleteChannel` or `channels.delete`).
+    /// Deletes a channel by ID (`channels.delete` or `channels.deleteChannel`).
     pub async fn delete_channel(&self, id: u64) -> Result<(), SharkordError> {
         let input = serde_json::json!({
             "channelId": id,
@@ -767,8 +767,8 @@ impl SharkordClient {
         });
         let body_str = self
             .post_trpc_mutation(
-                "channels.deleteChannel",
-                Some("channels.delete"),
+                "channels.delete",
+                Some("channels.deleteChannel"),
                 Some(&input),
             )
             .await?;
@@ -789,7 +789,7 @@ impl SharkordClient {
         Ok(dms)
     }
 
-    /// Opens or resumes a direct message channel with a user (`channels.openDm` or `dms.open`).
+    /// Opens or resumes a direct message channel with a user (`dms.open` or `channels.openDm`).
     pub async fn open_dm(&self, target_user_id: u64) -> Result<Channel, SharkordError> {
         let input = serde_json::json!({
             "targetUserId": target_user_id,
@@ -797,8 +797,8 @@ impl SharkordClient {
         });
         let body_str = self
             .post_trpc_mutation(
-                "channels.openDm",
-                Some("dms.open"),
+                "dms.open",
+                Some("channels.openDm"),
                 Some(&input),
             )
             .await?;
@@ -822,11 +822,11 @@ impl SharkordClient {
         }
     }
 
-    /// Fetches all server members (`users.getUsers` or `users.getMembers` or `users.getAll`).
+    /// Fetches all server members (`users.getAll` or `users.getMembers` or `users.getUsers`).
     pub async fn get_members(&self) -> Result<Vec<User>, SharkordError> {
         let body_str = self
             .get_trpc_query(
-                &["users.getUsers", "users.getMembers", "users.getAll"],
+                &["users.getAll", "users.getMembers", "users.getUsers"],
                 None,
             )
             .await?;

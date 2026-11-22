@@ -109,6 +109,7 @@ fn test_core_type_conversions() {
         created_at: Some(1700000000),
         role_ids: vec![1, 2],
         status: Some("online".to_string()),
+        session_count: None,
     };
 
     let mobile_user: MobileUser = core_user.into();
@@ -154,6 +155,7 @@ fn test_core_type_conversions() {
         created_at: Some(1700000050),
         updated_at: None,
         components: Vec::new(),
+        reactions: Vec::new(),
     };
 
     let mobile_msg: MobileMessage = core_msg.into();

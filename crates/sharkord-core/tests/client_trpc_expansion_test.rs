@@ -54,7 +54,7 @@ async fn test_client_edit_message() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/messages.editMessage"))
+        .and(path("/trpc/messages.edit"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -84,7 +84,7 @@ async fn test_client_delete_message() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/messages.deleteMessage"))
+        .and(path("/trpc/messages.delete"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -111,7 +111,7 @@ async fn test_client_pin_message() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/messages.pinMessage"))
+        .and(path("/trpc/messages.togglePin"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -146,7 +146,7 @@ async fn test_client_create_channel() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.createChannel"))
+        .and(path("/trpc/channels.add"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -187,7 +187,7 @@ async fn test_client_update_channel() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.updateChannel"))
+        .and(path("/trpc/channels.update"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -220,7 +220,7 @@ async fn test_client_delete_channel() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.deleteChannel"))
+        .and(path("/trpc/channels.delete"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -293,7 +293,7 @@ async fn test_client_open_dm() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.openDm"))
+        .and(path("/trpc/dms.open"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -336,7 +336,7 @@ async fn test_client_get_members() {
     });
 
     Mock::given(method("GET"))
-        .and(path("/trpc/users.getUsers"))
+        .and(path("/trpc/users.getAll"))
         .and(header("authorization", "Bearer test-token-123"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
@@ -377,13 +377,13 @@ async fn test_client_upload_file() {
 }
 
 #[tokio::test]
-async fn test_client_edit_message_fallback_to_edit() {
+async fn test_client_edit_message_fallback_to_edit_message() {
     let mock_server = MockServer::start().await;
     let client = SharkordClient::new(&mock_server.uri()).unwrap();
     client.set_session_token(Some("test-token-123".to_string()));
 
     Mock::given(method("POST"))
-        .and(path("/trpc/messages.editMessage"))
+        .and(path("/trpc/messages.edit"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
@@ -402,7 +402,7 @@ async fn test_client_edit_message_fallback_to_edit() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/messages.edit"))
+        .and(path("/trpc/messages.editMessage"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
         .await;
@@ -415,29 +415,36 @@ async fn test_client_edit_message_fallback_to_edit() {
 }
 
 #[tokio::test]
-async fn test_client_create_channel_fallback_to_add() {
+async fn test_client_create_channel_fallback_to_create_channel() {
     let mock_server = MockServer::start().await;
     let client = SharkordClient::new(&mock_server.uri()).unwrap();
     client.set_session_token(Some("test-token-123".to_string()));
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.createChannel"))
+        .and(path("/trpc/channels.add"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
+
+    let created_channel = Channel {
+        id: 202,
+        name: "fallback-channel".to_string(),
+        channel_type: ChannelType::Text,
+        ..Default::default()
+    };
 
     let trpc_response = serde_json::json!({
         "0": {
             "result": {
                 "data": {
-                    "json": 202
+                    "json": created_channel
                 }
             }
         }
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.add"))
+        .and(path("/trpc/channels.createChannel"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
         .await;
@@ -445,20 +452,20 @@ async fn test_client_create_channel_fallback_to_add() {
     let res = client
         .create_channel("fallback-channel", ChannelType::Text, None)
         .await;
-    assert!(res.is_ok(), "fallback add channel failed: {:?}", res);
+    assert!(res.is_ok(), "fallback create channel failed: {:?}", res);
     let ch = res.unwrap();
     assert_eq!(ch.id, 202);
     assert_eq!(ch.name, "fallback-channel");
 }
 
 #[tokio::test]
-async fn test_client_open_dm_fallback_to_dms_open() {
+async fn test_client_open_dm_fallback_to_channels_open_dm() {
     let mock_server = MockServer::start().await;
     let client = SharkordClient::new(&mock_server.uri()).unwrap();
     client.set_session_token(Some("test-token-123".to_string()));
 
     Mock::given(method("POST"))
-        .and(path("/trpc/channels.openDm"))
+        .and(path("/trpc/dms.open"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
@@ -476,7 +483,7 @@ async fn test_client_open_dm_fallback_to_dms_open() {
     });
 
     Mock::given(method("POST"))
-        .and(path("/trpc/dms.open"))
+        .and(path("/trpc/channels.openDm"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
         .await;
@@ -540,13 +547,13 @@ async fn test_client_get_dms_fallback_to_channels() {
 }
 
 #[tokio::test]
-async fn test_client_get_members_fallback_to_get_all() {
+async fn test_client_get_members_fallback_to_get_users() {
     let mock_server = MockServer::start().await;
     let client = SharkordClient::new(&mock_server.uri()).unwrap();
     client.set_session_token(Some("test-token-123".to_string()));
 
     Mock::given(method("GET"))
-        .and(path("/trpc/users.getUsers"))
+        .and(path("/trpc/users.getAll"))
         .respond_with(ResponseTemplate::new(404))
         .mount(&mock_server)
         .await;
@@ -574,7 +581,7 @@ async fn test_client_get_members_fallback_to_get_all() {
     });
 
     Mock::given(method("GET"))
-        .and(path("/trpc/users.getAll"))
+        .and(path("/trpc/users.getUsers"))
         .respond_with(ResponseTemplate::new(200).set_body_json(trpc_response))
         .mount(&mock_server)
         .await;
