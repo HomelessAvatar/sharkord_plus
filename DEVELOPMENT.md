@@ -28,7 +28,7 @@ cargo run -p desktop-gpui
 cargo build --release -p desktop-gpui
 ```
 
-Pre-built binaries for Windows, Linux, and macOS are automatically built on every CI run via GitHub Actions (`.github/workflows/rust-ci.yml`).
+Pre-built binaries for Windows, Linux, macOS, and Android are automatically built on release tags via GitHub Actions (`.github/workflows/desktop.yml` and `.github/workflows/mobile-tauri.yml`).
 
 ## Mock data
 

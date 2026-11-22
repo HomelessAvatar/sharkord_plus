@@ -3,10 +3,12 @@
   <p><strong>High-performance, lightweight, self-hosted real-time communication platform</strong></p>
   <p><i>An enhanced community fork of <a href="https://github.com/Sharkord/sharkord">Sharkord</a> (formerly Sharkord Plus) with Universal Tauri 2.0 (Desktop & Mobile), Pure Native GPUI, Full Hardware Acceleration, and Selective Window Audio Sharing.</i></p>
 
-  [![CI](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/rust-ci.yml/badge.svg)](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/rust-ci.yml)
+  [![CI](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/ci.yml/badge.svg)](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/ci.yml)
+  [![Android](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/mobile-tauri.yml/badge.svg)](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/mobile-tauri.yml)
+  [![Desktop](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/desktop.yml/badge.svg)](https://github.com/HomelessAvatar/sharkord_plus/actions/workflows/desktop.yml)
   [![Version](https://img.shields.io/github/v/release/HomelessAvatar/sharkord_plus?include_prereleases&label=version)](https://github.com/HomelessAvatar/sharkord_plus/releases)
   [![License](https://img.shields.io/github/license/HomelessAvatar/sharkord_plus)](LICENSE)
-  [![Upstream](https://img.shields.io/badge/Upstream-Sharkord%20v0.0.31-blue.svg)](https://github.com/Sharkord/sharkord)
+  [![Upstream](https://img.shields.io/badge/Upstream-Sharkord%20v0.0.32-blue.svg)](https://github.com/Sharkord/sharkord)
   [![Rust](https://img.shields.io/badge/Rust-1.85+-orange.svg)](https://www.rust-lang.org)
   [![Tauri](https://img.shields.io/badge/Tauri-2.0%20Universal-24C8DB.svg)](https://tauri.app)
   [![GPUI](https://img.shields.io/badge/UI-GPUI%20Native-purple.svg)](https://github.com/zed-industries/zed)
@@ -18,11 +20,11 @@
 
 ## 📌 Attribution & Upstream Relationship
 
-**Sharkord Plus** is built upon the exceptional open-source foundation of [Sharkord](https://github.com/Sharkord/sharkord), created by [diogomartino](https://github.com/diogomartino) and the Sharkord community.
+**VibeShark** (formerly Sharkord Plus) is built upon the exceptional open-source foundation of [Sharkord](https://github.com/Sharkord/sharkord), created by [diogomartino](https://github.com/diogomartino) and the Sharkord community.
 
 * **Upstream Repository:** [https://github.com/Sharkord/sharkord](https://github.com/Sharkord/sharkord)
 * **Official Website & Docs:** [https://sharkord.com](https://sharkord.com)
-* **Our Sync Philosophy:** VibeShark maintains **100% backward compatibility** with standard vanilla Sharkord servers. Upstream updates, security patches, and features are selectively incorporated through a structured cherry-pick workflow. See [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md) for sync procedures.
+* **Our Sync Philosophy:** VibeShark maintains **100% backward compatibility** with standard vanilla Sharkord servers. Upstream updates, security patches, and features are continuously merged and synchronized. See [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md) for sync procedures.
 
 ---
 
@@ -39,7 +41,7 @@
 
 ## ✨ What Makes VibeShark Different?
 
-While standard Sharkord provides a fantastic Discord-like self-hosted experience, **Sharkord Plus** pushes performance, multi-platform client parity, and audio/video capabilities to production-grade levels:
+While standard Sharkord provides a fantastic Discord-like self-hosted experience, **VibeShark** pushes performance, multi-platform client parity, and audio/video capabilities to production-grade levels:
 
 ### 🌐 1. Universal Tauri 2.0 Client (`apps/tauri`) — Full Parity on Desktop & Mobile
 - **Instant 100% Parity:** Wraps the battle-tested React web client (`apps/client`), bringing complete feature parity to **Desktop (Windows `.exe`/`.msi`, Linux `.AppImage`/`.deb`, macOS `.dmg`)** and **Mobile (Android `.apk`/`.aab`)** simultaneously.
@@ -121,8 +123,8 @@ docker run -d \
   -p 40000-40050:40000-40050/udp \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
-  --name sharkord-plus \
-  ghcr.io/homelessavatar/sharkord_plus:0.3.3
+  --name vibeshark \
+  ghcr.io/homelessavatar/sharkord_plus:0.3.17
 ```
 
 ### 4. Local Web & Server Development
@@ -144,13 +146,14 @@ cargo test --all
 
 ## 🏷️ Versioning & Compatibility
 
-Sharkord Plus follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
+VibeShark follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
-* **Current Version:** `v0.3.3`
+* **Current Version:** `v0.3.17`
 * **Upstream Compatibility Matrix:**
-  | Sharkord Plus Version | Compatible Sharkord Upstream Server |
-  |-----------------------|-------------------------------------|
-  | `v0.1.x` - `v0.2.x`   | `v0.0.31`+ (and backward compatible to `0.0.28`) |
+  | VibeShark Version | Compatible Sharkord Upstream Server |
+  |-------------------|-------------------------------------|
+  | `v0.3.x`          | `v0.0.32`+ (and backward compatible to `0.0.28`) |
+  | `v0.1.x` - `v0.2.x` | `v0.0.31`+ (and backward compatible to `0.0.28`) |
 
 ---
 
