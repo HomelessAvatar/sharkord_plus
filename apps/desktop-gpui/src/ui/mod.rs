@@ -6,6 +6,7 @@ pub mod audio_settings;
 pub mod auth_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod emoji_picker;
 pub mod lightbox_modal;
 pub mod markdown;
 pub mod member_list;
@@ -36,9 +37,13 @@ pub use channel_tree::{
     ChannelTreeView,
 };
 pub use chat_canvas::{
-    format_message_timestamp, group_messages_for_feed, render_channel_welcome_card,
-    ChannelWelcomeCard, ChatCanvasView, ComposerAction, ComposerTextarea, MessageFeedGroup,
+    format_message_timestamp, format_reactors_tooltip, group_messages_for_feed,
+    render_channel_welcome_card, render_copy_icon, render_edit_icon, render_pin_icon,
+    render_react_icon, render_reply_icon, render_trash_icon, ChannelWelcomeCard, ChatCanvasView,
+    ComposerAction, ComposerTextarea, MessageActionToolbar, MessageFeedGroup, ReactionBadge,
+    ReplyTarget,
 };
+pub use emoji_picker::{EmojiCategory, EmojiItem, EmojiPickerState, EmojiPickerView};
 pub use lightbox_modal::{LightboxModalView, LightboxState};
 pub use markdown::{
     parse_markdown_tokens, render_code_block, render_markdown_element, MarkdownToken, SpoilerState,
@@ -190,6 +195,9 @@ impl WorkspaceView {
         };
 
         let mut users_map = HashMap::new();
+        for u in &self.state.users {
+            users_map.insert(u.id, u.name.clone());
+        }
         if let Some(ref u) = self.state.current_user {
             users_map.insert(u.id, u.name.clone());
         }
@@ -203,6 +211,10 @@ impl WorkspaceView {
 
         let existing_pending = std::mem::take(&mut self.chat_canvas.pending_attachments);
         let existing_lightbox = self.chat_canvas.lightbox.clone();
+        let existing_reply = self.chat_canvas.reply_target.clone();
+        let existing_editing_id = self.chat_canvas.editing_message_id;
+        let existing_editing_text = self.chat_canvas.editing_text.clone();
+        let existing_picker = self.chat_canvas.emoji_picker.clone();
 
         self.chat_canvas = ChatCanvasView::new(
             ch_name,
@@ -213,6 +225,11 @@ impl WorkspaceView {
         );
         self.chat_canvas.pending_attachments = existing_pending;
         self.chat_canvas.lightbox = existing_lightbox;
+        self.chat_canvas.reply_target = existing_reply;
+        self.chat_canvas.editing_message_id = existing_editing_id;
+        self.chat_canvas.editing_text = existing_editing_text;
+        self.chat_canvas.emoji_picker = existing_picker;
+        self.chat_canvas.current_user_id = self.state.current_user.as_ref().map(|u| u.id);
 
         // 4. Sync Voice Stage
         let (voice_ch_id, voice_ch_name) = match self.state.active_channel() {
@@ -300,11 +317,14 @@ impl WorkspaceView {
             })
             .collect();
 
+        let reply_to_message_id = self.chat_canvas.reply_target.as_ref().map(|r| r.message_id);
+
         let msg = Message {
             id: next_id,
             channel_id,
             user_id,
             content: Some(self.message_draft.clone()),
+            reply_to_message_id,
             created_at: Some(1000), // Placeholder or current timestamp
             files,
             ..Default::default()
@@ -313,9 +333,38 @@ impl WorkspaceView {
         self.state.add_message(msg.clone());
         self.message_draft.clear();
         self.chat_canvas.clear_pending_attachments();
+        self.chat_canvas.clear_reply_target();
         self.sync_views();
 
         Some(msg)
+    }
+
+    /// Commits active in-place edit from the chat canvas to the state.
+    pub fn save_inline_edit(&mut self) -> Option<(u64, String)> {
+        let (msg_id, text) = self.chat_canvas.save_inline_edit()?;
+        self.state.edit_message_content(msg_id, &text);
+        self.sync_views();
+        Some((msg_id, text))
+    }
+
+    /// Toggles an emoji reaction on a message for the current user.
+    pub fn toggle_reaction(&mut self, message_id: u64, emoji: &str) {
+        if let Some(ref u) = self.state.current_user {
+            self.state.toggle_message_reaction(message_id, u.id, emoji);
+            self.sync_views();
+        }
+    }
+
+    /// Toggles the pinned status of a message.
+    pub fn toggle_message_pin(&mut self, message_id: u64) {
+        self.state.toggle_message_pin(message_id);
+        self.sync_views();
+    }
+
+    /// Deletes a message from state and refreshes child views.
+    pub fn delete_message(&mut self, message_id: u64) {
+        self.state.delete_message(message_id);
+        self.sync_views();
     }
 
     /// Toggles microphone mute on the voice bar.
@@ -372,7 +421,8 @@ impl WorkspaceView {
         channels: Vec<sharkord_core::types::Channel>,
         messages: Vec<sharkord_core::types::Message>,
     ) {
-        self.state.bootstrap_from_server(settings, channels, messages);
+        self.state
+            .bootstrap_from_server(settings, channels, messages);
         self.auth_modal.set_loading(false);
         self.auth_modal.clear_error();
         self.sync_views();

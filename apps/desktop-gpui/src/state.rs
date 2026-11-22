@@ -136,6 +136,49 @@ impl AppState {
         self.messages.push(message);
     }
 
+    /// Edits an existing message's text content by ID.
+    pub fn edit_message_content(&mut self, message_id: u64, new_content: &str) {
+        if let Some(msg) = self.messages.iter_mut().find(|m| m.id == message_id) {
+            msg.content = Some(new_content.to_string());
+            msg.edited_at = Some(1000);
+        }
+    }
+
+    /// Toggles an emoji reaction on a message for a specific user.
+    pub fn toggle_message_reaction(&mut self, message_id: u64, user_id: u64, emoji: &str) {
+        if let Some(msg) = self.messages.iter_mut().find(|m| m.id == message_id) {
+            if let Some(pos) = msg
+                .reactions
+                .iter()
+                .position(|r| r.user_id == user_id && r.emoji == emoji)
+            {
+                msg.reactions.remove(pos);
+            } else {
+                msg.reactions.push(MessageReaction {
+                    message_id,
+                    user_id,
+                    emoji: emoji.to_string(),
+                    plugin_id: None,
+                    file_id: None,
+                    created_at: Some(1000),
+                });
+            }
+        }
+    }
+
+    /// Toggles the pinned status of a message.
+    pub fn toggle_message_pin(&mut self, message_id: u64) {
+        if let Some(msg) = self.messages.iter_mut().find(|m| m.id == message_id) {
+            msg.pinned = !msg.pinned;
+            msg.pinned_at = if msg.pinned { Some(1000) } else { None };
+        }
+    }
+
+    /// Deletes a message from the messages store by ID.
+    pub fn delete_message(&mut self, message_id: u64) {
+        self.messages.retain(|m| m.id != message_id);
+    }
+
     /// Retrieves references to all messages belonging to the currently active channel.
     pub fn messages_for_active_channel(&self) -> Vec<&Message> {
         match self.active_channel_id {
@@ -348,7 +391,10 @@ impl AppState {
         self.channels = channels;
         self.messages = messages;
         if self.active_channel_id.is_none()
-            || !self.channels.iter().any(|c| Some(c.id) == self.active_channel_id)
+            || !self
+                .channels
+                .iter()
+                .any(|c| Some(c.id) == self.active_channel_id)
         {
             self.active_channel_id = self.channels.first().map(|c| c.id);
         }
@@ -384,7 +430,10 @@ impl AppState {
     /// Sets whether a specific user is typing in a given channel.
     pub fn set_user_typing(&mut self, channel_id: u64, user_id: u64, is_typing: bool) {
         if is_typing {
-            self.typing_users.entry(channel_id).or_default().insert(user_id);
+            self.typing_users
+                .entry(channel_id)
+                .or_default()
+                .insert(user_id);
         } else if let Some(set) = self.typing_users.get_mut(&channel_id) {
             set.remove(&user_id);
         }
@@ -399,9 +448,8 @@ impl AppState {
     pub fn handle_subscription_event(&mut self, event: SubscriptionEvent) {
         match event.event_type {
             EventType::MessageCreated => {
-                let message: Option<Message> = serde_json::from_value(event.data.clone())
-                    .ok()
-                    .or_else(|| {
+                let message: Option<Message> =
+                    serde_json::from_value(event.data.clone()).ok().or_else(|| {
                         event
                             .data
                             .get("message")
@@ -432,7 +480,10 @@ impl AppState {
                 let msg_id = event
                     .data
                     .get("id")
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    })
                     .or_else(|| message_opt.as_ref().map(|m| m.id));
 
                 if let Some(id) = msg_id {
@@ -489,7 +540,10 @@ impl AppState {
                     .data
                     .get("id")
                     .or_else(|| event.data.get("messageId"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
 
                 if let Some(id) = msg_id {
                     self.messages.retain(|m| m.id != id);
@@ -502,13 +556,19 @@ impl AppState {
                     .get("messageId")
                     .or_else(|| event.data.get("message_id"))
                     .or_else(|| event.data.get("id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
                 let emoji = event.data.get("emoji").and_then(|v| v.as_str());
                 let user_id = event
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("user_id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
 
                 if let (Some(msg_id), Some(emoji), Some(user_id)) = (msg_id, emoji, user_id) {
                     if let Some(existing) = self.messages.iter_mut().find(|m| m.id == msg_id) {
@@ -548,13 +608,19 @@ impl AppState {
                     .get("messageId")
                     .or_else(|| event.data.get("message_id"))
                     .or_else(|| event.data.get("id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
                 let emoji = event.data.get("emoji").and_then(|v| v.as_str());
                 let user_id = event
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("user_id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
 
                 if let (Some(msg_id), Some(emoji)) = (msg_id, emoji) {
                     if let Some(existing) = self.messages.iter_mut().find(|m| m.id == msg_id) {
@@ -570,9 +636,8 @@ impl AppState {
             }
 
             EventType::ChannelCreated => {
-                let channel: Option<Channel> = serde_json::from_value(event.data.clone())
-                    .ok()
-                    .or_else(|| {
+                let channel: Option<Channel> =
+                    serde_json::from_value(event.data.clone()).ok().or_else(|| {
                         event
                             .data
                             .get("channel")
@@ -593,7 +658,10 @@ impl AppState {
                 let ch_id = event
                     .data
                     .get("id")
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    })
                     .or_else(|| channel_opt.as_ref().map(|c| c.id));
 
                 if let Some(id) = ch_id {
@@ -607,9 +675,7 @@ impl AppState {
                             if let Some(topic) = event.data.get("topic").and_then(|v| v.as_str()) {
                                 existing.topic = Some(topic.to_string());
                             }
-                            if let Some(pos) =
-                                event.data.get("position").and_then(|v| v.as_i64())
-                            {
+                            if let Some(pos) = event.data.get("position").and_then(|v| v.as_i64()) {
                                 existing.position = pos as i32;
                             }
                         }
@@ -622,7 +688,10 @@ impl AppState {
                     .data
                     .get("id")
                     .or_else(|| event.data.get("channelId"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
 
                 if let Some(id) = ch_id {
                     self.channels.retain(|c| c.id != id);
@@ -639,7 +708,10 @@ impl AppState {
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
                 let status = event.data.get("status").and_then(|v| v.as_str());
 
                 if let (Some(uid), Some(st)) = (user_id, status) {
@@ -659,13 +731,19 @@ impl AppState {
                     .data
                     .get("channelId")
                     .or_else(|| event.data.get("channel_id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    })
                     .or(self.active_channel_id);
                 let user_id = event
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("user_id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
                 let is_typing = event
                     .data
                     .get("isTyping")
@@ -689,7 +767,10 @@ impl AppState {
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())));
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    });
 
                 if let Some(uid) = user_id {
                     self.remove_user(uid);
@@ -701,7 +782,10 @@ impl AppState {
                     .data
                     .get("userId")
                     .or_else(|| event.data.get("user_id"))
-                    .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
+                    .and_then(|v| {
+                        v.as_u64()
+                            .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                    })
                 {
                     if let Some(muted) = event.data.get("muted").and_then(|v| v.as_bool()) {
                         if let Some(ref curr) = self.current_user {

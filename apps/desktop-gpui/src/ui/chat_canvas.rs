@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use sharkord_core::types::{InteractiveComponent, Message, MessageFile, PluginCommand};
 
 use crate::theme;
+use crate::ui::emoji_picker::{EmojiPickerState, EmojiPickerView};
 use crate::ui::lightbox_modal::{LightboxModalView, LightboxState};
 use crate::ui::markdown::render_markdown_element;
 use crate::ui::server_rail::server_initials;
@@ -308,6 +309,592 @@ pub fn render_upload_icon() -> impl IntoElement {
         )
 }
 
+/// Renders a clean vector reaction icon.
+pub fn render_react_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                .rounded_full()
+                .border_1()
+                .border_color(theme::text_secondary())
+                // Left Eye
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(3.0))
+                        .left(px(2.5))
+                        .w(px(1.5))
+                        .h(px(1.5))
+                        .rounded_full()
+                        .bg(theme::text_secondary()),
+                )
+                // Right Eye
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(3.0))
+                        .right(px(2.5))
+                        .w(px(1.5))
+                        .h(px(1.5))
+                        .rounded_full()
+                        .bg(theme::text_secondary()),
+                )
+                // Smile Arc
+                .child(
+                    div()
+                        .absolute()
+                        .bottom(px(2.0))
+                        .left(px(3.0))
+                        .w(px(6.0))
+                        .h(px(2.5))
+                        .border_b_1()
+                        .border_color(theme::text_secondary())
+                        .rounded_b_sm(),
+                ),
+        )
+}
+
+/// Renders a clean vector reply arrow icon.
+pub fn render_reply_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                // Left arrowhead
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(2.5))
+                        .left(px(1.0))
+                        .w(px(4.0))
+                        .h(px(4.0))
+                        .border_t_1()
+                        .border_l_1()
+                        .border_color(theme::text_secondary()),
+                )
+                // Curved body
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(4.0))
+                        .left(px(3.5))
+                        .w(px(7.0))
+                        .h(px(5.0))
+                        .border_t_1()
+                        .border_r_1()
+                        .border_color(theme::text_secondary())
+                        .rounded_tr_md(),
+                ),
+        )
+}
+
+/// Renders a clean vector pencil edit icon.
+pub fn render_edit_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                // Pencil body
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(1.5))
+                        .right(px(1.5))
+                        .w(px(7.0))
+                        .h(px(3.5))
+                        .rounded_xs()
+                        .bg(theme::text_secondary()),
+                )
+                // Pencil tip
+                .child(
+                    div()
+                        .absolute()
+                        .bottom(px(1.5))
+                        .left(px(1.5))
+                        .w(px(3.5))
+                        .h(px(3.5))
+                        .border_b_1()
+                        .border_l_1()
+                        .border_color(theme::text_secondary()),
+                ),
+        )
+}
+
+/// Renders a clean vector pin/unpin icon.
+pub fn render_pin_icon(is_pinned: bool) -> impl IntoElement {
+    let col = if is_pinned {
+        theme::accent()
+    } else {
+        theme::text_secondary()
+    };
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                // Pin head
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(1.0))
+                        .left(px(3.5))
+                        .w(px(5.0))
+                        .h(px(3.5))
+                        .rounded_xs()
+                        .bg(col),
+                )
+                // Pin body
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(4.5))
+                        .left(px(4.5))
+                        .w(px(3.0))
+                        .h(px(3.5))
+                        .bg(col),
+                )
+                // Pin needle
+                .child(
+                    div()
+                        .absolute()
+                        .bottom(px(0.5))
+                        .left(px(5.5))
+                        .w(px(1.0))
+                        .h(px(4.0))
+                        .bg(col),
+                ),
+        )
+}
+
+/// Renders a clean vector trashcan delete icon.
+pub fn render_trash_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                // Trash lid
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(1.5))
+                        .left(px(1.5))
+                        .w(px(9.0))
+                        .h(px(1.5))
+                        .rounded_xs()
+                        .bg(theme::status_dnd()),
+                )
+                // Trash body
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(4.0))
+                        .left(px(2.5))
+                        .w(px(7.0))
+                        .h(px(7.0))
+                        .border_1()
+                        .border_color(theme::status_dnd())
+                        .rounded_b_sm(),
+                ),
+        )
+}
+
+/// Renders a clean vector copy icon.
+pub fn render_copy_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(14.0))
+        .h(px(14.0))
+        .child(
+            div()
+                .relative()
+                .w(px(12.0))
+                .h(px(12.0))
+                // Back card
+                .child(
+                    div()
+                        .absolute()
+                        .top(px(1.0))
+                        .right(px(1.0))
+                        .w(px(7.5))
+                        .h(px(8.0))
+                        .border_1()
+                        .border_color(theme::text_muted())
+                        .rounded_xs(),
+                )
+                // Front card
+                .child(
+                    div()
+                        .absolute()
+                        .bottom(px(1.0))
+                        .left(px(1.0))
+                        .w(px(7.5))
+                        .h(px(8.0))
+                        .border_1()
+                        .border_color(theme::text_secondary())
+                        .bg(theme::bg_elevated())
+                        .rounded_xs(),
+                ),
+        )
+}
+
+/// Target message being referenced in a reply.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplyTarget {
+    pub message_id: u64,
+    pub author_name: String,
+    pub sender_name: String,
+    pub snippet: String,
+}
+
+impl ReplyTarget {
+    pub fn new(
+        message_id: u64,
+        author_name: impl Into<String>,
+        snippet: impl Into<String>,
+    ) -> Self {
+        let name = author_name.into();
+        Self {
+            message_id,
+            author_name: name.clone(),
+            sender_name: name,
+            snippet: snippet.into(),
+        }
+    }
+}
+
+impl From<(u64, &str, &str)> for ReplyTarget {
+    fn from((id, author, snippet): (u64, &str, &str)) -> Self {
+        ReplyTarget::new(id, author, snippet)
+    }
+}
+
+impl From<(u64, String, String)> for ReplyTarget {
+    fn from((id, author, snippet): (u64, String, String)) -> Self {
+        ReplyTarget::new(id, author, snippet)
+    }
+}
+
+/// Formats reactor names for tooltip display (e.g. "Alice", "Alice and Bob", "Alice, Bob, and 2 others").
+pub fn format_reactors_tooltip(reactor_names: &[String]) -> String {
+    match reactor_names.len() {
+        0 => String::new(),
+        1 => reactor_names[0].clone(),
+        2 => format!("{} and {}", reactor_names[0], reactor_names[1]),
+        3 => format!(
+            "{}, {}, and {}",
+            reactor_names[0], reactor_names[1], reactor_names[2]
+        ),
+        n => {
+            let others = n - 2;
+            let other_str = if others == 1 { "other" } else { "others" };
+            format!(
+                "{}, {}, and {} {}",
+                reactor_names[0], reactor_names[1], others, other_str
+            )
+        }
+    }
+}
+
+/// Reaction badge displaying emoji, counter pill, active user reaction state, and reactor list tooltip.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReactionBadge {
+    pub emoji: String,
+    pub count: usize,
+    pub has_reacted: bool,
+    pub reactor_names: Vec<String>,
+}
+
+impl ReactionBadge {
+    pub fn new(
+        emoji: impl Into<String>,
+        count: usize,
+        has_reacted: bool,
+        reactor_names: Vec<String>,
+    ) -> Self {
+        Self {
+            emoji: emoji.into(),
+            count,
+            has_reacted,
+            reactor_names,
+        }
+    }
+
+    /// Returns the tooltip text representing the reactor names.
+    pub fn tooltip_text(&self) -> String {
+        format_reactors_tooltip(&self.reactor_names)
+    }
+
+    /// Toggles the reacted state for the active user, adjusting the count accordingly.
+    pub fn toggle_reacted(&mut self) {
+        if self.has_reacted {
+            self.has_reacted = false;
+            self.count = self.count.saturating_sub(1);
+        } else {
+            self.has_reacted = true;
+            self.count += 1;
+        }
+    }
+
+    /// Aggregates a message's reactions list into grouped `ReactionBadge` entries.
+    pub fn from_reactions(
+        reactions: &[sharkord_core::types::MessageReaction],
+        current_user_id: Option<u64>,
+        users: &HashMap<u64, String>,
+    ) -> Vec<Self> {
+        let mut grouped: Vec<(String, usize, bool, Vec<String>)> = Vec::new();
+
+        for r in reactions {
+            let user_name = users
+                .get(&r.user_id)
+                .cloned()
+                .unwrap_or_else(|| format!("User {}", r.user_id));
+            let is_current = current_user_id.map_or(false, |uid| uid == r.user_id);
+
+            if let Some(entry) = grouped
+                .iter_mut()
+                .find(|(emoji, _, _, _)| emoji == &r.emoji)
+            {
+                entry.1 += 1;
+                if is_current {
+                    entry.2 = true;
+                }
+                if !entry.3.contains(&user_name) {
+                    entry.3.push(user_name);
+                }
+            } else {
+                grouped.push((r.emoji.clone(), 1, is_current, vec![user_name]));
+            }
+        }
+
+        grouped
+            .into_iter()
+            .map(|(emoji, count, has_reacted, reactor_names)| {
+                ReactionBadge::new(emoji, count, has_reacted, reactor_names)
+            })
+            .collect()
+    }
+
+    /// Renders the reaction pill element.
+    pub fn render_element(&self) -> impl IntoElement {
+        let border_col = if self.has_reacted {
+            theme::accent()
+        } else {
+            theme::border_hairline()
+        };
+        let bg_col = if self.has_reacted {
+            theme::bg_elevated()
+        } else {
+            theme::bg_surface_4()
+        };
+
+        div()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_1()
+            .px_2()
+            .py_0p5()
+            .rounded_full()
+            .bg(bg_col)
+            .border_1()
+            .border_color(border_col)
+            .cursor_pointer()
+            .child(div().text_xs().child(self.emoji.clone()))
+            .child(
+                div()
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .text_color(if self.has_reacted {
+                        theme::accent()
+                    } else {
+                        theme::text_primary()
+                    })
+                    .child(self.count.to_string()),
+            )
+    }
+}
+
+/// Floating hover message action toolbar.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MessageActionToolbar {
+    pub message_id: u64,
+    pub can_edit: bool,
+    pub is_pinned: bool,
+}
+
+impl MessageActionToolbar {
+    pub fn new(message_id: u64, can_edit: bool, is_pinned: bool) -> Self {
+        Self {
+            message_id,
+            can_edit,
+            is_pinned,
+        }
+    }
+
+    pub fn render_element(&self) -> impl IntoElement {
+        let mut bar = div()
+            .id(ElementId::Name(
+                format!("msg_actions_toolbar_{}", self.message_id).into(),
+            ))
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_1()
+            .px_1p5()
+            .py_1()
+            .rounded_lg()
+            .bg(theme::bg_elevated())
+            .border_1()
+            .border_color(theme::border_subtle())
+            .shadow_md();
+
+        // 1. React button
+        bar = bar.child(
+            div()
+                .id(ElementId::Name(
+                    format!("action_react_{}", self.message_id).into(),
+                ))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .justify_center()
+                .w(px(26.0))
+                .h(px(26.0))
+                .rounded_md()
+                .hover(|s| s.bg(theme::bg_surface_4()))
+                .child(render_react_icon()),
+        );
+
+        // 2. Reply button
+        bar = bar.child(
+            div()
+                .id(ElementId::Name(
+                    format!("action_reply_{}", self.message_id).into(),
+                ))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .justify_center()
+                .w(px(26.0))
+                .h(px(26.0))
+                .rounded_md()
+                .hover(|s| s.bg(theme::bg_surface_4()))
+                .child(render_reply_icon()),
+        );
+
+        // 3. Edit button (if can_edit)
+        if self.can_edit {
+            bar = bar.child(
+                div()
+                    .id(ElementId::Name(
+                        format!("action_edit_{}", self.message_id).into(),
+                    ))
+                    .cursor_pointer()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(26.0))
+                    .h(px(26.0))
+                    .rounded_md()
+                    .hover(|s| s.bg(theme::bg_surface_4()))
+                    .child(render_edit_icon()),
+            );
+        }
+
+        // 4. Pin / Unpin button
+        bar = bar.child(
+            div()
+                .id(ElementId::Name(
+                    format!("action_pin_{}", self.message_id).into(),
+                ))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .justify_center()
+                .w(px(26.0))
+                .h(px(26.0))
+                .rounded_md()
+                .hover(|s| s.bg(theme::bg_surface_4()))
+                .child(render_pin_icon(self.is_pinned)),
+        );
+
+        // 5. Copy text button
+        bar = bar.child(
+            div()
+                .id(ElementId::Name(
+                    format!("action_copy_{}", self.message_id).into(),
+                ))
+                .cursor_pointer()
+                .flex()
+                .items_center()
+                .justify_center()
+                .w(px(26.0))
+                .h(px(26.0))
+                .rounded_md()
+                .hover(|s| s.bg(theme::bg_surface_4()))
+                .child(render_copy_icon()),
+        );
+
+        // 6. Delete button (if can_edit)
+        if self.can_edit {
+            bar = bar.child(
+                div()
+                    .id(ElementId::Name(
+                        format!("action_delete_{}", self.message_id).into(),
+                    ))
+                    .cursor_pointer()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(26.0))
+                    .h(px(26.0))
+                    .rounded_md()
+                    .hover(|s| s.bg(theme::bg_surface_4()))
+                    .child(render_trash_icon()),
+            );
+        }
+
+        bar
+    }
+}
+
 /// Renders file attachments for a message natively (image preview cards or file download pills).
 pub fn render_message_attachments(files: &[MessageFile]) -> Vec<AnyElement> {
     if files.is_empty() {
@@ -327,7 +914,9 @@ pub fn render_message_attachments(files: &[MessageFile]) -> Vec<AnyElement> {
 
             if is_img {
                 div()
-                    .id(ElementId::Name(format!("msg_img_attachment_{}", file.id).into()))
+                    .id(ElementId::Name(
+                        format!("msg_img_attachment_{}", file.id).into(),
+                    ))
                     .cursor_pointer()
                     .flex()
                     .flex_col()
@@ -373,7 +962,9 @@ pub fn render_message_attachments(files: &[MessageFile]) -> Vec<AnyElement> {
                     .into_any_element()
             } else {
                 div()
-                    .id(ElementId::Name(format!("msg_file_attachment_{}", file.id).into()))
+                    .id(ElementId::Name(
+                        format!("msg_file_attachment_{}", file.id).into(),
+                    ))
                     .cursor_pointer()
                     .flex()
                     .flex_row()
@@ -425,12 +1016,7 @@ pub fn render_message_attachments(files: &[MessageFile]) -> Vec<AnyElement> {
                                     ),
                             ),
                     )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme::text_muted())
-                            .child("⬇"),
-                    )
+                    .child(div().text_xs().text_color(theme::text_muted()).child("⬇"))
                     .into_any_element()
             }
         })
@@ -901,6 +1487,12 @@ pub struct ChatCanvasView {
     pub virtual_viewport_size: usize,
     pub pending_attachments: Vec<PendingAttachment>,
     pub lightbox: LightboxState,
+    pub reply_target: Option<ReplyTarget>,
+    pub editing_message_id: Option<u64>,
+    pub editing_text: String,
+    pub emoji_picker: EmojiPickerState,
+    pub current_user_id: Option<u64>,
+    pub users: HashMap<u64, String>,
 }
 
 impl Default for ChatCanvasView {
@@ -919,6 +1511,12 @@ impl Default for ChatCanvasView {
             virtual_viewport_size: 50,
             pending_attachments: Vec::new(),
             lightbox: LightboxState::new(),
+            reply_target: None,
+            editing_message_id: None,
+            editing_text: String::new(),
+            emoji_picker: EmojiPickerState::new(),
+            current_user_id: None,
+            users: HashMap::new(),
         }
     }
 }
@@ -947,7 +1545,59 @@ impl ChatCanvasView {
             virtual_viewport_size: 50,
             pending_attachments: Vec::new(),
             lightbox: LightboxState::new(),
+            reply_target: None,
+            editing_message_id: None,
+            editing_text: String::new(),
+            emoji_picker: EmojiPickerState::new(),
+            current_user_id: None,
+            users: users.clone(),
         }
+    }
+
+    /// Sets the reply target message.
+    pub fn set_reply_target(&mut self, target: Option<ReplyTarget>) {
+        self.reply_target = target;
+    }
+
+    /// Clears the active reply target.
+    pub fn clear_reply_target(&mut self) {
+        self.reply_target = None;
+    }
+
+    /// Initiates in-place editing for the specified message ID.
+    pub fn start_editing(&mut self, message_id: u64, current_text: &str) {
+        self.editing_message_id = Some(message_id);
+        self.editing_text = current_text.to_string();
+    }
+
+    /// Commits and clears the active in-place edit, returning the message ID and updated text.
+    pub fn save_inline_edit(&mut self) -> Option<(u64, String)> {
+        let msg_id = self.editing_message_id.take()?;
+        let text = std::mem::take(&mut self.editing_text);
+        Some((msg_id, text))
+    }
+
+    /// Cancels active in-place editing and clears editing buffer.
+    pub fn cancel_editing(&mut self) {
+        self.editing_message_id = None;
+        self.editing_text.clear();
+    }
+
+    /// Opens the emoji picker popover for the specified message ID.
+    pub fn open_emoji_picker(&mut self, message_id: u64) {
+        self.emoji_picker.open_for_message(message_id);
+    }
+
+    /// Closes the emoji picker popover.
+    pub fn close_emoji_picker(&mut self) {
+        self.emoji_picker.close();
+    }
+
+    /// Selects an emoji reaction for the active target message, closing the picker.
+    pub fn select_reaction_emoji(&mut self, emoji: &str) -> Option<(u64, String)> {
+        let msg_id = self.emoji_picker.target_message_id?;
+        let selected = self.emoji_picker.select_emoji(emoji)?;
+        Some((msg_id, selected))
     }
 
     pub fn with_commands(mut self, commands: Vec<PluginCommand>) -> Self {
@@ -1102,13 +1752,14 @@ impl ChatCanvasView {
         };
 
         // Determine visible groups slice for virtualized feed
-        let visible_groups: &[MessageFeedGroup] = if self.is_virtualized && self.groups.len() > self.virtual_viewport_size {
-            let start = self.virtual_viewport_offset.min(self.groups.len());
-            let end = (start + self.virtual_viewport_size).min(self.groups.len());
-            &self.groups[start..end]
-        } else {
-            &self.groups
-        };
+        let visible_groups: &[MessageFeedGroup] =
+            if self.is_virtualized && self.groups.len() > self.virtual_viewport_size {
+                let start = self.virtual_viewport_offset.min(self.groups.len());
+                let end = (start + self.virtual_viewport_size).min(self.groups.len());
+                &self.groups[start..end]
+            } else {
+                &self.groups
+            };
 
         let mut root = div()
             .relative()
@@ -1256,17 +1907,129 @@ impl ChatCanvasView {
                                     )
                                     // Body of grouped messages rendered with Markdown parser
                                     .children(group.messages.iter().map(|msg| {
-                                        div()
+                                        let is_editing = self.editing_message_id == Some(msg.id);
+                                        let can_edit = self
+                                            .current_user_id
+                                            .map_or(true, |uid| msg.user_id == Some(uid));
+                                        let is_pinned = msg.pinned;
+                                        let action_toolbar =
+                                            MessageActionToolbar::new(msg.id, can_edit, is_pinned);
+                                        let badges = ReactionBadge::from_reactions(
+                                            &msg.reactions,
+                                            self.current_user_id,
+                                            &self.users,
+                                        );
+
+                                        let mut msg_row = div()
+                                            .id(ElementId::Name(
+                                                format!("msg_row_{}", msg.id).into(),
+                                            ))
+                                            .relative()
                                             .flex()
                                             .flex_col()
                                             .gap_1()
-                                            .child(render_markdown_element(
-                                                &msg.content.clone().unwrap_or_default(),
-                                            ))
-                                            .children(render_interactive_components(
-                                                &msg.components,
-                                            ))
-                                            .children(render_message_attachments(&msg.files))
+                                            .py_1();
+
+                                        if is_editing {
+                                            msg_row = msg_row.child(
+                                                div()
+                                                    .id(ElementId::Name(
+                                                        format!("inline_edit_box_{}", msg.id)
+                                                            .into(),
+                                                    ))
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_2()
+                                                    .p_2()
+                                                    .rounded_lg()
+                                                    .bg(theme::bg_elevated())
+                                                    .border_1()
+                                                    .border_color(theme::accent())
+                                                    .child(
+                                                        div()
+                                                            .text_sm()
+                                                            .text_color(theme::text_primary())
+                                                            .child(self.editing_text.clone()),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .flex_row()
+                                                            .items_center()
+                                                            .justify_end()
+                                                            .gap_2()
+                                                            .child(
+                                                                div()
+                                                                    .id("cancel_inline_edit_btn")
+                                                                    .cursor_pointer()
+                                                                    .px_2()
+                                                                    .py_0p5()
+                                                                    .rounded_sm()
+                                                                    .bg(theme::bg_surface_4())
+                                                                    .text_xs()
+                                                                    .text_color(theme::text_muted())
+                                                                    .child("Cancel (Esc)"),
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .id("save_inline_edit_btn")
+                                                                    .cursor_pointer()
+                                                                    .px_2()
+                                                                    .py_0p5()
+                                                                    .rounded_sm()
+                                                                    .bg(theme::accent())
+                                                                    .text_xs()
+                                                                    .font_weight(
+                                                                        gpui::FontWeight::MEDIUM,
+                                                                    )
+                                                                    .text_color(
+                                                                        theme::text_primary(),
+                                                                    )
+                                                                    .child("Save (Enter)"),
+                                                            ),
+                                                    ),
+                                            );
+                                        } else {
+                                            msg_row = msg_row
+                                                .child(render_markdown_element(
+                                                    &msg.content.clone().unwrap_or_default(),
+                                                ))
+                                                .children(render_interactive_components(
+                                                    &msg.components,
+                                                ))
+                                                .children(render_message_attachments(&msg.files));
+
+                                            if !badges.is_empty() {
+                                                msg_row = msg_row.child(
+                                                    div()
+                                                        .id(ElementId::Name(
+                                                            format!("msg_reactions_{}", msg.id)
+                                                                .into(),
+                                                        ))
+                                                        .flex()
+                                                        .flex_row()
+                                                        .flex_wrap()
+                                                        .gap_1p5()
+                                                        .pt_1()
+                                                        .children(
+                                                            badges
+                                                                .iter()
+                                                                .map(|b| b.render_element()),
+                                                        ),
+                                                );
+                                            }
+
+                                            // Action toolbar hovering
+                                            msg_row = msg_row.child(
+                                                div()
+                                                    .absolute()
+                                                    .top_neg_2()
+                                                    .right_2()
+                                                    .child(action_toolbar.render_element()),
+                                            );
+                                        }
+
+                                        msg_row
                                     })),
                             )
                     }))
@@ -1338,6 +2101,58 @@ impl ChatCanvasView {
                         } else {
                             None
                         })
+                        .children(if let Some(ref target) = self.reply_target {
+                            Some(
+                                div()
+                                    .id("composer_reply_preview_banner")
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .justify_between()
+                                    .px_3()
+                                    .py_1p5()
+                                    .mb_2()
+                                    .rounded_lg()
+                                    .bg(theme::bg_subsurface())
+                                    .border_1()
+                                    .border_color(theme::accent())
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                    .text_color(theme::accent())
+                                                    .child(format!(
+                                                        "Replying to @{}:",
+                                                        target.sender_name
+                                                    )),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(theme::text_muted())
+                                                    .child(target.snippet.clone()),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("cancel_reply_btn")
+                                            .cursor_pointer()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(theme::text_muted())
+                                            .hover(|s| s.text_color(theme::text_primary()))
+                                            .child("×"),
+                                    ),
+                            )
+                        } else {
+                            None
+                        })
                         .children(if !self.pending_attachments.is_empty() {
                             Some(
                                 div()
@@ -1358,7 +2173,9 @@ impl ChatCanvasView {
                                         let att_id = att.id.clone();
 
                                         div()
-                                            .id(ElementId::Name(format!("pending_att_{}", att_id).into()))
+                                            .id(ElementId::Name(
+                                                format!("pending_att_{}", att_id).into(),
+                                            ))
                                             .flex()
                                             .flex_row()
                                             .items_center()
@@ -1402,7 +2219,9 @@ impl ChatCanvasView {
                                             )
                                             .child(
                                                 div()
-                                                    .id(ElementId::Name(format!("remove_pending_{}", att_id).into()))
+                                                    .id(ElementId::Name(
+                                                        format!("remove_pending_{}", att_id).into(),
+                                                    ))
                                                     .cursor_pointer()
                                                     .flex()
                                                     .items_center()
@@ -1452,25 +2271,20 @@ impl ChatCanvasView {
                                 .border_color(theme::border_hairline())
                                 .child(upload_btn)
                                 .child(
-                                    div()
-                                        .flex()
-                                        .flex_col()
-                                        .flex_1()
-                                        .gap_1()
-                                        .child(
-                                            div()
-                                                .text_sm()
-                                                .text_color(if active_text.is_empty() {
-                                                    theme::text_muted()
-                                                } else {
-                                                    theme::text_primary()
-                                                })
-                                                .child(if active_text.is_empty() {
-                                                    placeholder
-                                                } else {
-                                                    active_text.to_string()
-                                                }),
-                                        ),
+                                    div().flex().flex_col().flex_1().gap_1().child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(if active_text.is_empty() {
+                                                theme::text_muted()
+                                            } else {
+                                                theme::text_primary()
+                                            })
+                                            .child(if active_text.is_empty() {
+                                                placeholder
+                                            } else {
+                                                active_text.to_string()
+                                            }),
+                                    ),
                                 );
 
                             let mut send_btn = div()
@@ -1555,6 +2369,16 @@ impl ChatCanvasView {
                         ),
                 ),
             );
+
+        if self.emoji_picker.is_open {
+            root = root.child(
+                div()
+                    .absolute()
+                    .bottom(px(80.0))
+                    .right(px(24.0))
+                    .child(EmojiPickerView::new(self.emoji_picker.clone()).render_element()),
+            );
+        }
 
         if self.lightbox.is_open {
             root = root.child(LightboxModalView::new(self.lightbox.clone()).render_element());
