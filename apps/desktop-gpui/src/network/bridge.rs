@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 use sharkord_core::client::SharkordClient;
 use sharkord_core::error::SharkordError;
+use sharkord_core::protocol::events::SubscriptionEvent;
 use sharkord_core::types::{Channel, ChannelType, Message, ServerSettings, User};
 use sharkord_core::vault::SavedServerSession;
 use tokio::runtime::Runtime;
@@ -219,5 +220,68 @@ impl NetworkBridge {
             SharkordError::Protocol("Not connected to a server".to_string())
         })?;
         client.send_message(channel_id as u32, content).await
+    }
+
+    /// Subscribes to real-time events via the active client connection.
+    pub async fn subscribe_events(
+        &self,
+    ) -> Result<tokio::sync::mpsc::UnboundedReceiver<SubscriptionEvent>, SharkordError> {
+        let client = self.client().ok_or_else(|| {
+            SharkordError::Protocol("Not connected to a server".to_string())
+        })?;
+        client.subscribe_events().await
+    }
+
+    /// Spawns a background task that listens for incoming WebSocket events and dispatches
+    /// them to the provided thread-safe `AppState` using `AppState::handle_subscription_event`.
+    pub fn spawn_event_dispatcher(
+        &self,
+        state: Arc<RwLock<crate::state::AppState>>,
+    ) -> Result<tokio::task::JoinHandle<()>, SharkordError> {
+        let client = self.client().ok_or_else(|| {
+            SharkordError::Protocol("Not connected to a server".to_string())
+        })?;
+
+        let handle = self.runtime.spawn(async move {
+            if let Ok(mut rx) = client.subscribe_events().await {
+                while let Some(event) = rx.recv().await {
+                    if let Ok(mut app_state) = state.write() {
+                        app_state.handle_subscription_event(event);
+                    }
+                }
+            }
+        });
+
+        Ok(handle)
+    }
+
+    /// Spawns a background listener forwarding events to an arbitrary handler closure.
+    pub fn spawn_event_handler<F>(
+        &self,
+        mut handler: F,
+    ) -> Result<tokio::task::JoinHandle<()>, SharkordError>
+    where
+        F: FnMut(SubscriptionEvent) + Send + 'static,
+    {
+        let client = self.client().ok_or_else(|| {
+            SharkordError::Protocol("Not connected to a server".to_string())
+        })?;
+
+        let handle = self.runtime.spawn(async move {
+            if let Ok(mut rx) = client.subscribe_events().await {
+                while let Some(event) = rx.recv().await {
+                    handler(event);
+                }
+            }
+        });
+
+        Ok(handle)
+    }
+
+    /// Dispatches an event directly to an `Arc<RwLock<AppState>>`.
+    pub fn dispatch_event(state: &Arc<RwLock<crate::state::AppState>>, event: SubscriptionEvent) {
+        if let Ok(mut app_state) = state.write() {
+            app_state.handle_subscription_event(event);
+        }
     }
 }
