@@ -6,6 +6,7 @@ pub mod audio_settings;
 pub mod auth_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
+pub mod dm_view;
 pub mod emoji_picker;
 pub mod lightbox_modal;
 pub mod markdown;
@@ -15,6 +16,7 @@ pub mod quick_switcher;
 pub mod server_rail;
 pub mod source_picker;
 pub mod updater_modal;
+pub mod user_profile_modal;
 pub mod video_tile;
 pub mod voice_bar;
 pub mod voice_context_menu;
@@ -43,6 +45,7 @@ pub use chat_canvas::{
     ComposerAction, ComposerTextarea, MessageActionToolbar, MessageFeedGroup, ReactionBadge,
     ReplyTarget,
 };
+pub use dm_view::{DirectMessagesSidebarView, DmConversation, DmSidebarState};
 pub use emoji_picker::{EmojiCategory, EmojiItem, EmojiPickerState, EmojiPickerView};
 pub use lightbox_modal::{LightboxModalView, LightboxState};
 pub use markdown::{
@@ -59,6 +62,10 @@ pub use quick_switcher::{
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use updater_modal::{UpdaterBadgeView, UpdaterModalView};
+pub use user_profile_modal::{
+    UserProfileCardState, UserProfileModalView, UserProfilePopover, UserProfilePopoverView,
+    UserProfileState,
+};
 pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
 pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
@@ -93,6 +100,8 @@ pub struct WorkspaceView {
     pub message_draft: String,
     pub server_rail: ServerRailView,
     pub channel_tree: ChannelTreeView,
+    pub dm_sidebar: DirectMessagesSidebarView,
+    pub user_profile_modal: UserProfileCardState,
     pub chat_canvas: ChatCanvasView,
     pub voice_stage: VoiceStageView,
     pub member_list: MemberListSidebarView,
@@ -111,6 +120,8 @@ impl WorkspaceView {
         quick_switcher.set_channels(&state.channels);
         quick_switcher.set_members(&state.users);
         let auth_modal = AuthModalState::new();
+        let dm_sidebar = DirectMessagesSidebarView::new(DmSidebarState::new());
+        let user_profile_modal = UserProfileCardState::new();
 
         let active_center_view = match state.active_channel() {
             Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
@@ -125,6 +136,8 @@ impl WorkspaceView {
             message_draft,
             server_rail: ServerRailView::default(),
             channel_tree: ChannelTreeView::default(),
+            dm_sidebar,
+            user_profile_modal,
             chat_canvas: ChatCanvasView::default(),
             voice_stage: VoiceStageView::default(),
             member_list: MemberListSidebarView::default(),
@@ -172,12 +185,40 @@ impl WorkspaceView {
             });
         }
 
+        let is_home = self.state.active_server_id.is_none();
         self.server_rail = ServerRailView {
             servers,
-            is_home_active: self.state.active_server_id.is_none(),
+            is_home_active: is_home,
+            is_home_selected: is_home,
             current_user_name,
             current_user_status,
         };
+
+        // Populate DMs from state.channels where is_dm is true
+        for ch in &self.state.channels {
+            if ch.is_dm {
+                let user = self.state.users.iter().find(|u| u.name == ch.name);
+                let (user_id, display_name, status) = if let Some(u) = user {
+                    (
+                        u.id,
+                        u.name.clone(),
+                        u.status.clone().unwrap_or_else(|| "offline".to_string()),
+                    )
+                } else {
+                    (ch.id, ch.name.clone(), "offline".to_string())
+                };
+                self.dm_sidebar.state.add_conversation(DmConversation {
+                    channel_id: ch.id,
+                    user_id,
+                    username: ch.name.clone(),
+                    display_name: Some(display_name),
+                    status,
+                    last_message: None,
+                    unread_count: 0,
+                });
+            }
+        }
+        self.dm_sidebar.state.active_dm_channel_id = self.state.active_channel_id;
 
         // 2. Sync Channel Tree
         let server_name = self
@@ -497,9 +538,68 @@ impl WorkspaceView {
 
     /// Interactive handler for server rail item selection.
     pub fn on_server_click(&mut self, server_id: Option<String>, cx: &mut Context<Self>) {
-        self.state.active_server_id = server_id;
+        self.state.active_server_id = server_id.clone();
+        let is_home = server_id.is_none();
+        self.server_rail.set_home_selected(is_home);
         self.sync_views();
         cx.notify();
+    }
+
+    /// Opens the user profile modal card for the specified user.
+    pub fn open_user_profile(
+        &mut self,
+        user_id: u64,
+        username: &str,
+        display_name: &str,
+        status: &str,
+    ) {
+        self.user_profile_modal
+            .open(user_id, username, display_name, status);
+        if let Some(user) = self.state.users.iter().find(|u| u.id == user_id) {
+            if let Some(ref bio) = user.bio {
+                self.user_profile_modal.set_bio(bio.clone());
+            }
+            if !user.role_ids.is_empty() {
+                self.user_profile_modal.set_role("Member");
+            }
+        }
+    }
+
+    /// Closes the user profile modal card.
+    pub fn close_user_profile(&mut self) {
+        self.user_profile_modal.close();
+    }
+
+    /// Opens or selects a direct message conversation with a user.
+    pub fn open_dm_conversation(&mut self, user_id: u64, username: &str) {
+        if let Some(conv) = self.dm_sidebar.state.find_by_user_id(user_id) {
+            let ch_id = conv.channel_id;
+            self.select_channel(ch_id);
+        } else {
+            let next_ch_id = (self.state.channels.len() as u64) + 1000;
+            let dm_ch = sharkord_core::types::Channel {
+                id: next_ch_id,
+                name: username.to_string(),
+                channel_type: sharkord_core::types::ChannelType::Text,
+                private: true,
+                is_dm: true,
+                ..Default::default()
+            };
+            self.state.channels.push(dm_ch);
+            self.dm_sidebar.state.add_conversation(DmConversation {
+                channel_id: next_ch_id,
+                user_id,
+                username: username.to_string(),
+                display_name: Some(username.to_string()),
+                status: "online".to_string(),
+                last_message: None,
+                unread_count: 0,
+            });
+            self.select_channel(next_ch_id);
+        }
+        self.server_rail.set_home_selected(true);
+        self.state.active_server_id = None;
+        self.sync_views();
     }
 
     /// Interactive handler for voice mute toggle button.
@@ -581,7 +681,7 @@ impl Render for WorkspaceView {
             .bg(theme::bg_base())
             // Column 1: Server Rail (72px fixed)
             .child(self.server_rail.render_interactive(cx))
-            // Column 2: Channel Tree Sidebar (240px fixed) with docked Voice Bar
+            // Column 2: Channel Tree Sidebar or DM Sidebar (240px fixed) with docked Voice Bar
             .child(
                 div()
                     .flex()
@@ -591,7 +691,11 @@ impl Render for WorkspaceView {
                     .bg(theme::bg_subsurface())
                     .border_r_1()
                     .border_color(theme::border_hairline())
-                    .child(self.channel_tree.render_interactive(cx))
+                    .child(if self.server_rail.is_home_selected {
+                        self.dm_sidebar.render_interactive(cx).into_any_element()
+                    } else {
+                        self.channel_tree.render_interactive(cx).into_any_element()
+                    })
                     .child(voice_bar_view.render_interactive(cx)),
             )
             // Column 3: Dynamic Center Content Canvas (Chat, VoiceStage, or ScreenShare)
@@ -607,7 +711,7 @@ impl Render for WorkspaceView {
 
         // Column 4: Right-hand Member List Sidebar Drawer (240px fixed, conditionally rendered)
         if self.state.right_sidebar_open {
-            root = root.child(self.member_list.render_element());
+            root = root.child(self.member_list.render_interactive(cx));
         }
 
         if let Some(ref pip) = self.state.active_pip_player {
@@ -626,6 +730,12 @@ impl Render for WorkspaceView {
 
         if self.state.is_auth_modal_open {
             root = root.child(AuthModalView::new(self.auth_modal.clone()).render_element());
+        }
+
+        if self.user_profile_modal.is_open {
+            root = root.child(
+                UserProfilePopoverView::new(self.user_profile_modal.clone()).render_interactive(cx),
+            );
         }
 
         if self.state.is_connecting && !self.state.is_auth_modal_open {

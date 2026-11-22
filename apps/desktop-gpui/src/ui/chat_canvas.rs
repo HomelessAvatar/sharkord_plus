@@ -1858,25 +1858,38 @@ impl ChatCanvasView {
                     .children(visible_groups.iter().map(|group| {
                         let initials = server_initials(&group.sender_name);
 
+                        let mut avatar_btn = div()
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(36.0))
+                            .h(px(36.0))
+                            .rounded_full()
+                            .bg(theme::bg_surface_4())
+                            .hover(|s| s.bg(theme::bg_elevated()))
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(theme::text_primary())
+                            .child(initials);
+
+                        if let Some(ref mut cx) = cx {
+                            let uid = group.user_id.unwrap_or(0);
+                            let uname = group.sender_name.clone();
+                            avatar_btn = avatar_btn.on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |view, _, _window, cx| {
+                                    view.open_user_profile(uid, &uname, &uname, "online");
+                                    cx.notify();
+                                }),
+                            );
+                        }
+
                         div()
                             .flex()
                             .flex_row()
                             .gap_3()
-                            .child(
-                                // Avatar circle
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(36.0))
-                                    .h(px(36.0))
-                                    .rounded_full()
-                                    .bg(theme::bg_surface_4())
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme::text_primary())
-                                    .child(initials),
-                            )
+                            .child(avatar_btn)
                             .child(
                                 // Messages container
                                 div()
