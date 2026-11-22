@@ -23,13 +23,17 @@ pub struct User {
     pub role_ids: Vec<u64>,
     #[serde(default)]
     pub status: Option<String>,
+    #[serde(default)]
+    pub session_count: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum ChannelType {
     #[default]
+    #[serde(alias = "text", alias = "Text")]
     Text,
+    #[serde(alias = "voice", alias = "Voice")]
     Voice,
 }
 
@@ -54,6 +58,20 @@ pub struct Channel {
     pub created_at: Option<i64>,
     #[serde(default)]
     pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageReaction {
+    pub message_id: u64,
+    pub user_id: u64,
+    pub emoji: String,
+    #[serde(default)]
+    pub plugin_id: Option<String>,
+    #[serde(default)]
+    pub file_id: Option<u64>,
+    #[serde(default)]
+    pub created_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -89,6 +107,8 @@ pub struct Message {
     pub updated_at: Option<i64>,
     #[serde(default)]
     pub components: Vec<InteractiveComponent>,
+    #[serde(default)]
+    pub reactions: Vec<MessageReaction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
