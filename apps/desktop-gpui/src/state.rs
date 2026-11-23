@@ -405,10 +405,23 @@ impl AppState {
     /// Bootstraps server state using a `BootstrapData` payload.
     pub fn bootstrap_from_data(&mut self, data: crate::network::BootstrapData) {
         let active_id = data.active_channel_id;
+        let current_user = data.current_user;
+        let users = data.users;
         self.bootstrap_from_server(Some(data.settings), data.channels, data.initial_messages);
         if let Some(id) = active_id {
             self.active_channel_id = Some(id);
         }
+        if let Some(user) = current_user {
+            self.current_user = Some(user);
+        }
+        if !users.is_empty() {
+            self.users = users;
+        }
+    }
+
+    /// Returns whether the client is currently authenticated with a logged-in user.
+    pub fn is_authenticated(&self) -> bool {
+        self.current_user.is_some()
     }
 
     /// Returns whether a specific user is currently typing in the specified channel.

@@ -917,6 +917,16 @@ impl WorkspaceView {
         cx.notify();
     }
 
+    /// Returns whether the client is currently authenticated.
+    pub fn is_authenticated(&self) -> bool {
+        self.state.is_authenticated()
+    }
+
+    /// Returns the list of loaded channels in the workspace.
+    pub fn channels(&self) -> &[sharkord_core::types::Channel] {
+        &self.state.channels
+    }
+
     /// Interactive handler to close the User Settings modal.
     pub fn close_user_settings_modal(&mut self, cx: &mut Context<Self>) {
         self.close_user_settings();
@@ -1029,14 +1039,8 @@ impl WorkspaceView {
             .w(px(26.0))
             .h(px(26.0))
             .rounded_md()
-            .text_xs()
-            .text_color(if self.voice_bar.is_muted {
-                theme::status_dnd()
-            } else {
-                theme::text_muted()
-            })
-            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
-            .child(if self.voice_bar.is_muted { "🔇" } else { "🎙" })
+            .hover(|s| s.bg(theme::bg_elevated()))
+            .child(render_mic_icon(self.voice_bar.is_muted))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|view, _, _window, cx| {
@@ -1053,14 +1057,8 @@ impl WorkspaceView {
             .w(px(26.0))
             .h(px(26.0))
             .rounded_md()
-            .text_xs()
-            .text_color(if self.voice_bar.is_deafened {
-                theme::status_dnd()
-            } else {
-                theme::text_muted()
-            })
-            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
-            .child("🎧")
+            .hover(|s| s.bg(theme::bg_elevated()))
+            .child(render_headphones_icon(self.voice_bar.is_deafened))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|view, _, _window, cx| {
@@ -1077,10 +1075,8 @@ impl WorkspaceView {
             .w(px(26.0))
             .h(px(26.0))
             .rounded_md()
-            .text_xs()
-            .text_color(theme::text_muted())
-            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
-            .child("⚙")
+            .hover(|s| s.bg(theme::bg_elevated()))
+            .child(render_gear_icon())
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|view, _, _window, cx| {
@@ -1111,6 +1107,131 @@ impl WorkspaceView {
                     .child(gear_btn),
             )
     }
+}
+
+impl Default for WorkspaceView {
+    fn default() -> Self {
+        Self::new(AppState::default())
+    }
+}
+
+/// Renders a clean vector chat bubble icon for Home navigation and direct messaging.
+pub fn render_chat_bubble_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(18.0))
+        .h(px(18.0))
+        .child(
+            div()
+                .relative()
+                .w(px(14.0))
+                .h(px(11.0))
+                .rounded_md()
+                .border_2()
+                .border_color(theme::text_primary())
+                .child(
+                    div()
+                        .absolute()
+                        .bottom(px(-3.0))
+                        .left(px(2.0))
+                        .w(px(4.0))
+                        .h(px(4.0))
+                        .bg(theme::text_primary())
+                        .rounded_xs(),
+                ),
+        )
+}
+
+/// Renders a clean vector microphone icon with optional mute slash indicator.
+pub fn render_mic_icon(is_muted: bool) -> impl IntoElement {
+    let color = if is_muted {
+        theme::status_dnd()
+    } else {
+        theme::text_secondary()
+    };
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(16.0))
+        .h(px(16.0))
+        .relative()
+        .child(
+            div()
+                .w(px(6.0))
+                .h(px(10.0))
+                .rounded_full()
+                .bg(color),
+        )
+        .children(if is_muted {
+            Some(
+                div()
+                    .absolute()
+                    .w(px(14.0))
+                    .h(px(1.5))
+                    .bg(theme::status_dnd())
+                    .rounded_xs(),
+            )
+        } else {
+            None
+        })
+}
+
+/// Renders a clean vector headphones icon with optional deafen slash indicator.
+pub fn render_headphones_icon(is_deafened: bool) -> impl IntoElement {
+    let color = if is_deafened {
+        theme::status_dnd()
+    } else {
+        theme::text_secondary()
+    };
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(16.0))
+        .h(px(16.0))
+        .relative()
+        .child(
+            div()
+                .w(px(12.0))
+                .h(px(10.0))
+                .rounded_t_full()
+                .border_t_2()
+                .border_x_2()
+                .border_color(color),
+        )
+        .children(if is_deafened {
+            Some(
+                div()
+                    .absolute()
+                    .w(px(14.0))
+                    .h(px(1.5))
+                    .bg(theme::status_dnd())
+                    .rounded_xs(),
+            )
+        } else {
+            None
+        })
+}
+
+/// Renders a clean vector settings gear icon.
+pub fn render_gear_icon() -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w(px(16.0))
+        .h(px(16.0))
+        .child(
+            div()
+                .w(px(10.0))
+                .h(px(10.0))
+                .rounded_full()
+                .border_2()
+                .border_color(theme::text_secondary()),
+        )
 }
 
 impl Render for WorkspaceView {

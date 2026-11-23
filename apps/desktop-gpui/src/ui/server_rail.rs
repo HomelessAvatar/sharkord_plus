@@ -138,7 +138,7 @@ impl ServerRailView {
                 theme::bg_elevated()
             })
             .text_color(theme::text_primary())
-            .child("💬");
+            .child(crate::ui::render_chat_bubble_icon());
 
         if let Some(ref mut cx) = cx {
             home_btn = home_btn.on_mouse_down(

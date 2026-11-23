@@ -209,7 +209,7 @@ impl UserProfilePopoverView {
             .items_center()
             .justify_center()
             .gap_2()
-            .child("💬")
+            .child(crate::ui::render_chat_bubble_icon())
             .child(self.action_label());
 
         if let Some(ref mut cx) = cx {

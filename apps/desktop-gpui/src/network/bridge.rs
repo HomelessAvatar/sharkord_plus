@@ -7,17 +7,23 @@ use serde::{Deserialize, Serialize};
 use sharkord_core::client::SharkordClient;
 use sharkord_core::error::SharkordError;
 use sharkord_core::protocol::events::SubscriptionEvent;
-use sharkord_core::types::{Channel, ChannelType, Message, ServerSettings, User};
+use sharkord_core::types::{Channel, ChannelType, Message, Role, ServerSettings, User};
 use sharkord_core::vault::SavedServerSession;
 use tokio::runtime::Runtime;
 
 /// Payload holding initial server configuration, channel trees, and message feeds.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BootstrapData {
     pub settings: ServerSettings,
     pub channels: Vec<Channel>,
     pub initial_messages: Vec<Message>,
     pub active_channel_id: Option<u64>,
+    #[serde(default)]
+    pub current_user: Option<User>,
+    #[serde(default)]
+    pub users: Vec<User>,
+    #[serde(default)]
+    pub roles: Vec<Role>,
 }
 
 /// Asynchronous network bridge wrapping Tokio runtime and SharkordClient.
@@ -186,6 +192,9 @@ impl NetworkBridge {
             channels,
             initial_messages,
             active_channel_id,
+            current_user: None,
+            users: Vec::new(),
+            roles: Vec::new(),
         })
     }
 

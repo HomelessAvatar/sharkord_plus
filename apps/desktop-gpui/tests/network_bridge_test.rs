@@ -87,6 +87,9 @@ fn test_app_state_bootstrap_from_data() {
         }],
         initial_messages: vec![],
         active_channel_id: Some(1),
+        current_user: None,
+        users: vec![],
+        roles: vec![],
     };
 
     state.bootstrap_from_data(data);
