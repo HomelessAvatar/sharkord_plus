@@ -1,12 +1,13 @@
 //! GPU-Accelerated VideoTile Player and Stream Telemetry Popover component.
 //! Renders active screen share and video streams with 16:9 letterbox preservation,
-//! top streamer badge, live overlay pill, bottom control bar, and telemetry popover.
+//! top streamer badge, live overlay telemetry pills, bottom control bar, and telemetry popover.
 
 use gpui::prelude::*;
 use gpui::*;
 use serde::{Deserialize, Serialize};
 use sharkord_core::voice::video::StreamTelemetryStats;
 
+use crate::media::video_decoder::VideoFrame;
 use crate::theme;
 
 /// Computes dimensions `(width, height)` preserving a 16:9 aspect ratio
@@ -53,9 +54,11 @@ pub struct VideoTileState {
     pub streamer_name: String,
     pub display_mode: VideoDisplayMode,
     pub is_fullscreen: bool,
+    pub is_pip: bool,
     pub is_audio_muted: bool,
     pub stats: Option<StreamTelemetryStats>,
     pub show_stats_popover: bool,
+    pub current_frame: Option<VideoFrame>,
 }
 
 impl Default for VideoTileState {
@@ -72,9 +75,11 @@ impl VideoTileState {
             streamer_name,
             display_mode: VideoDisplayMode::Standard,
             is_fullscreen: false,
+            is_pip: false,
             is_audio_muted: false,
             stats: None,
             show_stats_popover: false,
+            current_frame: None,
         }
     }
 
@@ -87,6 +92,27 @@ impl VideoTileState {
             self.display_mode = VideoDisplayMode::Standard;
         }
         self.is_fullscreen
+    }
+
+    /// Toggles picture-in-picture floating mini-player mode.
+    pub fn toggle_pip(&mut self) -> bool {
+        self.is_pip = !self.is_pip;
+        self.is_pip
+    }
+
+    /// Sets picture-in-picture state.
+    pub fn set_pip(&mut self, pip: bool) {
+        self.is_pip = pip;
+    }
+
+    /// Updates the active decoded video frame.
+    pub fn set_frame(&mut self, frame: VideoFrame) {
+        self.current_frame = Some(frame);
+    }
+
+    /// Clears the active video frame.
+    pub fn clear_frame(&mut self) {
+        self.current_frame = None;
     }
 
     /// Toggles audio mute state for the stream.
@@ -132,6 +158,7 @@ pub struct VideoTileView {
     pub state: VideoTileState,
     pub width: f32,
     pub height: f32,
+    pub current_frame: Option<VideoFrame>,
 }
 
 impl Default for VideoTileView {
@@ -140,6 +167,7 @@ impl Default for VideoTileView {
             state: VideoTileState::default(),
             width: 800.0,
             height: 450.0,
+            current_frame: None,
         }
     }
 }
@@ -147,10 +175,12 @@ impl Default for VideoTileView {
 impl VideoTileView {
     /// Creates a new `VideoTileView` initialized with default dimensions.
     pub fn new(state: VideoTileState) -> Self {
+        let current_frame = state.current_frame.clone();
         Self {
             state,
             width: 800.0,
             height: 450.0,
+            current_frame,
         }
     }
 
@@ -159,6 +189,19 @@ impl VideoTileView {
         self.width = width;
         self.height = height;
         self
+    }
+
+    /// Attaches an active decoded `VideoFrame` to the view.
+    pub fn with_frame(mut self, frame: VideoFrame) -> Self {
+        self.current_frame = Some(frame.clone());
+        self.state.current_frame = Some(frame);
+        self
+    }
+
+    /// Sets the active decoded `VideoFrame`.
+    pub fn set_frame(&mut self, frame: VideoFrame) {
+        self.current_frame = Some(frame.clone());
+        self.state.current_frame = Some(frame);
     }
 
     fn telemetry_row(label: &'static str, value: &str) -> impl IntoElement {
@@ -189,14 +232,23 @@ impl VideoTileView {
         let is_muted = self.state.is_audio_muted;
         let is_fullscreen = self.state.is_fullscreen;
         let is_theater = self.state.display_mode == VideoDisplayMode::Theater;
+        let is_pip = self.state.is_pip;
         let show_popover = self.state.show_stats_popover;
 
-        let resolution_label = self
-            .state
-            .stats
+        let active_frame = self
+            .current_frame
             .as_ref()
-            .map(|s| format!("{}p", s.resolution_height))
-            .unwrap_or_else(|| "1080p".to_string());
+            .or(self.state.current_frame.as_ref());
+
+        let resolution_label = if let Some(frame) = active_frame {
+            format!("{}x{}", frame.width, frame.height)
+        } else {
+            self.state
+                .stats
+                .as_ref()
+                .map(|s| format!("{}p", s.resolution_height))
+                .unwrap_or_else(|| "1080p".to_string())
+        };
 
         let fps_label = self
             .state
@@ -242,7 +294,7 @@ impl VideoTileView {
                     .bg(theme::bg_surface())
                     .border_1()
                     .border_color(theme::border_hairline())
-                    // Top Row: Streamer Badge and Overlay Pill
+                    // Top Row: Streamer Badge and Overlay Telemetry Badges
                     .child(
                         div()
                             .flex()
@@ -285,7 +337,72 @@ impl VideoTileView {
                                             .child(self.state.streamer_name.clone()),
                                     ),
                             )
-                            // Live Resolution / FPS Overlay Pill (right)
+                            // Live Telemetry Badges (Resolution Pill, FPS Pill, Bitrate Counter)
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap_1p5()
+                                    // Resolution Pill
+                                    .child(
+                                        div()
+                                            .px_2p5()
+                                            .py_1()
+                                            .rounded_md()
+                                            .bg(theme::bg_elevated())
+                                            .border_1()
+                                            .border_color(theme::border_hairline())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_color(theme::text_primary())
+                                            .child(resolution_label.clone()),
+                                    )
+                                    // FPS Pill
+                                    .child(
+                                        div()
+                                            .px_2p5()
+                                            .py_1()
+                                            .rounded_md()
+                                            .bg(theme::bg_elevated())
+                                            .border_1()
+                                            .border_color(theme::border_hairline())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme::status_online())
+                                            .child(fps_label.clone()),
+                                    )
+                                    // Bitrate Counter
+                                    .child(
+                                        div()
+                                            .px_2p5()
+                                            .py_1()
+                                            .rounded_md()
+                                            .bg(theme::bg_elevated())
+                                            .border_1()
+                                            .border_color(theme::border_hairline())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme::text_secondary())
+                                            .child(bitrate_label.clone()),
+                                    ),
+                            ),
+                    )
+                    // Center Canvas Area / Stream Viewport / Video Texture Surface
+                    .child(if let Some(frame) = active_frame {
+                        div()
+                            .flex()
+                            .flex_col()
+                            .items_center()
+                            .justify_center()
+                            .flex_1()
+                            .w_full()
+                            .my_2()
+                            .rounded_lg()
+                            .bg(theme::bg_subsurface())
+                            .border_1()
+                            .border_color(theme::border_hairline())
+                            .gap_2()
                             .child(
                                 div()
                                     .flex()
@@ -293,22 +410,37 @@ impl VideoTileView {
                                     .items_center()
                                     .gap_2()
                                     .px_3()
-                                    .py_1()
+                                    .py_1p5()
                                     .rounded_lg()
-                                    .bg(theme::bg_elevated())
+                                    .bg(theme::bg_surface_4())
                                     .border_1()
                                     .border_color(theme::border_hairline())
+                                    .child(div().text_sm().child("🎬"))
                                     .child(
                                         div()
                                             .text_xs()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .text_color(theme::text_secondary())
-                                            .child(format!("{resolution_label} {fps_label}")),
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_color(theme::text_primary())
+                                            .child(format!("{}x{} Video Surface", frame.width, frame.height)),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme::accent())
+                                            .child(format!("{:.2}:1", frame.aspect_ratio())),
                                     ),
-                            ),
-                    )
-                    // Center Canvas Area / Stream Viewport Placeholder
-                    .child(
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .child(format!(
+                                        "Decoded Frame Buffer: {} KB | TS: {}ms",
+                                        frame.buffer_size() / 1024,
+                                        frame.timestamp_ms
+                                    )),
+                            )
+                    } else {
                         div()
                             .flex()
                             .flex_col()
@@ -323,8 +455,8 @@ impl VideoTileView {
                                     .font_weight(gpui::FontWeight::MEDIUM)
                                     .text_color(theme::text_muted())
                                     .child(format!("Watching {}", self.state.streamer_name)),
-                            ),
-                    )
+                            )
+                    })
                     // Stream Telemetry Popover (Conditionally displayed)
                     .children(if show_popover {
                         Some(
@@ -443,7 +575,7 @@ impl VideoTileView {
                                             .child("📊 Stats"),
                                     ),
                             )
-                            // Right controls: Theater, Fullscreen & Stop Watching
+                            // Right controls: Theater, PiP, Fullscreen & Stop Watching
                             .child(
                                 div()
                                     .flex()
@@ -472,6 +604,30 @@ impl VideoTileView {
                                                 "🔲 Standard"
                                             } else {
                                                 "🔲 Theater"
+                                            }),
+                                    )
+                                    // PiP Button
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap_1()
+                                            .px_3()
+                                            .py_1()
+                                            .rounded_md()
+                                            .bg(if is_pip {
+                                                theme::accent()
+                                            } else {
+                                                theme::bg_surface_4()
+                                            })
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme::text_primary())
+                                            .child(if is_pip {
+                                                "🗗 In PiP"
+                                            } else {
+                                                "🗗 PiP"
                                             }),
                                     )
                                     // Fullscreen Button

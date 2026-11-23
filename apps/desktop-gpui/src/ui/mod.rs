@@ -88,7 +88,10 @@ pub use voice_stage::{
     calculate_grid_columns, render_empty_stage_placeholder, EmptyStagePlaceholder, VoiceStageCard,
     VoiceStageView,
 };
-pub use crate::media::{LiveVoiceClient, LiveVoiceState, VoiceInputMode};
+pub use crate::media::{
+    CaptureSource, CaptureSourceType, LiveVoiceClient, LiveVoiceState, ScreenCaptureEngine,
+    VideoDecoderPipeline, VideoFrame, VoiceInputMode,
+};
 
 use crate::state::AppState;
 use crate::theme;

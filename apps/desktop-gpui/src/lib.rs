@@ -8,7 +8,10 @@ pub mod theme;
 pub mod tray;
 pub mod ui;
 
-pub use media::{LiveVoiceClient, LiveVoiceState, VoiceInputMode};
+pub use media::{
+    CaptureSource, CaptureSourceType, LiveVoiceClient, LiveVoiceState, ScreenCaptureEngine,
+    VideoDecoderPipeline, VideoFrame, VoiceInputMode,
+};
 pub use model::AppState as ReactiveAppState;
 pub use network::{BootstrapData, NetworkBridge};
 pub use state::AppState;
