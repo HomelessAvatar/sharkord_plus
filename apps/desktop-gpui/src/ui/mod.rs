@@ -88,6 +88,7 @@ pub use voice_stage::{
     calculate_grid_columns, render_empty_stage_placeholder, EmptyStagePlaceholder, VoiceStageCard,
     VoiceStageView,
 };
+pub use crate::media::{LiveVoiceClient, LiveVoiceState, VoiceInputMode};
 
 use crate::state::AppState;
 use crate::theme;
@@ -109,6 +110,7 @@ pub enum ActiveContentView {
 pub struct WorkspaceView {
     pub state: AppState,
     pub voice_bar: VoiceBarState,
+    pub live_voice: LiveVoiceState,
     pub message_draft: String,
     pub server_rail: ServerRailView,
     pub channel_tree: ChannelTreeView,
@@ -131,6 +133,22 @@ impl WorkspaceView {
     /// Creates a new `WorkspaceView` initialized from an `AppState`.
     pub fn new(state: AppState) -> Self {
         let voice_bar = VoiceBarState::new();
+        let mut live_voice = LiveVoiceState::new();
+        if state.voice_bar_state.connection != VoiceConnectionState::Disconnected {
+            live_voice.is_connected = true;
+            if let VoiceConnectionState::Connected {
+                channel_id,
+                ref channel_name,
+                ping_ms,
+            } = state.voice_bar_state.connection
+            {
+                live_voice.channel_id = Some(channel_id);
+                live_voice.channel_name = Some(channel_name.clone());
+                live_voice.ping_ms = ping_ms;
+            }
+            live_voice.is_muted = state.voice_bar_state.is_muted;
+            live_voice.is_deafened = state.voice_bar_state.is_deafened;
+        }
         let message_draft = String::new();
         let mut quick_switcher = QuickSwitcherState::new();
         quick_switcher.set_channels(&state.channels);
@@ -165,6 +183,7 @@ impl WorkspaceView {
         let mut workspace = Self {
             state,
             voice_bar,
+            live_voice,
             message_draft,
             server_rail: ServerRailView::default(),
             channel_tree: ChannelTreeView::default(),
@@ -320,7 +339,21 @@ impl WorkspaceView {
             }
             _ => (0, String::new()),
         };
-        self.voice_stage = VoiceStageView::new(voice_ch_id, voice_ch_name, Vec::new());
+        let mut participants = Vec::new();
+        if voice_ch_id > 0 {
+            for user in &self.state.users {
+                participants.push(VoiceStageCard {
+                    user_id: user.id,
+                    username: user.name.clone(),
+                    avatar_url: None,
+                    is_speaking: self.live_voice.is_user_speaking(user.id),
+                    is_muted: self.state.local_muted_users.contains(&user.id),
+                    is_deafened: false,
+                    volume: self.state.user_volumes.get(&user.id).copied().unwrap_or(1.0),
+                });
+            }
+        }
+        self.voice_stage = VoiceStageView::new(voice_ch_id, voice_ch_name, participants);
 
         // 5. Sync Member List
         self.member_list = MemberListSidebarView::new(&self.state.users);
@@ -352,6 +385,12 @@ impl WorkspaceView {
         if let Some(ch) = self.state.active_channel() {
             if ch.channel_type == sharkord_core::types::ChannelType::Voice {
                 self.active_center_view = ActiveContentView::VoiceStage;
+                self.live_voice.connect_named(ch.id, ch.name.clone());
+                self.voice_bar.connection = VoiceConnectionState::Connected {
+                    channel_id: ch.id,
+                    channel_name: ch.name.clone(),
+                    ping_ms: self.live_voice.ping_ms,
+                };
             } else {
                 self.active_center_view = ActiveContentView::Chat;
             }
@@ -465,19 +504,25 @@ impl WorkspaceView {
         self.sync_views();
     }
 
-    /// Toggles microphone mute on the voice bar.
+    /// Toggles microphone mute on the voice bar and live voice engine.
     pub fn toggle_voice_mute(&mut self) {
         self.voice_bar.toggle_mute();
+        self.live_voice.toggle_mute();
+        self.state.toggle_voice_mute();
     }
 
-    /// Toggles headphone deafen on the voice bar.
+    /// Toggles headphone deafen on the voice bar and live voice engine.
     pub fn toggle_voice_deafen(&mut self) {
         self.voice_bar.toggle_deafen();
+        self.live_voice.toggle_deafen();
+        self.state.toggle_voice_deafen();
     }
 
     /// Disconnects from the current voice channel.
     pub fn disconnect_voice(&mut self) {
         self.voice_bar.disconnect();
+        self.live_voice.disconnect();
+        self.state.disconnect_voice();
     }
 
     /// Toggles the visibility of the right-hand member list sidebar drawer.

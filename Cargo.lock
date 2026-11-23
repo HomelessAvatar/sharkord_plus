@@ -2351,6 +2351,7 @@ dependencies = [
 name = "desktop-gpui"
 version = "0.3.17"
 dependencies = [
+ "cpal",
  "gpui",
  "gpui-kit",
  "openh264",
