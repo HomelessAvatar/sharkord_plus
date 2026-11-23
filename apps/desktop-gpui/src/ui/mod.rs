@@ -19,6 +19,7 @@ pub mod server_settings_modal;
 pub mod source_picker;
 pub mod updater_modal;
 pub mod user_profile_modal;
+pub mod user_settings_modal;
 pub mod video_tile;
 pub mod voice_bar;
 pub mod voice_context_menu;
@@ -74,6 +75,9 @@ pub use user_profile_modal::{
     UserProfileCardState, UserProfileModalView, UserProfilePopover, UserProfilePopoverView,
     UserProfileState,
 };
+pub use user_settings_modal::{
+    InputMode, SettingsTab, UserSettingsModalView, UserSettingsState,
+};
 pub use video_tile::{aspect_ratio_box, VideoDisplayMode, VideoTileState, VideoTileView};
 pub use voice_bar::{
     voice_action_labels, voice_status_indicator_color, voice_status_text, VoiceBarState,
@@ -118,6 +122,7 @@ pub struct WorkspaceView {
     pub create_channel_modal: CreateChannelModalState,
     pub edit_channel_modal: EditChannelModalState,
     pub server_settings_modal: ServerSettingsModalState,
+    pub user_settings_modal: UserSettingsState,
     pub active_center_view: ActiveContentView,
     pub focus_handle: Option<FocusHandle>,
 }
@@ -140,6 +145,15 @@ impl WorkspaceView {
             server_settings_modal.set_server_name(&settings.name);
         }
         server_settings_modal.set_members(state.users.clone());
+
+        let mut user_settings_modal = UserSettingsState::new();
+        if let Some(ref u) = state.current_user {
+            user_settings_modal.set_username(&u.name);
+            user_settings_modal.set_display_name(&u.name);
+            if let Some(ref bio) = u.bio {
+                user_settings_modal.set_bio(bio);
+            }
+        }
 
         let active_center_view = match state.active_channel() {
             Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
@@ -164,6 +178,7 @@ impl WorkspaceView {
             create_channel_modal,
             edit_channel_modal,
             server_settings_modal,
+            user_settings_modal,
             active_center_view,
             focus_handle: None,
         };
@@ -319,6 +334,15 @@ impl WorkspaceView {
             self.server_settings_modal.set_server_name(&settings.name);
         }
         self.server_settings_modal.set_members(self.state.users.clone());
+
+        // 8. Sync User Settings
+        if let Some(ref u) = self.state.current_user {
+            self.user_settings_modal.set_username(&u.name);
+            self.user_settings_modal.set_display_name(&u.name);
+            if let Some(ref bio) = u.bio {
+                self.user_settings_modal.set_bio(bio);
+            }
+        }
     }
 
     /// Selects a channel by ID, auto-switches center view mode based on channel type,
@@ -486,7 +510,7 @@ impl WorkspaceView {
             QuickSwitcherItemType::Command => match item.title.as_str() {
                 "/mute" => self.toggle_voice_mute(),
                 "/deafen" => self.toggle_voice_deafen(),
-                "/settings" => self.set_center_view(ActiveContentView::Chat),
+                "/settings" => self.open_user_settings(),
                 "/status" => {}
                 _ => {}
             },
@@ -821,6 +845,224 @@ impl WorkspaceView {
         self.close_server_settings();
         cx.notify();
     }
+
+    /// Opens the User Settings modal dialog.
+    pub fn open_user_settings(&mut self) {
+        self.user_settings_modal.open();
+        if let Some(ref u) = self.state.current_user {
+            self.user_settings_modal.set_username(&u.name);
+            self.user_settings_modal.set_display_name(&u.name);
+            if let Some(ref bio) = u.bio {
+                self.user_settings_modal.set_bio(bio);
+            }
+        }
+    }
+
+    /// Closes the User Settings modal dialog.
+    pub fn close_user_settings(&mut self) {
+        self.user_settings_modal.close();
+    }
+
+    /// Interactive handler to open the User Settings modal.
+    pub fn open_user_settings_modal(&mut self, cx: &mut Context<Self>) {
+        self.open_user_settings();
+        cx.notify();
+    }
+
+    /// Interactive handler to close the User Settings modal.
+    pub fn close_user_settings_modal(&mut self, cx: &mut Context<Self>) {
+        self.close_user_settings();
+        cx.notify();
+    }
+
+    /// Renders the bottom user status bar docked under the channel tree / DM sidebar.
+    pub fn render_bottom_user_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let current_user_name = self
+            .state
+            .current_user
+            .as_ref()
+            .map(|u| u.name.clone())
+            .unwrap_or_else(|| "User".to_string());
+        let current_user_status = self
+            .state
+            .current_user
+            .as_ref()
+            .and_then(|u| u.status.clone())
+            .unwrap_or_else(|| "online".to_string());
+        let initials = current_user_name
+            .chars()
+            .take(2)
+            .collect::<String>()
+            .to_uppercase();
+
+        let dot_color = match current_user_status.as_str() {
+            "online" => theme::status_online(),
+            "idle" => theme::status_idle(),
+            "dnd" => theme::status_dnd(),
+            _ => theme::status_offline(),
+        };
+
+        let mut user_card = div()
+            .id("user_status_bar_profile")
+            .cursor_pointer()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap_2()
+            .p_1()
+            .rounded_md()
+            .hover(|s| s.bg(theme::bg_elevated()))
+            // Avatar with status indicator
+            .child(
+                div()
+                    .relative()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .w(px(32.0))
+                    .h(px(32.0))
+                    .rounded_full()
+                    .bg(theme::bg_surface_4())
+                    .text_xs()
+                    .font_weight(gpui::FontWeight::BOLD)
+                    .text_color(theme::text_primary())
+                    .child(if initials.is_empty() { "U".to_string() } else { initials })
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .right_0()
+                            .w(px(10.0))
+                            .h(px(10.0))
+                            .rounded_full()
+                            .border_1()
+                            .border_color(theme::bg_surface())
+                            .bg(dot_color),
+                    ),
+            )
+            // Name and tag
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::BOLD)
+                            .text_color(theme::text_primary())
+                            .child(current_user_name.clone()),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(theme::text_muted())
+                            .child(format!("@{}", current_user_name)),
+                    ),
+            );
+
+        let user_id = self.state.current_user.as_ref().map(|u| u.id).unwrap_or(0);
+        let user_name_clone = current_user_name.clone();
+        let user_status_clone = current_user_status.clone();
+        user_card = user_card.on_mouse_down(
+            MouseButton::Left,
+            cx.listener(move |view, _, _window, cx| {
+                view.open_user_profile(user_id, &user_name_clone, &user_name_clone, &user_status_clone);
+                cx.notify();
+            }),
+        );
+
+        let mute_btn = div()
+            .id("user_bar_mute_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w(px(26.0))
+            .h(px(26.0))
+            .rounded_md()
+            .text_xs()
+            .text_color(if self.voice_bar.is_muted {
+                theme::status_dnd()
+            } else {
+                theme::text_muted()
+            })
+            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
+            .child(if self.voice_bar.is_muted { "🔇" } else { "🎙" })
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_mute_click(cx);
+                }),
+            );
+
+        let deafen_btn = div()
+            .id("user_bar_deafen_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w(px(26.0))
+            .h(px(26.0))
+            .rounded_md()
+            .text_xs()
+            .text_color(if self.voice_bar.is_deafened {
+                theme::status_dnd()
+            } else {
+                theme::text_muted()
+            })
+            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
+            .child("🎧")
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.on_deafen_click(cx);
+                }),
+            );
+
+        let gear_btn = div()
+            .id("user_settings_btn")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .w(px(26.0))
+            .h(px(26.0))
+            .rounded_md()
+            .text_xs()
+            .text_color(theme::text_muted())
+            .hover(|s| s.bg(theme::bg_elevated()).text_color(theme::text_primary()))
+            .child("⚙")
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.open_user_settings_modal(cx);
+                }),
+            );
+
+        div()
+            .id("bottom_user_status_bar")
+            .flex()
+            .flex_row()
+            .items_center()
+            .justify_between()
+            .px_2()
+            .py_1p5()
+            .bg(theme::bg_surface())
+            .border_t_1()
+            .border_color(theme::border_hairline())
+            .child(user_card)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap_1()
+                    .child(mute_btn)
+                    .child(deafen_btn)
+                    .child(gear_btn),
+            )
+    }
 }
 
 impl Render for WorkspaceView {
@@ -876,7 +1118,8 @@ impl Render for WorkspaceView {
                     } else {
                         self.channel_tree.render_interactive(cx).into_any_element()
                     })
-                    .child(voice_bar_view.render_interactive(cx)),
+                    .child(voice_bar_view.render_interactive(cx))
+                    .child(self.render_bottom_user_bar(cx)),
             )
             // Column 3: Dynamic Center Content Canvas (Chat, VoiceStage, or ScreenShare)
             .child(
@@ -934,6 +1177,13 @@ impl Render for WorkspaceView {
         if self.server_settings_modal.is_open {
             root = root.child(
                 ServerSettingsModalView::new(self.server_settings_modal.clone())
+                    .render_interactive(cx),
+            );
+        }
+
+        if self.user_settings_modal.is_open {
+            root = root.child(
+                UserSettingsModalView::new(self.user_settings_modal.clone())
                     .render_interactive(cx),
             );
         }

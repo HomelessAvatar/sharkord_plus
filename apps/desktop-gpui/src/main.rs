@@ -3,6 +3,7 @@ use std::sync::Arc;
 use desktop_gpui::network::NetworkBridge;
 use desktop_gpui::state::AppState;
 use desktop_gpui::theme;
+use desktop_gpui::tray::DesktopTray;
 use desktop_gpui::ui::WorkspaceView;
 use gpui::prelude::*;
 use gpui::{px, size, App, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions};
@@ -18,6 +19,7 @@ fn main() {
     let _ = vault.load();
 
     let mut initial_state = AppState::new();
+    let _tray = DesktopTray::new();
 
     let bridge = match NetworkBridge::new() {
         Ok(b) => Some(Arc::new(b)),
