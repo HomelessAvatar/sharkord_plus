@@ -124,7 +124,7 @@ docker run -d \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name vibeshark \
-  ghcr.io/homelessavatar/sharkord_plus:0.3.17
+  ghcr.io/homelessavatar/sharkord_plus:0.3.18
 ```
 
 ### 4. Local Web & Server Development
@@ -148,7 +148,7 @@ cargo test --all
 
 VibeShark follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
-* **Current Version:** `v0.3.17`
+* **Current Version:** `v0.3.18`
 * **Upstream Compatibility Matrix:**
   | VibeShark Version | Compatible Sharkord Upstream Server |
   |-------------------|-------------------------------------|

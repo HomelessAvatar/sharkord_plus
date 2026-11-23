@@ -1,6 +1,6 @@
 product_name = "Sharkord Plus"
 identifier = "com.homelessavatar.sharkord"
-version = "0.2.4"
+version = "0.3.18"
 authors = ["HomelessAvatar"]
 description = "High-performance Discord-alternative chat, voice, and video client in Rust & GPUI."
 long_description = "A fast, lightweight, and modern desktop client for Sharkord built with Rust and GPUI."
