@@ -53,14 +53,14 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: './apps/tauri/src-tauri -> target'
+          workspaces: '. -> target'
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file libxkbcommon-dev libx11-dev libwayland-dev libxkbcommon-x11-dev
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2t64 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2 || true
 
       - name: Run Tauri unit tests
@@ -75,15 +75,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build Native GPUI Desktop Application
+        shell: bash
+        run: |
+          cargo build --release -p desktop-gpui || echo "Warning: GPUI build failed for ${{ matrix.platform }}"
+
       - name: Stage desktop artifacts
         shell: bash
         run: |
           mkdir -p dist-desktop
           find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="0.3.18"
           if [ -f dist-desktop/sharkord-tauri.exe ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            [ -z "$VERSION" ] && VERSION="0.3.3"
             mv dist-desktop/sharkord-tauri.exe "dist-desktop/Sharkord.Plus_${VERSION}_x64-portable.exe"
+          fi
+          if [ -f target/release/desktop-gpui.exe ]; then
+            cp target/release/desktop-gpui.exe "dist-desktop/Sharkord.Plus-Native-GPUI_${VERSION}_windows-x64.exe"
+          fi
+          if [ -f target/release/desktop-gpui ]; then
+            cp target/release/desktop-gpui "dist-desktop/Sharkord.Plus-Native-GPUI_${VERSION}_${{ matrix.platform }}"
           fi
           echo "=== Staged Desktop Artifacts ==="
           ls -la dist-desktop || true
@@ -114,7 +125,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-release/ \;
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "Sharkord.Plus-Native-GPUI*" \) -exec cp {} dist-release/ \;
           echo "=== Contents of dist-release ==="
           ls -la dist-release
 

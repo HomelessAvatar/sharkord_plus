@@ -68,6 +68,7 @@ pub fn server_pill_height(is_active: bool, has_unread: bool) -> f32 {
 pub struct ServerRailView {
     pub servers: Vec<ServerItem>,
     pub is_home_active: bool,
+    pub is_home_selected: bool,
     pub current_user_name: String,
     pub current_user_status: String,
 }
@@ -77,6 +78,7 @@ impl Default for ServerRailView {
         Self {
             servers: Vec::new(),
             is_home_active: true,
+            is_home_selected: true,
             current_user_name: "User".to_string(),
             current_user_status: "online".to_string(),
         }
@@ -86,6 +88,19 @@ impl Default for ServerRailView {
 impl ServerRailView {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets whether the Home (DMs) button is currently selected on the rail.
+    pub fn set_home_selected(&mut self, selected: bool) {
+        self.is_home_selected = selected;
+        self.is_home_active = selected;
+    }
+
+    /// Toggles the Home (DMs) button selection state.
+    pub fn toggle_home(&mut self) {
+        let new_state = !self.is_home_selected;
+        self.is_home_selected = new_state;
+        self.is_home_active = new_state;
     }
 
     /// Renders the Server Rail element tree without interactive handlers.
@@ -105,7 +120,8 @@ impl ServerRailView {
         &self,
         mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
     ) -> impl IntoElement {
-        let home_pill_height = server_pill_height(self.is_home_active, false);
+        let is_home = self.is_home_selected || self.is_home_active;
+        let home_pill_height = server_pill_height(is_home, false);
 
         let mut home_btn = div()
             .id("server_rail_home_btn")
@@ -116,13 +132,13 @@ impl ServerRailView {
             .w(px(48.0))
             .h(px(48.0))
             .rounded_2xl()
-            .bg(if self.is_home_active {
+            .bg(if is_home {
                 theme::accent()
             } else {
                 theme::bg_elevated()
             })
             .text_color(theme::text_primary())
-            .child("💬");
+            .child(crate::ui::render_chat_bubble_icon());
 
         if let Some(ref mut cx) = cx {
             home_btn = home_btn.on_mouse_down(

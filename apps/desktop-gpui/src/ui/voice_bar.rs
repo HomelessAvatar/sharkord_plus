@@ -84,6 +84,29 @@ impl VoiceBarState {
     pub fn disconnect(&mut self) {
         self.connection = VoiceConnectionState::Disconnected;
     }
+
+    pub fn update_ping(&mut self, ping_ms: u32) {
+        if let VoiceConnectionState::Connected { ping_ms: ref mut p, .. } = self.connection {
+            *p = ping_ms;
+        }
+    }
+
+    pub fn sync_from_live_voice(&mut self, live: &crate::media::LiveVoiceState) {
+        self.is_muted = live.is_muted;
+        self.is_deafened = live.is_deafened;
+        if live.is_connected {
+            self.connection = VoiceConnectionState::Connected {
+                channel_id: live.channel_id.unwrap_or(0),
+                channel_name: live
+                    .channel_name
+                    .clone()
+                    .unwrap_or_else(|| "Voice Channel".to_string()),
+                ping_ms: live.ping_ms,
+            };
+        } else {
+            self.connection = VoiceConnectionState::Disconnected;
+        }
+    }
 }
 
 /// Voice Bar view component.
@@ -214,37 +237,67 @@ impl VoiceBarView {
             .bg(theme::bg_surface())
             .border_t_1()
             .border_color(theme::border_hairline())
-            // Top row: Connection status indicator
+            // Top row: Connection status indicator & latency badge
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap_2()
+                    .justify_between()
+                    .w_full()
                     .px_1()
                     .py_1()
-                    // Status dot
                     .child(
                         div()
-                            .w(px(8.0))
-                            .h(px(8.0))
-                            .rounded_full()
-                            .bg(rgb(dot_color)),
-                    )
-                    // Status description
-                    .child(
-                        div()
-                            .text_xs()
-                            .font_weight(gpui::FontWeight::MEDIUM)
-                            .text_color(
-                                if self.state.connection != VoiceConnectionState::Disconnected {
-                                    theme::status_online()
-                                } else {
-                                    theme::text_muted()
-                                },
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap_2()
+                            // Status dot
+                            .child(
+                                div()
+                                    .w(px(8.0))
+                                    .h(px(8.0))
+                                    .rounded_full()
+                                    .bg(rgb(dot_color)),
                             )
-                            .child(status_desc),
-                    ),
+                            // Status description
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(
+                                        if self.state.connection != VoiceConnectionState::Disconnected {
+                                            theme::status_online()
+                                        } else {
+                                            theme::text_muted()
+                                        },
+                                    )
+                                    .child(status_desc),
+                            ),
+                    )
+                    // Latency/ping badge
+                    .children(if let VoiceConnectionState::Connected { ping_ms, .. } = self.state.connection {
+                        Some(
+                            div()
+                                .px_1p5()
+                                .py_0p5()
+                                .rounded_sm()
+                                .bg(theme::bg_elevated())
+                                .text_xs()
+                                .font_weight(gpui::FontWeight::MEDIUM)
+                                .text_color(if ping_ms < 60 {
+                                    theme::status_online()
+                                } else if ping_ms < 150 {
+                                    theme::status_idle()
+                                } else {
+                                    theme::status_dnd()
+                                })
+                                .child(format!("{}ms", ping_ms)),
+                        )
+                    } else {
+                        None
+                    }),
             )
             // Bottom row: Mute, Deafen, Disconnect action buttons
             .child(

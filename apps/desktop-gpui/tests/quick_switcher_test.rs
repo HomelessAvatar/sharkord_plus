@@ -26,7 +26,7 @@ fn test_quick_switcher_filtering_and_navigation() {
         },
     ];
 
-    let mut switcher = QuickSwitcherState::new(&channels);
+    let mut switcher = QuickSwitcherState::from_channels(&channels);
     assert_eq!(switcher.filtered_items().len(), 3);
     assert_eq!(switcher.selected_index, 0);
     assert_eq!(
@@ -34,8 +34,10 @@ fn test_quick_switcher_filtering_and_navigation() {
         Some(QuickSwitcherItem {
             id: 1,
             name: "general".to_string(),
+            title: "general".to_string(),
             channel_type: ChannelType::Text,
             category: None,
+            ..Default::default()
         })
     );
 
@@ -75,7 +77,7 @@ fn test_quick_switcher_navigation_boundaries_and_empty() {
         },
     ];
 
-    let mut switcher = QuickSwitcherState::new(&channels);
+    let mut switcher = QuickSwitcherState::from_channels(&channels);
 
     // prev at 0 clamps to 0
     switcher.select_prev();

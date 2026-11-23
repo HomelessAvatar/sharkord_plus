@@ -1,11 +1,17 @@
 [package]
 name = "desktop-gpui"
-version = "0.3.17"
+version = "0.3.18"
 edition = "2021"
 
 [dependencies]
 sharkord-core = { path = "../../crates/sharkord-core" }
-gpui = "0.2"
+gpui = { version = "0.2", default-features = false, features = ["font-kit", "wayland", "x11"] }
+gpui-kit = "0.10"
+rfd = "0.15"
+webrtc = "0.12"
+xcap = "0.5"
+openh264 = "0.6"
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+cpal = "0.15"

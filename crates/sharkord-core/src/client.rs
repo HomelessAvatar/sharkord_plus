@@ -11,7 +11,9 @@ use url::Url;
 use crate::error::SharkordError;
 use crate::protocol::events::{decode_websocket_frame, SubscriptionEvent};
 use crate::protocol::{decode_trpc_response, encode_mutation_body, encode_query_params};
-use crate::types::{Capabilities, Channel, Message, PluginCommand, ServerSettings, User};
+use crate::types::{
+    Capabilities, Channel, ChannelType, Message, PluginCommand, ServerSettings, User,
+};
 
 /// High-level asynchronous Sharkord client handling tRPC HTTP queries, mutations,
 /// session persistence, and capability negotiation.
@@ -499,6 +501,392 @@ impl SharkordClient {
         let body_str = resp.text().await?;
         let val: serde_json::Value = decode_trpc_response(&body_str)?;
         Ok(val)
+    }
+
+    async fn post_trpc_mutation(
+        &self,
+        primary_endpoint: &str,
+        fallback_endpoint: Option<&str>,
+        payload: Option<&serde_json::Value>,
+    ) -> Result<String, SharkordError> {
+        let body = encode_mutation_body(payload)?;
+        let url = format!("{}/trpc/{}?batch=1", self.base_url, primary_endpoint);
+
+        let mut resp = self
+            .http_client
+            .post(&url)
+            .headers(self.auth_headers())
+            .header("content-type", "application/json")
+            .body(body.clone())
+            .send()
+            .await?;
+
+        if resp.status().as_u16() == 404 {
+            if let Some(fallback) = fallback_endpoint {
+                let fallback_url = format!("{}/trpc/{}?batch=1", self.base_url, fallback);
+                resp = self
+                    .http_client
+                    .post(&fallback_url)
+                    .headers(self.auth_headers())
+                    .header("content-type", "application/json")
+                    .body(body)
+                    .send()
+                    .await?;
+            }
+        }
+
+        let status = resp.status();
+        if status.as_u16() == 401 || status.as_u16() == 403 {
+            return Err(SharkordError::Unauthorized(format!(
+                "Unauthorized calling {}",
+                primary_endpoint
+            )));
+        }
+        if !status.is_success() {
+            return Err(SharkordError::Network(format!(
+                "HTTP {} calling {}",
+                status, primary_endpoint
+            )));
+        }
+
+        let body_str = resp.text().await?;
+        Ok(body_str)
+    }
+
+    async fn get_trpc_query(
+        &self,
+        endpoints: &[&str],
+        input: Option<&serde_json::Value>,
+    ) -> Result<String, SharkordError> {
+        let query_params = encode_query_params(input)?;
+        let mut last_err = None;
+
+        for endpoint in endpoints {
+            let url = format!("{}/trpc/{}?{}", self.base_url, endpoint, query_params);
+            let resp = self
+                .http_client
+                .get(&url)
+                .headers(self.auth_headers())
+                .send()
+                .await?;
+
+            let status = resp.status();
+            if status.as_u16() == 404 {
+                last_err = Some(SharkordError::Network(format!("HTTP 404 for {}", endpoint)));
+                continue;
+            }
+            if status.as_u16() == 401 || status.as_u16() == 403 {
+                return Err(SharkordError::Unauthorized(format!(
+                    "Unauthorized calling {}",
+                    endpoint
+                )));
+            }
+            if !status.is_success() {
+                return Err(SharkordError::Network(format!(
+                    "HTTP {} calling {}",
+                    status, endpoint
+                )));
+            }
+
+            return Ok(resp.text().await?);
+        }
+
+        Err(last_err.unwrap_or_else(|| {
+            SharkordError::Network("No query endpoint succeeded".to_string())
+        }))
+    }
+
+    /// Toggles a reaction on a message (`messages.toggleReaction`).
+    pub async fn toggle_reaction(&self, message_id: u64, emoji: &str) -> Result<(), SharkordError> {
+        let input = serde_json::json!({
+            "messageId": message_id,
+            "emoji": emoji
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "messages.toggleReaction",
+                Some("messages.toggleMessageReaction"),
+                Some(&input),
+            )
+            .await?;
+        let _ = decode_trpc_response::<serde_json::Value>(&body_str)?;
+        Ok(())
+    }
+
+    /// Edits an existing message's text content (`messages.edit` or `messages.editMessage`).
+    pub async fn edit_message(
+        &self,
+        message_id: u64,
+        content: &str,
+    ) -> Result<Message, SharkordError> {
+        let input = serde_json::json!({
+            "messageId": message_id,
+            "content": content
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "messages.edit",
+                Some("messages.editMessage"),
+                Some(&input),
+            )
+            .await?;
+        match decode_trpc_response::<Message>(&body_str) {
+            Ok(msg) => Ok(msg),
+            Err(_) => {
+                let val: serde_json::Value = decode_trpc_response(&body_str)?;
+                let id = val
+                    .get("id")
+                    .or_else(|| val.get("messageId"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(message_id);
+                Ok(Message {
+                    id,
+                    content: Some(content.to_string()),
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
+    /// Deletes a message by ID (`messages.delete` or `messages.deleteMessage`).
+    pub async fn delete_message(&self, message_id: u64) -> Result<(), SharkordError> {
+        let input = serde_json::json!({
+            "messageId": message_id
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "messages.delete",
+                Some("messages.deleteMessage"),
+                Some(&input),
+            )
+            .await?;
+        let _ = decode_trpc_response::<serde_json::Value>(&body_str)?;
+        Ok(())
+    }
+
+    /// Pins or unpins a message (`messages.togglePin` or `messages.pinMessage`).
+    pub async fn pin_message(&self, message_id: u64, pinned: bool) -> Result<(), SharkordError> {
+        let input = serde_json::json!({
+            "messageId": message_id,
+            "pinned": pinned
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "messages.togglePin",
+                Some("messages.pinMessage"),
+                Some(&input),
+            )
+            .await?;
+        let _ = decode_trpc_response::<serde_json::Value>(&body_str)?;
+        Ok(())
+    }
+
+    /// Creates a new channel (`channels.add` or `channels.createChannel`).
+    pub async fn create_channel(
+        &self,
+        name: &str,
+        channel_type: ChannelType,
+        category_id: Option<u64>,
+    ) -> Result<Channel, SharkordError> {
+        let mut input = serde_json::json!({
+            "name": name,
+            "type": channel_type
+        });
+        if let Some(cat_id) = category_id {
+            input["categoryId"] = serde_json::json!(cat_id);
+        }
+        let body_str = self
+            .post_trpc_mutation(
+                "channels.add",
+                Some("channels.createChannel"),
+                Some(&input),
+            )
+            .await?;
+        match decode_trpc_response::<Channel>(&body_str) {
+            Ok(ch) => Ok(ch),
+            Err(_) => {
+                let val: serde_json::Value = decode_trpc_response(&body_str)?;
+                let id = if let Some(n) = val.as_u64() {
+                    n
+                } else if let Some(id_val) = val.get("id").and_then(|v| v.as_u64()) {
+                    id_val
+                } else {
+                    0
+                };
+                Ok(Channel {
+                    id,
+                    name: name.to_string(),
+                    channel_type,
+                    category_id,
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
+    /// Updates a channel's name and/or topic (`channels.update` or `channels.updateChannel`).
+    pub async fn update_channel(
+        &self,
+        id: u64,
+        name: Option<&str>,
+        topic: Option<&str>,
+    ) -> Result<Channel, SharkordError> {
+        let mut input = serde_json::json!({
+            "id": id,
+            "channelId": id
+        });
+        if let Some(n) = name {
+            input["name"] = serde_json::json!(n);
+        }
+        if let Some(top) = topic {
+            input["topic"] = serde_json::json!(top);
+        }
+        let body_str = self
+            .post_trpc_mutation(
+                "channels.update",
+                Some("channels.updateChannel"),
+                Some(&input),
+            )
+            .await?;
+        match decode_trpc_response::<Channel>(&body_str) {
+            Ok(ch) => Ok(ch),
+            Err(_) => Ok(Channel {
+                id,
+                name: name.unwrap_or("").to_string(),
+                topic: topic.map(|s| s.to_string()),
+                ..Default::default()
+            }),
+        }
+    }
+
+    /// Deletes a channel by ID (`channels.delete` or `channels.deleteChannel`).
+    pub async fn delete_channel(&self, id: u64) -> Result<(), SharkordError> {
+        let input = serde_json::json!({
+            "channelId": id,
+            "id": id
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "channels.delete",
+                Some("channels.deleteChannel"),
+                Some(&input),
+            )
+            .await?;
+        let _ = decode_trpc_response::<serde_json::Value>(&body_str)?;
+        Ok(())
+    }
+
+    /// Fetches direct message channels (`channels.getDms` with fallback to `get_channels`).
+    pub async fn get_dms(&self) -> Result<Vec<Channel>, SharkordError> {
+        let body_str = match self.get_trpc_query(&["channels.getDms"], None).await {
+            Ok(b) => b,
+            Err(_) => {
+                let channels = self.get_channels().await?;
+                return Ok(channels.into_iter().filter(|c| c.is_dm).collect());
+            }
+        };
+        let dms: Vec<Channel> = decode_trpc_response(&body_str)?;
+        Ok(dms)
+    }
+
+    /// Opens or resumes a direct message channel with a user (`dms.open` or `channels.openDm`).
+    pub async fn open_dm(&self, target_user_id: u64) -> Result<Channel, SharkordError> {
+        let input = serde_json::json!({
+            "targetUserId": target_user_id,
+            "userId": target_user_id
+        });
+        let body_str = self
+            .post_trpc_mutation(
+                "dms.open",
+                Some("channels.openDm"),
+                Some(&input),
+            )
+            .await?;
+        match decode_trpc_response::<Channel>(&body_str) {
+            Ok(ch) => Ok(ch),
+            Err(_) => {
+                let val: serde_json::Value = decode_trpc_response(&body_str)?;
+                let id = val
+                    .get("channelId")
+                    .or_else(|| val.get("id"))
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
+                Ok(Channel {
+                    id,
+                    name: format!("DM - {target_user_id}"),
+                    channel_type: ChannelType::Voice,
+                    is_dm: true,
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
+    /// Fetches all server members (`users.getAll` or `users.getMembers` or `users.getUsers`).
+    pub async fn get_members(&self) -> Result<Vec<User>, SharkordError> {
+        let body_str = self
+            .get_trpc_query(
+                &["users.getAll", "users.getMembers", "users.getUsers"],
+                None,
+            )
+            .await?;
+        let members: Vec<User> = decode_trpc_response(&body_str)?;
+        Ok(members)
+    }
+
+    /// Uploads a binary file to the server via `POST /upload`.
+    ///
+    /// Sends metadata headers `x-sharkord-token`, `x-sharkord-original-name`, and `x-sharkord-content-length`
+    /// (along with standard and server-native equivalents `x-token`, `x-file-name`, `content-length`).
+    /// Returns the uploaded file ID.
+    pub async fn upload_file(&self, filename: &str, data: Vec<u8>) -> Result<u64, SharkordError> {
+        let url = format!("{}/upload", self.base_url);
+        let data_len = data.len();
+
+        let mut req = self
+            .http_client
+            .post(&url)
+            .header("content-type", "application/octet-stream")
+            .header("content-length", data_len.to_string())
+            .header("x-file-name", filename)
+            .header("x-sharkord-original-name", filename)
+            .header("x-sharkord-content-length", data_len.to_string());
+
+        if let Some(token) = self.session_token() {
+            req = req
+                .header("x-token", &token)
+                .header("x-sharkord-token", &token)
+                .header("authorization", format!("Bearer {token}"))
+                .header("cookie", format!("token={token}"));
+        }
+
+        let resp = req.body(data).send().await?;
+
+        let status = resp.status();
+        if status.as_u16() == 401 || status.as_u16() == 403 {
+            return Err(SharkordError::Unauthorized(
+                "Authentication required to upload file".to_string(),
+            ));
+        }
+        if !status.is_success() {
+            return Err(SharkordError::Network(format!(
+                "HTTP {} during upload",
+                status
+            )));
+        }
+
+        let val: serde_json::Value = resp.json().await?;
+        if let Some(id) = val.get("id").and_then(|v| v.as_u64()) {
+            Ok(id)
+        } else if let Some(id) = val.get("fileId").and_then(|v| v.as_u64()) {
+            Ok(id)
+        } else if let Some(id) = val.as_u64() {
+            Ok(id)
+        } else {
+            Err(SharkordError::Protocol(format!(
+                "Upload response missing file id: {val:?}"
+            )))
+        }
     }
 
     /// Connects to the WebSocket endpoint and spawns a background listener delivering real-time SubscriptionEvents.

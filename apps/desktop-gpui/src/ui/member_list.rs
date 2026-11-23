@@ -87,8 +87,23 @@ impl MemberListSidebarView {
         self.groups.iter().map(|g| g.members.len()).sum()
     }
 
-    /// Renders the member list sidebar element tree.
+    /// Renders the member list sidebar element tree non-interactively.
     pub fn render_element(&self) -> impl IntoElement {
+        self.render_internal(None)
+    }
+
+    /// Renders the member list sidebar with interactive click listeners wired to `WorkspaceView`.
+    pub fn render_interactive(
+        &self,
+        cx: &mut Context<crate::ui::WorkspaceView>,
+    ) -> impl IntoElement {
+        self.render_internal(Some(cx))
+    }
+
+    fn render_internal(
+        &self,
+        mut cx: Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> impl IntoElement {
         div()
             .flex()
             .flex_col()
@@ -137,7 +152,8 @@ impl MemberListSidebarView {
                                     .to_uppercase()
                                     .to_string();
 
-                                div()
+                                let mut member_row = div()
+                                    .cursor_pointer()
                                     .flex()
                                     .flex_row()
                                     .items_center()
@@ -145,6 +161,7 @@ impl MemberListSidebarView {
                                     .px_2()
                                     .py_1()
                                     .rounded_md()
+                                    .hover(|s| s.bg(theme::bg_elevated()))
                                     .child(
                                         // Avatar with status indicator dot
                                         div()
@@ -178,7 +195,27 @@ impl MemberListSidebarView {
                                             .text_sm()
                                             .text_color(theme::text_primary())
                                             .child(user.name.clone()),
-                                    )
+                                    );
+
+                                if let Some(ref mut cx) = cx {
+                                    let uid = user.id;
+                                    let uname = user.name.clone();
+                                    let udisp = user.name.clone();
+                                    let ustatus = user
+                                        .status
+                                        .clone()
+                                        .unwrap_or_else(|| "offline".to_string());
+
+                                    member_row = member_row.on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |view, _, _window, cx| {
+                                            view.open_user_profile(uid, &uname, &udisp, &ustatus);
+                                            cx.notify();
+                                        }),
+                                    );
+                                }
+
+                                member_row
                             }))
                     })),
             )

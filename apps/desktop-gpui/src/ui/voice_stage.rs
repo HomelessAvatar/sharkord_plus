@@ -40,6 +40,16 @@ impl VoiceStageCard {
         }
     }
 
+    /// Returns whether this participant is actively speaking.
+    pub fn is_speaking(&self) -> bool {
+        self.is_speaking
+    }
+
+    /// Returns the dynamic green speaking glow color (#22C55E) if speaking.
+    pub fn speaking_glow_color(&self) -> Option<u32> {
+        self.border_color()
+    }
+
     /// Renders an individual participant card element.
     pub fn render_card(&self) -> impl IntoElement {
         let border_color = self.border_color();
@@ -195,6 +205,20 @@ impl VoiceStageView {
             channel_id,
             channel_name: channel_name.into(),
             participants,
+        }
+    }
+
+    /// Updates a participant's speaking state by user ID.
+    pub fn set_participant_speaking(&mut self, user_id: u64, is_speaking: bool) {
+        if let Some(card) = self.participants.iter_mut().find(|p| p.user_id == user_id) {
+            card.is_speaking = is_speaking;
+        }
+    }
+
+    /// Synchronizes participant speaking states from `LiveVoiceState`.
+    pub fn sync_from_live_voice(&mut self, live_voice: &crate::media::LiveVoiceState) {
+        for card in self.participants.iter_mut() {
+            card.is_speaking = live_voice.is_user_speaking(card.user_id);
         }
     }
 
