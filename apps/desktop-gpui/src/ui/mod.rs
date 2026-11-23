@@ -4,6 +4,7 @@
 
 pub mod audio_settings;
 pub mod auth_modal;
+pub mod channel_admin_modal;
 pub mod channel_tree;
 pub mod chat_canvas;
 pub mod dm_view;
@@ -14,6 +15,7 @@ pub mod member_list;
 pub mod pip_player;
 pub mod quick_switcher;
 pub mod server_rail;
+pub mod server_settings_modal;
 pub mod source_picker;
 pub mod updater_modal;
 pub mod user_profile_modal;
@@ -34,6 +36,9 @@ pub use audio_settings::{
     DEFAULT_VAD_THRESHOLD,
 };
 pub use auth_modal::{AuthModalState, AuthModalView, AuthTab, ServerConnectView};
+pub use channel_admin_modal::{
+    CreateChannelModalState, CreateChannelModalView, EditChannelModalState, EditChannelModalView,
+};
 pub use channel_tree::{
     channel_icon, compose_channel_tree, CategorizedChannelGroup, ChannelDisplayItem,
     ChannelTreeView,
@@ -60,6 +65,9 @@ pub use quick_switcher::{
     QuickSwitcherView,
 };
 pub use server_rail::{server_initials, server_pill_height, ServerItem, ServerRailView};
+pub use server_settings_modal::{
+    ServerSettingsModalState, ServerSettingsModalView, ServerSettingsTab,
+};
 pub use source_picker::{SourcePickerState, SourcePickerTab, SourcePickerView};
 pub use updater_modal::{UpdaterBadgeView, UpdaterModalView};
 pub use user_profile_modal::{
@@ -107,6 +115,9 @@ pub struct WorkspaceView {
     pub member_list: MemberListSidebarView,
     pub quick_switcher: QuickSwitcherState,
     pub auth_modal: AuthModalState,
+    pub create_channel_modal: CreateChannelModalState,
+    pub edit_channel_modal: EditChannelModalState,
+    pub server_settings_modal: ServerSettingsModalState,
     pub active_center_view: ActiveContentView,
     pub focus_handle: Option<FocusHandle>,
 }
@@ -122,6 +133,13 @@ impl WorkspaceView {
         let auth_modal = AuthModalState::new();
         let dm_sidebar = DirectMessagesSidebarView::new(DmSidebarState::new());
         let user_profile_modal = UserProfileCardState::new();
+        let create_channel_modal = CreateChannelModalState::new();
+        let edit_channel_modal = EditChannelModalState::new();
+        let mut server_settings_modal = ServerSettingsModalState::new();
+        if let Some(ref settings) = state.server_settings {
+            server_settings_modal.set_server_name(&settings.name);
+        }
+        server_settings_modal.set_members(state.users.clone());
 
         let active_center_view = match state.active_channel() {
             Some(ch) if ch.channel_type == sharkord_core::types::ChannelType::Voice => {
@@ -143,6 +161,9 @@ impl WorkspaceView {
             member_list: MemberListSidebarView::default(),
             quick_switcher,
             auth_modal,
+            create_channel_modal,
+            edit_channel_modal,
+            server_settings_modal,
             active_center_view,
             focus_handle: None,
         };
@@ -292,6 +313,12 @@ impl WorkspaceView {
         // 6. Sync Quick Switcher
         self.quick_switcher.set_channels(&self.state.channels);
         self.quick_switcher.set_members(&self.state.users);
+
+        // 7. Sync Server Settings
+        if let Some(ref settings) = self.state.server_settings {
+            self.server_settings_modal.set_server_name(&settings.name);
+        }
+        self.server_settings_modal.set_members(self.state.users.clone());
     }
 
     /// Selects a channel by ID, auto-switches center view mode based on channel type,
@@ -641,6 +668,159 @@ impl WorkspaceView {
         }
         cx.notify();
     }
+
+    /// Opens the Create Channel modal for a category.
+    pub fn open_create_channel(&mut self, category: impl Into<String>) {
+        self.create_channel_modal.open(category);
+    }
+
+    /// Closes the Create Channel modal.
+    pub fn close_create_channel(&mut self) {
+        self.create_channel_modal.close();
+    }
+
+    /// Interactive handler to open the Create Channel modal.
+    pub fn open_create_channel_modal(&mut self, category: &str, cx: &mut Context<Self>) {
+        self.open_create_channel(category);
+        cx.notify();
+    }
+
+    /// Interactive handler to close the Create Channel modal.
+    pub fn close_create_channel_modal(&mut self, cx: &mut Context<Self>) {
+        self.close_create_channel();
+        cx.notify();
+    }
+
+    /// Submits channel creation, appending the new channel to state and closing modal.
+    pub fn submit_create_channel(&mut self) -> Option<sharkord_core::types::Channel> {
+        let name = self.create_channel_modal.name.trim().to_string();
+        if name.is_empty() {
+            return None;
+        }
+
+        let next_id = (self.state.channels.len() as u64) + 1;
+        let ch = sharkord_core::types::Channel {
+            id: next_id,
+            name,
+            channel_type: self.create_channel_modal.channel_type,
+            topic: None,
+            private: false,
+            is_dm: false,
+            position: self.state.channels.len() as i32,
+            category_id: None,
+            created_at: Some(1000),
+            updated_at: None,
+        };
+
+        self.state.channels.push(ch.clone());
+        self.create_channel_modal.reset();
+        self.select_channel(next_id);
+        self.sync_views();
+        Some(ch)
+    }
+
+    /// Interactive handler to submit channel creation.
+    pub fn submit_create_channel_interactive(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Option<sharkord_core::types::Channel> {
+        let res = self.submit_create_channel();
+        cx.notify();
+        res
+    }
+
+    /// Opens the Edit Channel modal for a specific channel.
+    pub fn open_edit_channel(&mut self, channel_id: u64) {
+        if let Some(ch) = self.state.channels.iter().find(|c| c.id == channel_id) {
+            self.edit_channel_modal.open(
+                ch.id,
+                &ch.name,
+                ch.topic.as_deref().unwrap_or(""),
+            );
+        }
+    }
+
+    /// Closes the Edit Channel modal.
+    pub fn close_edit_channel(&mut self) {
+        self.edit_channel_modal.close();
+    }
+
+    /// Interactive handler to open the Edit Channel modal.
+    pub fn open_edit_channel_modal(&mut self, channel_id: u64, cx: &mut Context<Self>) {
+        self.open_edit_channel(channel_id);
+        cx.notify();
+    }
+
+    /// Interactive handler to close the Edit Channel modal.
+    pub fn close_edit_channel_modal(&mut self, cx: &mut Context<Self>) {
+        self.close_edit_channel();
+        cx.notify();
+    }
+
+    /// Submits channel rename and topic update to state.
+    pub fn submit_edit_channel(&mut self) -> Option<u64> {
+        let ch_id = self.edit_channel_modal.channel_id;
+        let new_name = self.edit_channel_modal.name.trim().to_string();
+        let new_topic = self.edit_channel_modal.topic.trim().to_string();
+
+        if let Some(ch) = self.state.channels.iter_mut().find(|c| c.id == ch_id) {
+            if !new_name.is_empty() {
+                ch.name = new_name;
+            }
+            ch.topic = if new_topic.is_empty() {
+                None
+            } else {
+                Some(new_topic)
+            };
+        }
+
+        self.edit_channel_modal.close();
+        self.sync_views();
+        Some(ch_id)
+    }
+
+    /// Submits channel deletion and removes it from state.
+    pub fn submit_delete_channel(&mut self) -> Option<u64> {
+        if !self.edit_channel_modal.confirm_delete {
+            return None;
+        }
+
+        let ch_id = self.edit_channel_modal.channel_id;
+        self.state.channels.retain(|c| c.id != ch_id);
+        if self.state.active_channel_id == Some(ch_id) {
+            self.state.active_channel_id = self.state.channels.first().map(|c| c.id);
+        }
+
+        self.edit_channel_modal.reset();
+        self.sync_views();
+        Some(ch_id)
+    }
+
+    /// Opens the Server Settings modal.
+    pub fn open_server_settings(&mut self) {
+        self.server_settings_modal.open();
+        if let Some(ref s) = self.state.server_settings {
+            self.server_settings_modal.set_server_name(&s.name);
+        }
+        self.server_settings_modal.set_members(self.state.users.clone());
+    }
+
+    /// Closes the Server Settings modal.
+    pub fn close_server_settings(&mut self) {
+        self.server_settings_modal.close();
+    }
+
+    /// Interactive handler to open the Server Settings modal.
+    pub fn open_server_settings_modal(&mut self, cx: &mut Context<Self>) {
+        self.open_server_settings();
+        cx.notify();
+    }
+
+    /// Interactive handler to close the Server Settings modal.
+    pub fn close_server_settings_modal(&mut self, cx: &mut Context<Self>) {
+        self.close_server_settings();
+        cx.notify();
+    }
 }
 
 impl Render for WorkspaceView {
@@ -735,6 +915,26 @@ impl Render for WorkspaceView {
         if self.user_profile_modal.is_open {
             root = root.child(
                 UserProfilePopoverView::new(self.user_profile_modal.clone()).render_interactive(cx),
+            );
+        }
+
+        if self.create_channel_modal.is_open {
+            root = root.child(
+                CreateChannelModalView::new(self.create_channel_modal.clone())
+                    .render_interactive(cx),
+            );
+        }
+
+        if self.edit_channel_modal.is_open {
+            root = root.child(
+                EditChannelModalView::new(self.edit_channel_modal.clone()).render_interactive(cx),
+            );
+        }
+
+        if self.server_settings_modal.is_open {
+            root = root.child(
+                ServerSettingsModalView::new(self.server_settings_modal.clone())
+                    .render_interactive(cx),
             );
         }
 

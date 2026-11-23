@@ -262,8 +262,10 @@ impl ChannelTreeView {
             .overflow_hidden()
             .bg(theme::bg_subsurface())
             // 1. Server name header
-            .child(
-                div()
+            .child({
+                let mut srv_header = div()
+                    .id("server_name_header")
+                    .cursor_pointer()
                     .flex()
                     .flex_row()
                     .items_center()
@@ -272,14 +274,42 @@ impl ChannelTreeView {
                     .px_4()
                     .border_b_1()
                     .border_color(theme::border_hairline())
+                    .hover(|s| s.bg(theme::bg_surface_4()))
                     .child(
                         div()
                             .text_color(theme::text_primary())
                             .font_weight(gpui::FontWeight::SEMIBOLD)
                             .child(self.server_name.clone()),
                     )
-                    .child(div().text_color(theme::text_muted()).child("▼")),
-            )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap_1p5()
+                            .child(
+                                div()
+                                    .id("server_settings_btn")
+                                    .cursor_pointer()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .hover(|s| s.text_color(theme::text_primary()))
+                                    .child("⚙"),
+                            )
+                            .child(div().text_color(theme::text_muted()).child("▼")),
+                    );
+
+                if let Some(ref mut cx) = cx {
+                    srv_header = srv_header.on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |view, _, _window, cx| {
+                            view.open_server_settings_modal(cx);
+                        }),
+                    );
+                }
+
+                srv_header
+            })
             // 2. Channel categories and collapsible list
             .child(
                 div()
@@ -295,9 +325,85 @@ impl ChannelTreeView {
                         let unread_count = group.unread_count;
                         let cat_name = group.category_name.clone();
 
-                        let mut header = div()
-                            .id(ElementId::Name(format!("category_header_{}", group_idx).into()))
+                        let mut left_header = div()
                             .cursor_pointer()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap_1p5()
+                            .flex_1()
+                            // Chevron indicator (rotated when collapsed/expanded)
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::BOLD)
+                                    .text_color(theme::text_muted())
+                                    .child(if is_open { "▼" } else { "▶" }),
+                            )
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::BOLD)
+                                    .text_color(theme::text_muted())
+                                    .child(group.category_name.clone()),
+                            )
+                            // Unread badge when collapsed and unread_count > 0
+                            .children(if !is_open && unread_count > 0 {
+                                Some(
+                                    div()
+                                        .px_1p5()
+                                        .py_0p5()
+                                        .rounded_full()
+                                        .bg(theme::accent())
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::BOLD)
+                                        .text_color(theme::text_primary())
+                                        .child(unread_count.to_string()),
+                                )
+                            } else {
+                                None
+                            });
+
+                        let mut create_btn = div()
+                            .id(ElementId::Name(
+                                format!("create_channel_btn_{}", group_idx).into(),
+                            ))
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(16.0))
+                            .h(px(16.0))
+                            .rounded_sm()
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::BOLD)
+                            .text_color(theme::text_muted())
+                            .hover(|s| {
+                                s.text_color(theme::text_primary())
+                                    .bg(theme::bg_elevated())
+                            })
+                            .child("+");
+
+                        if let Some(ref mut cx) = cx {
+                            let cat_toggle = cat_name.clone();
+                            left_header = left_header.on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |view, _, _window, cx| {
+                                    view.toggle_channel_category(&cat_toggle, cx);
+                                }),
+                            );
+
+                            let cat_create = cat_name.clone();
+                            create_btn = create_btn.on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |view, _, _window, cx| {
+                                    view.open_create_channel_modal(&cat_create, cx);
+                                }),
+                            );
+                        }
+
+                        let header = div()
+                            .id(ElementId::Name(format!("category_header_{}", group_idx).into()))
                             .flex()
                             .flex_row()
                             .items_center()
@@ -306,77 +412,8 @@ impl ChannelTreeView {
                             .px_1()
                             .rounded_sm()
                             .hover(|s| s.bg(theme::bg_surface_4()))
-                            // Left side: chevron, title, unread count badge
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .items_center()
-                                    .gap_1p5()
-                                    // Chevron indicator (rotated when collapsed/expanded)
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(gpui::FontWeight::BOLD)
-                                            .text_color(theme::text_muted())
-                                            .child(if is_open { "▼" } else { "▶" }),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .font_weight(gpui::FontWeight::BOLD)
-                                            .text_color(theme::text_muted())
-                                            .child(group.category_name.clone()),
-                                    )
-                                    // Unread badge when collapsed and unread_count > 0
-                                    .children(if !is_open && unread_count > 0 {
-                                        Some(
-                                            div()
-                                                .px_1p5()
-                                                .py_0p5()
-                                                .rounded_full()
-                                                .bg(theme::accent())
-                                                .text_xs()
-                                                .font_weight(gpui::FontWeight::BOLD)
-                                                .text_color(theme::text_primary())
-                                                .child(unread_count.to_string()),
-                                        )
-                                    } else {
-                                        None
-                                    }),
-                            )
-                            // Right side: Admin '+' vector button for channel creation
-                            .child(
-                                div()
-                                    .id(ElementId::Name(
-                                        format!("create_channel_btn_{}", group_idx).into(),
-                                    ))
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(16.0))
-                                    .h(px(16.0))
-                                    .rounded_sm()
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::BOLD)
-                                    .text_color(theme::text_muted())
-                                    .hover(|s| {
-                                        s.text_color(theme::text_primary())
-                                            .bg(theme::bg_elevated())
-                                    })
-                                    .child("+"),
-                            );
-
-                        if let Some(ref mut cx) = cx {
-                            let cat_toggle = cat_name.clone();
-                            header = header.on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(move |view, _, _window, cx| {
-                                    view.toggle_channel_category(&cat_toggle, cx);
-                                }),
-                            );
-                        }
+                            .child(left_header)
+                            .child(create_btn);
 
                         let mut group_container = div()
                             .flex()
@@ -391,28 +428,12 @@ impl ChannelTreeView {
                                 let is_active = item.is_active;
                                 let channel_id = item.channel.id;
 
-                                let mut channel_btn = div()
-                                    .id(ElementId::Name(
-                                        format!("channel_item_{}", item.channel.id).into(),
-                                    ))
-                                    .cursor_pointer()
+                                let mut left_channel = div()
                                     .flex()
                                     .flex_row()
                                     .items_center()
                                     .gap_2()
-                                    .px_2()
-                                    .py_1()
-                                    .rounded_md()
-                                    .bg(if is_active {
-                                        theme::bg_elevated()
-                                    } else {
-                                        theme::bg_subsurface()
-                                    })
-                                    .text_color(if is_active {
-                                        theme::text_primary()
-                                    } else {
-                                        theme::text_secondary()
-                                    })
+                                    .flex_1()
                                     .child(
                                         div()
                                             .text_color(if is_active {
@@ -432,14 +453,65 @@ impl ChannelTreeView {
                                             .child(item.channel.name.clone()),
                                     );
 
+                                let mut edit_btn = div()
+                                    .id(ElementId::Name(
+                                        format!("edit_channel_btn_{}", channel_id).into(),
+                                    ))
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(16.0))
+                                    .h(px(16.0))
+                                    .rounded_sm()
+                                    .text_xs()
+                                    .text_color(theme::text_muted())
+                                    .hover(|s| {
+                                        s.text_color(theme::text_primary())
+                                            .bg(theme::bg_surface_4())
+                                    })
+                                    .child("⚙");
+
                                 if let Some(ref mut cx) = cx {
-                                    channel_btn = channel_btn.on_mouse_down(
+                                    left_channel = left_channel.on_mouse_down(
                                         MouseButton::Left,
                                         cx.listener(move |view, _, _window, cx| {
                                             view.on_channel_click(channel_id, cx);
                                         }),
                                     );
+
+                                    edit_btn = edit_btn.on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |view, _, _window, cx| {
+                                            view.open_edit_channel_modal(channel_id, cx);
+                                        }),
+                                    );
                                 }
+
+                                let channel_btn = div()
+                                    .id(ElementId::Name(
+                                        format!("channel_item_{}", item.channel.id).into(),
+                                    ))
+                                    .cursor_pointer()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .justify_between()
+                                    .px_2()
+                                    .py_1()
+                                    .rounded_md()
+                                    .bg(if is_active {
+                                        theme::bg_elevated()
+                                    } else {
+                                        theme::bg_subsurface()
+                                    })
+                                    .text_color(if is_active {
+                                        theme::text_primary()
+                                    } else {
+                                        theme::text_secondary()
+                                    })
+                                    .child(left_channel)
+                                    .child(edit_btn);
 
                                 div()
                                     .flex()
