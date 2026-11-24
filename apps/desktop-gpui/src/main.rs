@@ -1,3 +1,6 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::sync::Arc;
 
 use desktop_gpui::network::NetworkBridge;
@@ -85,8 +88,9 @@ fn main() {
         };
 
         let state_clone = initial_state.clone();
+        let bridge_clone = bridge.clone();
         cx.open_window(window_options, |_, cx| {
-            cx.new(|cx| WorkspaceView::new_in_context(state_clone, cx))
+            cx.new(|cx| WorkspaceView::new_with_bridge(state_clone, bridge_clone, cx))
         })
         .expect("failed to open window");
 

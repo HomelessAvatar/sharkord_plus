@@ -549,6 +549,7 @@ impl QuickSwitcherView {
         backdrop.child(
             div()
                 .id("quick_switcher_modal")
+                .on_mouse_down(MouseButton::Left, |_, _, _| {})
                 .flex()
                 .flex_col()
                 .w(px(560.0))
@@ -581,7 +582,11 @@ impl QuickSwitcherView {
                                 } else {
                                     theme::text_primary()
                                 })
-                                .child(query_text.to_string()),
+                                .child(if is_placeholder {
+                                    query_text.to_string()
+                                } else {
+                                    format!("{}|", query_text)
+                                }),
                         )
                         // Kbd badge for ESC shortcut
                         .child(

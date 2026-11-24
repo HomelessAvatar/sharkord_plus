@@ -237,6 +237,7 @@ impl UserProfilePopoverView {
 
         let mut card = div()
             .id("user_profile_card")
+            .on_mouse_down(MouseButton::Left, |_, _, _| {})
             .flex()
             .flex_col()
             .w(px(340.0))

@@ -579,6 +579,7 @@ impl UserSettingsModalView {
             .child(
                 div()
                     .id("user_settings_modal_window")
+                    .on_mouse_down(MouseButton::Left, |_, _, _| {})
                     .flex()
                     .flex_row()
                     .w(px(800.0))

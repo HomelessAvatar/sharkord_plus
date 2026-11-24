@@ -26,17 +26,21 @@ pub mod voice_context_menu;
 pub mod voice_stage;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use gpui::prelude::*;
 use gpui::*;
 use serde::{Deserialize, Serialize};
 use sharkord_core::types::Message;
+use sharkord_core::vault::{SavedServerSession, SessionVault};
+
+use crate::network::NetworkBridge;
 
 pub use audio_settings::{
     AudioSettingsState, AudioSettingsView, DEFAULT_INPUT_VOLUME, DEFAULT_OUTPUT_VOLUME,
     DEFAULT_VAD_THRESHOLD,
 };
-pub use auth_modal::{AuthModalState, AuthModalView, AuthTab, ServerConnectView};
+pub use auth_modal::{AuthInputField, AuthModalState, AuthModalView, AuthTab, ServerConnectView};
 pub use channel_admin_modal::{
     CreateChannelModalState, CreateChannelModalView, EditChannelModalState, EditChannelModalView,
 };
@@ -130,6 +134,7 @@ pub struct WorkspaceView {
     pub user_settings_modal: UserSettingsState,
     pub active_center_view: ActiveContentView,
     pub focus_handle: Option<FocusHandle>,
+    pub bridge: Option<Arc<NetworkBridge>>,
 }
 
 impl WorkspaceView {
@@ -203,6 +208,7 @@ impl WorkspaceView {
             user_settings_modal,
             active_center_view,
             focus_handle: None,
+            bridge: None,
         };
 
         workspace.sync_views();
@@ -213,6 +219,18 @@ impl WorkspaceView {
     pub fn new_in_context(state: AppState, cx: &mut Context<Self>) -> Self {
         let mut workspace = Self::new(state);
         workspace.focus_handle = Some(cx.focus_handle());
+        workspace
+    }
+
+    /// Creates a new `WorkspaceView` in a GPUI context with an active `FocusHandle` and optional `NetworkBridge`.
+    pub fn new_with_bridge(
+        state: AppState,
+        bridge: Option<Arc<NetworkBridge>>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut workspace = Self::new(state);
+        workspace.focus_handle = Some(cx.focus_handle());
+        workspace.bridge = bridge;
         workspace
     }
 
@@ -741,6 +759,406 @@ impl WorkspaceView {
         cx.notify();
     }
 
+    /// Dispatches all window-level keystrokes to the focused modal or active input view.
+    pub fn handle_global_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.state.is_auth_modal_open {
+            self.on_auth_key_down(event, window, cx);
+            return;
+        }
+
+        if self.state.is_quick_switcher_open {
+            self.on_quick_switcher_key_down(event, cx);
+            return;
+        }
+
+        if self.create_channel_modal.is_open {
+            self.on_create_channel_key_down(event, cx);
+            return;
+        }
+
+        if self.edit_channel_modal.is_open {
+            self.on_edit_channel_key_down(event, cx);
+            return;
+        }
+
+        // Global shortcut: Ctrl+K or Cmd+K toggles Quick Switcher
+        let key = event.keystroke.key.as_str();
+        if (key == "k" || key == "K")
+            && (event.keystroke.modifiers.control || event.keystroke.modifiers.platform)
+        {
+            self.toggle_quick_switcher();
+            cx.notify();
+            return;
+        }
+
+        // If in chat, route to composer key down
+        if self.active_center_view == ActiveContentView::Chat {
+            self.on_composer_key_down(event, cx);
+        }
+    }
+
+    /// Interactive handler for keyboard typing inside the Authentication and Server Connect modal.
+    pub fn on_auth_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let key = event.keystroke.key.as_str();
+
+        if key == "enter" {
+            self.submit_auth(cx);
+            return;
+        }
+
+        if key == "tab" {
+            self.auth_modal.active_field = match self.auth_modal.active_tab {
+                AuthTab::Login => match self.auth_modal.active_field {
+                    AuthInputField::Identity => AuthInputField::Password,
+                    _ => AuthInputField::Identity,
+                },
+                AuthTab::Register => match self.auth_modal.active_field {
+                    AuthInputField::Identity => AuthInputField::Email,
+                    AuthInputField::Email => AuthInputField::Password,
+                    _ => AuthInputField::Identity,
+                },
+                AuthTab::ServerConnect => AuthInputField::ServerUrl,
+            };
+            self.auth_modal.clear_error();
+            cx.notify();
+            return;
+        }
+
+        if key == "backspace" {
+            match self.auth_modal.active_field {
+                AuthInputField::ServerUrl => {
+                    self.auth_modal.server_url.pop();
+                }
+                AuthInputField::Identity => {
+                    self.auth_modal.identity.pop();
+                }
+                AuthInputField::Password => {
+                    self.auth_modal.password.pop();
+                }
+                AuthInputField::Email => {
+                    self.auth_modal.email.pop();
+                }
+            }
+            self.auth_modal.clear_error();
+            cx.notify();
+            return;
+        }
+
+        let input_char = if let Some(ref char_str) = event.keystroke.key_char {
+            Some(char_str.as_str())
+        } else if key.len() == 1 {
+            Some(key)
+        } else {
+            None
+        };
+
+        if let Some(s) = input_char {
+            if !event.keystroke.modifiers.control && !event.keystroke.modifiers.alt {
+                match self.auth_modal.active_field {
+                    AuthInputField::ServerUrl => {
+                        self.auth_modal.server_url.push_str(s);
+                    }
+                    AuthInputField::Identity => {
+                        self.auth_modal.identity.push_str(s);
+                    }
+                    AuthInputField::Password => {
+                        self.auth_modal.password.push_str(s);
+                    }
+                    AuthInputField::Email => {
+                        self.auth_modal.email.push_str(s);
+                    }
+                }
+                self.auth_modal.clear_error();
+                cx.notify();
+            }
+        }
+    }
+
+    /// Submits authentication or server connection based on the active tab.
+    pub fn submit_auth(&mut self, cx: &mut Context<Self>) {
+        if self.auth_modal.is_loading {
+            return;
+        }
+
+        match self.auth_modal.active_tab {
+            AuthTab::ServerConnect => {
+                let url = self.auth_modal.server_url.trim().to_string();
+                if url.is_empty() {
+                    self.auth_modal.set_error("Server URL cannot be empty");
+                    cx.notify();
+                    return;
+                }
+                self.auth_modal.set_tab(AuthTab::Login);
+                self.auth_modal.active_field = AuthInputField::Identity;
+                self.auth_modal.clear_error();
+                cx.notify();
+            }
+            AuthTab::Login | AuthTab::Register => {
+                let server_url = self.auth_modal.server_url.trim().to_string();
+                let identity = self.auth_modal.identity.trim().to_string();
+                let password = self.auth_modal.password.clone();
+                let remember = self.auth_modal.remember_session;
+
+                if server_url.is_empty() {
+                    self.auth_modal.set_error("Server URL cannot be empty");
+                    cx.notify();
+                    return;
+                }
+                if identity.is_empty() {
+                    self.auth_modal.set_error("Username or email cannot be empty");
+                    cx.notify();
+                    return;
+                }
+                if password.is_empty() {
+                    self.auth_modal.set_error("Password cannot be empty");
+                    cx.notify();
+                    return;
+                }
+
+                self.auth_modal.is_loading = true;
+                self.auth_modal.clear_error();
+                cx.notify();
+
+                let bridge = self.bridge.clone();
+                if let Some(bridge_arc) = bridge {
+                    let bridge_task = bridge_arc.clone();
+                    cx.spawn(move |this: gpui::WeakEntity<Self>, cx: &mut gpui::AsyncApp| {
+                        let async_app = cx.clone();
+                        async move {
+                            let res = bridge_task
+                                .handle()
+                                .spawn(async move {
+                                    let login_res = bridge_task
+                                        .connect_and_login(&server_url, &identity, &password)
+                                        .await;
+                                    match login_res {
+                                        Ok(user) => {
+                                            let bdata = bridge_task.bootstrap().await.ok();
+                                            let token = bridge_task
+                                                .client()
+                                                .and_then(|c| c.session_token().map(|t| t.to_string()));
+                                            Ok((user, bdata, token, server_url, identity, remember))
+                                        }
+                                        Err(err) => Err(err.to_string()),
+                                    }
+                                })
+                                .await;
+
+                            let _ = async_app.update(|cx| {
+                                let _ = this.update(cx, |view, cx| {
+                                    view.auth_modal.is_loading = false;
+                                    match res {
+                                        Ok(Ok((user, bdata, token, server_url, username, remember))) => {
+                                            view.state.is_auth_modal_open = false;
+                                            view.state.is_connecting = false;
+                                            view.state.current_user = Some(user.clone());
+
+                                            if let Some(ref b) = bdata {
+                                                view.state.channels = b.channels.clone();
+                                                view.state.server_settings = Some(b.settings.clone());
+                                                if let Some(ch) = b.channels.first() {
+                                                    view.state.active_channel_id = Some(ch.id);
+                                                    view.state.messages = b.initial_messages.clone();
+                                                }
+                                            }
+
+                                            if remember {
+                                                if let Some(token_str) = token {
+                                                    let mut vault = SessionVault::default();
+                                                    let _ = vault.load();
+                                                    let saved = SavedServerSession {
+                                                        server_id: "default".to_string(),
+                                                        server_name: "Sharkord".to_string(),
+                                                        server_url,
+                                                        token: token_str,
+                                                        user_id: user.id,
+                                                        username: username.clone(),
+                                                        display_name: username,
+                                                        avatar_url: None,
+                                                        last_accessed_at: std::time::SystemTime::now()
+                                                            .duration_since(std::time::UNIX_EPOCH)
+                                                            .map(|d| d.as_secs())
+                                                            .unwrap_or(0),
+                                                    };
+                                                    let _ = vault.add_or_update(saved, true);
+                                                }
+                                            }
+
+                                            view.sync_views();
+                                            cx.notify();
+                                        }
+                                        Ok(Err(err_msg)) => {
+                                            view.auth_modal.set_error(err_msg);
+                                            cx.notify();
+                                        }
+                                        Err(join_err) => {
+                                            view.auth_modal.set_error(format!("Authentication task error: {join_err}"));
+                                            cx.notify();
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                    })
+                    .detach();
+                } else {
+                    self.auth_modal.is_loading = false;
+                    self.auth_modal.set_error("Network connection bridge not initialized");
+                    cx.notify();
+                }
+            }
+        }
+    }
+
+    /// Interactive handler for keyboard typing inside the Quick Switcher command palette.
+    pub fn on_quick_switcher_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        cx: &mut Context<Self>,
+    ) {
+        let key = event.keystroke.key.as_str();
+        if key == "escape" {
+            self.state.is_quick_switcher_open = false;
+            self.quick_switcher.close();
+            cx.notify();
+            return;
+        }
+
+        if key == "up" {
+            self.quick_switcher.select_prev();
+            cx.notify();
+            return;
+        }
+
+        if key == "down" {
+            self.quick_switcher.select_next();
+            cx.notify();
+            return;
+        }
+
+        if key == "enter" {
+            if let Some(item) = self.quick_switcher.selected_item() {
+                self.select_quick_switcher_item(item, cx);
+            }
+            return;
+        }
+
+        if key == "backspace" {
+            self.quick_switcher.query.pop();
+            self.quick_switcher.selected_index = 0;
+            cx.notify();
+            return;
+        }
+
+        let input_char = if let Some(ref char_str) = event.keystroke.key_char {
+            Some(char_str.as_str())
+        } else if key.len() == 1 {
+            Some(key)
+        } else {
+            None
+        };
+
+        if let Some(s) = input_char {
+            if !event.keystroke.modifiers.control && !event.keystroke.modifiers.alt {
+                self.quick_switcher.query.push_str(s);
+                self.quick_switcher.selected_index = 0;
+                cx.notify();
+            }
+        }
+    }
+
+    /// Interactive handler for keyboard typing inside the Create Channel dialog.
+    pub fn on_create_channel_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        cx: &mut Context<Self>,
+    ) {
+        let key = event.keystroke.key.as_str();
+        if key == "escape" {
+            self.close_create_channel();
+            cx.notify();
+            return;
+        }
+
+        if key == "enter" {
+            self.submit_create_channel();
+            cx.notify();
+            return;
+        }
+
+        if key == "backspace" {
+            self.create_channel_modal.name.pop();
+            cx.notify();
+            return;
+        }
+
+        let input_char = if let Some(ref char_str) = event.keystroke.key_char {
+            Some(char_str.as_str())
+        } else if key.len() == 1 {
+            Some(key)
+        } else {
+            None
+        };
+
+        if let Some(s) = input_char {
+            if !event.keystroke.modifiers.control && !event.keystroke.modifiers.alt {
+                self.create_channel_modal.name.push_str(s);
+                cx.notify();
+            }
+        }
+    }
+
+    /// Interactive handler for keyboard typing inside the Edit Channel dialog.
+    pub fn on_edit_channel_key_down(
+        &mut self,
+        event: &KeyDownEvent,
+        cx: &mut Context<Self>,
+    ) {
+        let key = event.keystroke.key.as_str();
+        if key == "escape" {
+            self.close_edit_channel();
+            cx.notify();
+            return;
+        }
+
+        if key == "enter" {
+            self.submit_edit_channel();
+            cx.notify();
+            return;
+        }
+
+        if key == "backspace" {
+            self.edit_channel_modal.name.pop();
+            cx.notify();
+            return;
+        }
+
+        let input_char = if let Some(ref char_str) = event.keystroke.key_char {
+            Some(char_str.as_str())
+        } else if key.len() == 1 {
+            Some(key)
+        } else {
+            None
+        };
+
+        if let Some(s) = input_char {
+            if !event.keystroke.modifiers.control && !event.keystroke.modifiers.alt {
+                self.edit_channel_modal.name.push_str(s);
+                cx.notify();
+            }
+        }
+    }
+
     /// Opens the Create Channel modal for a category.
     pub fn open_create_channel(&mut self, category: impl Into<String>) {
         self.create_channel_modal.open(category);
@@ -1235,10 +1653,13 @@ pub fn render_gear_icon() -> impl IntoElement {
 }
 
 impl Render for WorkspaceView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.focus_handle.is_none() {
-            self.focus_handle = Some(cx.focus_handle());
-        }
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let handle = self.focus_handle.clone().unwrap_or_else(|| {
+            let h = cx.focus_handle();
+            self.focus_handle = Some(h.clone());
+            h
+        });
+        window.focus(&handle);
 
         let voice_bar_view = VoiceBarView::new(self.voice_bar.clone());
 
@@ -1264,6 +1685,11 @@ impl Render for WorkspaceView {
         };
 
         let mut root = div()
+            .id("workspace_root")
+            .track_focus(&handle)
+            .on_key_down(cx.listener(|view, event: &KeyDownEvent, window, cx| {
+                view.handle_global_key_down(event, window, cx);
+            }))
             .relative()
             .flex()
             .flex_row()
@@ -1321,7 +1747,10 @@ impl Render for WorkspaceView {
         }
 
         if self.state.is_auth_modal_open {
-            root = root.child(AuthModalView::new(self.auth_modal.clone()).render_element());
+            root = root.child(
+                AuthModalView::new(self.auth_modal.clone())
+                    .render_interactive(self.focus_handle.as_ref(), cx),
+            );
         }
 
         if self.user_profile_modal.is_open {

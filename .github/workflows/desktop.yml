@@ -86,7 +86,7 @@ jobs:
           mkdir -p dist-desktop
           find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.19"
+          [ -z "$VERSION" ] && VERSION="0.3.20"
           if [ -f dist-desktop/sharkord-tauri.exe ]; then
             mv dist-desktop/sharkord-tauri.exe "dist-desktop/VibeShark_${VERSION}_x64-portable.exe"
           fi

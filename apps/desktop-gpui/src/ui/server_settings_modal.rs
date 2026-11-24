@@ -816,6 +816,8 @@ impl ServerSettingsModalView {
         };
 
         let dialog_card = div()
+            .id("server_settings_modal_card")
+            .on_mouse_down(MouseButton::Left, |_, _, _| {})
             .flex()
             .flex_row()
             .w(px(760.0))

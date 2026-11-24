@@ -1,5 +1,7 @@
 use desktop_gpui::state::AppState;
-use desktop_gpui::ui::auth_modal::{AuthModalState, AuthModalView, AuthTab, ServerConnectView};
+use desktop_gpui::ui::auth_modal::{
+    AuthInputField, AuthModalState, AuthModalView, AuthTab, ServerConnectView,
+};
 use desktop_gpui::ui::WorkspaceView;
 use sharkord_core::types::{Channel, ChannelType, ServerSettings};
 
@@ -7,8 +9,20 @@ use sharkord_core::types::{Channel, ChannelType, ServerSettings};
 fn test_auth_modal_tabs_and_error_handling() {
     let mut state = AuthModalState::new();
     assert_eq!(state.active_tab, AuthTab::Login);
+    assert_eq!(state.active_field, AuthInputField::Identity);
+
     state.set_tab(AuthTab::Register);
     assert_eq!(state.active_tab, AuthTab::Register);
+
+    state.set_active_field(AuthInputField::Password);
+    assert_eq!(state.active_field, AuthInputField::Password);
+
+    state.set_active_field(AuthInputField::Email);
+    assert_eq!(state.active_field, AuthInputField::Email);
+
+    state.set_active_field(AuthInputField::ServerUrl);
+    assert_eq!(state.active_field, AuthInputField::ServerUrl);
+
     state.set_error("Invalid credentials");
     assert_eq!(state.error_message.as_deref(), Some("Invalid credentials"));
 }

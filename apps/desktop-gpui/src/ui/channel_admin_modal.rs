@@ -351,6 +351,8 @@ impl CreateChannelModalView {
         };
 
         let dialog_card = div()
+            .id("create_channel_dialog_card")
+            .on_mouse_down(MouseButton::Left, |_, _, _| {})
             .flex()
             .flex_col()
             .w(px(460.0))
@@ -774,6 +776,8 @@ impl EditChannelModalView {
         };
 
         let dialog_card = div()
+            .id("create_channel_dialog_card")
+            .on_mouse_down(MouseButton::Left, |_, _, _| {})
             .flex()
             .flex_col()
             .w(px(480.0))
