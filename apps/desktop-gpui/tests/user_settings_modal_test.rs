@@ -31,6 +31,12 @@ fn test_user_settings_tab_navigation() {
     state.set_tab(SettingsTab::Notifications);
     assert_eq!(state.active_tab, SettingsTab::Notifications);
 
+    state.set_tab(SettingsTab::Desktop);
+    assert_eq!(state.active_tab, SettingsTab::Desktop);
+    assert_eq!(SettingsTab::Desktop.label(), "Desktop");
+    assert_eq!(SettingsTab::Desktop.icon(), "🖥");
+    assert!(SettingsTab::Desktop.description().contains("GPU hardware acceleration"));
+
     state.close();
     assert!(!state.is_open);
 }
@@ -67,6 +73,40 @@ fn test_user_settings_audio_and_input_mode() {
 }
 
 #[test]
+fn test_desktop_settings_toggles_and_diagnostics() {
+    let mut state = UserSettingsState::new();
+    assert!(!state.desktop_settings.auto_start);
+    assert!(state.desktop_settings.close_to_tray);
+    assert!(!state.desktop_settings.start_to_tray);
+    assert!(state.desktop_settings.dynamic_tray_icon);
+    assert!(state.desktop_settings.gpu_encoding);
+
+    state.toggle_auto_start();
+    assert!(state.desktop_settings.auto_start);
+
+    state.toggle_close_to_tray();
+    assert!(!state.desktop_settings.close_to_tray);
+
+    state.toggle_start_to_tray();
+    assert!(state.desktop_settings.start_to_tray);
+
+    state.toggle_dynamic_tray_icon();
+    assert!(!state.desktop_settings.dynamic_tray_icon);
+
+    state.toggle_gpu_encoding();
+    assert!(!state.desktop_settings.gpu_encoding);
+
+    assert!(!state.app_folder.is_empty());
+    assert!(!state.logs_folder.is_empty());
+    assert!(state.logs_folder.ends_with("logs"));
+
+    assert!(!state.diagnostics.version.is_empty());
+    assert!(!state.diagnostics.platform.is_empty());
+    assert!(!state.diagnostics.arch.is_empty());
+    assert!(!state.diagnostics.webview_version.is_empty());
+}
+
+#[test]
 fn test_tray_menu_state_toggles() {
     let mut tray = TrayMenuState::new();
     assert!(!tray.is_muted);
@@ -98,6 +138,15 @@ fn test_tray_menu_state_toggles() {
     assert!(desktop_tray.state.is_deafened);
     desktop_tray.dispatch_action(TrayAction::FocusWindow);
     assert!(desktop_tray.is_window_focused);
+    desktop_tray.dispatch_action(TrayAction::OpenDesktopSettings);
+    assert!(desktop_tray.is_settings_open);
+
+    // Test dynamic tray tooltip
+    desktop_tray.state.set_unread_count(3);
+    assert_eq!(desktop_tray.tooltip(), "VibeShark (3 unread)");
+    desktop_tray.desktop_settings.dynamic_tray_icon = false;
+    assert_eq!(desktop_tray.tooltip(), "VibeShark");
+
     desktop_tray.dispatch_action(TrayAction::Quit);
     assert!(desktop_tray.has_quit);
 }
@@ -113,6 +162,7 @@ fn test_user_settings_modal_view_rendering() {
         SettingsTab::Appearance,
         SettingsTab::Keybinds,
         SettingsTab::Notifications,
+        SettingsTab::Desktop,
     ] {
         state.set_tab(tab);
         let view = UserSettingsModalView::new(state.clone());
@@ -129,6 +179,9 @@ fn test_workspace_view_user_settings_integration() {
     workspace.open_user_settings();
     assert!(workspace.user_settings_modal.is_open);
     assert_eq!(workspace.user_settings_modal.active_tab, SettingsTab::Account);
+
+    workspace.open_desktop_settings_mock();
+    assert_eq!(workspace.user_settings_modal.active_tab, SettingsTab::Desktop);
 
     workspace.close_user_settings();
     assert!(!workspace.user_settings_modal.is_open);

@@ -22,7 +22,8 @@ fn main() {
     let _ = vault.load();
 
     let mut initial_state = AppState::new();
-    let _tray = DesktopTray::new();
+    initial_state.desktop_settings = vault.desktop_settings.clone();
+    let _tray = DesktopTray::with_settings(vault.desktop_settings.clone());
 
     let bridge = match NetworkBridge::new() {
         Ok(b) => Some(Arc::new(b)),

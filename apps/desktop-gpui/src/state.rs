@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sharkord_core::protocol::events::{EventType, SubscriptionEvent};
 use sharkord_core::types::{Channel, Message, MessageReaction, ServerSettings, User};
 use sharkord_core::updater::UpdateStatus;
-use sharkord_core::vault::SavedServerSession;
+use sharkord_core::vault::{DesktopSettings, SavedServerSession};
 
 use crate::ui::pip_player::PipPlayerState;
 use crate::ui::voice_bar::{VoiceBarState, VoiceConnectionState};
@@ -35,6 +35,7 @@ pub struct AppState {
     pub is_connecting: bool,
     pub is_auth_modal_open: bool,
     pub typing_users: HashMap<u64, HashSet<u64>>,
+    pub desktop_settings: DesktopSettings,
 }
 
 impl Default for AppState {
@@ -60,11 +61,16 @@ impl Default for AppState {
             is_connecting: false,
             is_auth_modal_open: false,
             typing_users: HashMap::new(),
+            desktop_settings: DesktopSettings::default(),
         }
     }
 }
 
 impl AppState {
+    /// Updates desktop settings configuration.
+    pub fn update_desktop_settings(&mut self, settings: DesktopSettings) {
+        self.desktop_settings = settings;
+    }
     /// Creates a new `AppState` instance with default settings.
     pub fn new() -> Self {
         Self::default()

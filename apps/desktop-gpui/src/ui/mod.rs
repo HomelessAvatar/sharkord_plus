@@ -173,6 +173,7 @@ impl WorkspaceView {
         server_settings_modal.set_members(state.users.clone());
 
         let mut user_settings_modal = UserSettingsState::new();
+        user_settings_modal.desktop_settings = state.desktop_settings.clone();
         if let Some(ref u) = state.current_user {
             user_settings_modal.set_username(&u.name);
             user_settings_modal.set_display_name(&u.name);
@@ -1332,6 +1333,54 @@ impl WorkspaceView {
     /// Interactive handler to open the User Settings modal.
     pub fn open_user_settings_modal(&mut self, cx: &mut Context<Self>) {
         self.open_user_settings();
+        cx.notify();
+    }
+
+    /// Interactive handler to open User Settings directly on the Desktop tab (v0.3.21).
+    pub fn open_desktop_settings(&mut self, cx: &mut Context<Self>) {
+        self.open_user_settings();
+        self.user_settings_modal.set_tab(SettingsTab::Desktop);
+        cx.notify();
+    }
+
+    /// Non-interactive mock helper to open Desktop settings for unit tests.
+    pub fn open_desktop_settings_mock(&mut self) {
+        self.open_user_settings();
+        self.user_settings_modal.set_tab(SettingsTab::Desktop);
+    }
+
+    /// Toggles desktop auto-start and syncs state.
+    pub fn toggle_desktop_auto_start(&mut self, cx: &mut Context<Self>) {
+        self.user_settings_modal.toggle_auto_start();
+        self.state.desktop_settings = self.user_settings_modal.desktop_settings.clone();
+        cx.notify();
+    }
+
+    /// Toggles desktop close-to-tray and syncs state.
+    pub fn toggle_desktop_close_to_tray(&mut self, cx: &mut Context<Self>) {
+        self.user_settings_modal.toggle_close_to_tray();
+        self.state.desktop_settings = self.user_settings_modal.desktop_settings.clone();
+        cx.notify();
+    }
+
+    /// Toggles desktop start-to-tray and syncs state.
+    pub fn toggle_desktop_start_to_tray(&mut self, cx: &mut Context<Self>) {
+        self.user_settings_modal.toggle_start_to_tray();
+        self.state.desktop_settings = self.user_settings_modal.desktop_settings.clone();
+        cx.notify();
+    }
+
+    /// Toggles dynamic system tray icon and syncs state.
+    pub fn toggle_desktop_dynamic_tray_icon(&mut self, cx: &mut Context<Self>) {
+        self.user_settings_modal.toggle_dynamic_tray_icon();
+        self.state.desktop_settings = self.user_settings_modal.desktop_settings.clone();
+        cx.notify();
+    }
+
+    /// Toggles GPU hardware accelerated video encoding / NVENC AV1 and syncs state.
+    pub fn toggle_desktop_gpu_encoding(&mut self, cx: &mut Context<Self>) {
+        self.user_settings_modal.toggle_gpu_encoding();
+        self.state.desktop_settings = self.user_settings_modal.desktop_settings.clone();
         cx.notify();
     }
 

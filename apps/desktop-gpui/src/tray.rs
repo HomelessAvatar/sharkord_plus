@@ -1,6 +1,7 @@
 //! System tray menu state and action dispatcher for Sharkord desktop client.
 
 use serde::{Deserialize, Serialize};
+use sharkord_core::vault::DesktopSettings;
 
 /// System tray menu actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -9,6 +10,7 @@ pub enum TrayAction {
     ToggleDeafen,
     DisconnectVoice,
     CheckForUpdates,
+    OpenDesktopSettings,
     FocusWindow,
     Quit,
 }
@@ -21,6 +23,7 @@ impl TrayAction {
             TrayAction::ToggleDeafen => "Toggle Deafen",
             TrayAction::DisconnectVoice => "Disconnect Voice",
             TrayAction::CheckForUpdates => "Check for Updates...",
+            TrayAction::OpenDesktopSettings => "Desktop Settings...",
             TrayAction::FocusWindow => "Open VibeShark",
             TrayAction::Quit => "Quit VibeShark",
         }
@@ -133,6 +136,13 @@ impl TrayMenuState {
                 action: TrayAction::CheckForUpdates,
             },
             TrayMenuItem {
+                id: "desktop_settings".to_string(),
+                label: "Desktop Settings...".to_string(),
+                enabled: true,
+                checked: None,
+                action: TrayAction::OpenDesktopSettings,
+            },
+            TrayMenuItem {
                 id: "quit".to_string(),
                 label: "Quit VibeShark".to_string(),
                 enabled: true,
@@ -147,7 +157,9 @@ impl TrayMenuState {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DesktopTray {
     pub state: TrayMenuState,
+    pub desktop_settings: DesktopSettings,
     pub is_window_focused: bool,
+    pub is_settings_open: bool,
     pub has_quit: bool,
 }
 
@@ -156,7 +168,20 @@ impl DesktopTray {
     pub fn new() -> Self {
         Self {
             state: TrayMenuState::new(),
+            desktop_settings: DesktopSettings::default(),
             is_window_focused: false,
+            is_settings_open: false,
+            has_quit: false,
+        }
+    }
+
+    /// Creates a `DesktopTray` initialized with the given `DesktopSettings`.
+    pub fn with_settings(desktop_settings: DesktopSettings) -> Self {
+        Self {
+            state: TrayMenuState::new(),
+            desktop_settings,
+            is_window_focused: false,
+            is_settings_open: false,
             has_quit: false,
         }
     }
@@ -168,13 +193,20 @@ impl DesktopTray {
             TrayAction::ToggleDeafen => self.state.toggle_deafen(),
             TrayAction::DisconnectVoice => self.state.set_connected(false),
             TrayAction::CheckForUpdates => {}
+            TrayAction::OpenDesktopSettings => {
+                self.is_settings_open = true;
+                self.is_window_focused = true;
+            }
             TrayAction::FocusWindow => self.is_window_focused = true,
             TrayAction::Quit => self.has_quit = true,
         }
     }
 
-    /// Generates tooltip text for the system tray icon.
+    /// Generates tooltip text for the system tray icon, respecting `dynamic_tray_icon`.
     pub fn tooltip(&self) -> String {
+        if !self.desktop_settings.dynamic_tray_icon {
+            return "VibeShark".to_string();
+        }
         if self.state.unread_count > 0 {
             format!("VibeShark ({} unread)", self.state.unread_count)
         } else if self.state.is_connected {

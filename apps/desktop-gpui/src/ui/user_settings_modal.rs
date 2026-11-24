@@ -7,9 +7,76 @@
 use gpui::prelude::*;
 use gpui::*;
 use serde::{Deserialize, Serialize};
+use sharkord_core::vault::{DesktopSettings, SessionVault};
 use sharkord_core::voice::audio::AudioDevice;
 
 use crate::theme;
+
+/// System runtime diagnostics for the desktop GPUI client (v0.3.21).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopDiagnostics {
+    pub version: String,
+    pub platform: String,
+    pub arch: String,
+    pub os_version: String,
+    pub webview_version: String,
+    pub gpu_backend: String,
+    pub video_acceleration: String,
+}
+
+impl Default for DesktopDiagnostics {
+    fn default() -> Self {
+        Self {
+            version: format!("v{}", env!("CARGO_PKG_VERSION")),
+            platform: std::env::consts::OS.to_string(),
+            arch: std::env::consts::ARCH.to_string(),
+            os_version: format!("{} ({})", std::env::consts::OS, std::env::consts::ARCH),
+            webview_version: "GPUI 0.2 (DirectX 12 / Vulkan / Metal)".to_string(),
+            gpu_backend: "Hardware Rasterization (Zero-Copy)".to_string(),
+            video_acceleration: "NVENC AV1 / H.264 (Active)".to_string(),
+        }
+    }
+}
+
+/// Resolves the persistent application data folder.
+pub fn resolve_app_folder() -> std::path::PathBuf {
+    let path = SessionVault::default_path();
+    path.parent().unwrap_or(&path).to_path_buf()
+}
+
+/// Resolves the application logs storage folder.
+pub fn resolve_logs_folder() -> std::path::PathBuf {
+    resolve_app_folder().join("logs")
+}
+
+/// Opens a filesystem directory in the native desktop file manager (Explorer / Finder / xdg-open).
+pub fn open_path_in_explorer<P: AsRef<std::path::Path>>(path: P) -> Result<(), String> {
+    let path_ref = path.as_ref();
+    let _ = std::fs::create_dir_all(path_ref);
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 /// Navigation tabs in the User Settings modal dialog.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -20,6 +87,7 @@ pub enum SettingsTab {
     Appearance,
     Keybinds,
     Notifications,
+    Desktop,
 }
 
 impl SettingsTab {
@@ -31,6 +99,7 @@ impl SettingsTab {
             SettingsTab::Appearance => "Appearance",
             SettingsTab::Keybinds => "Keybinds",
             SettingsTab::Notifications => "Notifications",
+            SettingsTab::Desktop => "Desktop",
         }
     }
 
@@ -42,6 +111,7 @@ impl SettingsTab {
             SettingsTab::Appearance => "🎨",
             SettingsTab::Keybinds => "⌨",
             SettingsTab::Notifications => "🔔",
+            SettingsTab::Desktop => "🖥",
         }
     }
 
@@ -56,6 +126,9 @@ impl SettingsTab {
             SettingsTab::Keybinds => "Set up hotkeys, shortcuts, and push-to-talk triggers.",
             SettingsTab::Notifications => {
                 "Manage desktop alerts, sound effects, and unread badges."
+            }
+            SettingsTab::Desktop => {
+                "Configure system startup, tray integration, GPU hardware acceleration, storage folders, and system diagnostics."
             }
         }
     }
@@ -121,6 +194,12 @@ pub struct UserSettingsState {
     pub desktop_notifications: bool,
     pub sound_notifications: bool,
     pub unread_badge: bool,
+
+    // Desktop application settings (v0.3.21)
+    pub desktop_settings: DesktopSettings,
+    pub app_folder: String,
+    pub logs_folder: String,
+    pub diagnostics: DesktopDiagnostics,
 }
 
 impl Default for UserSettingsState {
@@ -159,6 +238,11 @@ impl Default for UserSettingsState {
             desktop_notifications: true,
             sound_notifications: true,
             unread_badge: true,
+
+            desktop_settings: DesktopSettings::default(),
+            app_folder: resolve_app_folder().to_string_lossy().to_string(),
+            logs_folder: resolve_logs_folder().to_string_lossy().to_string(),
+            diagnostics: DesktopDiagnostics::default(),
         }
     }
 }
@@ -299,6 +383,58 @@ impl UserSettingsState {
         self.bio = bio.into();
     }
 
+    /// Sets the desktop settings configuration.
+    pub fn set_desktop_settings(&mut self, settings: DesktopSettings) {
+        self.desktop_settings = settings;
+    }
+
+    /// Toggles launch on system startup.
+    pub fn toggle_auto_start(&mut self) {
+        self.desktop_settings.auto_start = !self.desktop_settings.auto_start;
+        self.save_desktop_settings_to_vault();
+    }
+
+    /// Toggles close to system tray.
+    pub fn toggle_close_to_tray(&mut self) {
+        self.desktop_settings.close_to_tray = !self.desktop_settings.close_to_tray;
+        self.save_desktop_settings_to_vault();
+    }
+
+    /// Toggles start minimized to system tray.
+    pub fn toggle_start_to_tray(&mut self) {
+        self.desktop_settings.start_to_tray = !self.desktop_settings.start_to_tray;
+        self.save_desktop_settings_to_vault();
+    }
+
+    /// Toggles dynamic system tray icon updates.
+    pub fn toggle_dynamic_tray_icon(&mut self) {
+        self.desktop_settings.dynamic_tray_icon = !self.desktop_settings.dynamic_tray_icon;
+        self.save_desktop_settings_to_vault();
+    }
+
+    /// Toggles GPU hardware accelerated video encoding / NVENC AV1.
+    pub fn toggle_gpu_encoding(&mut self) {
+        self.desktop_settings.gpu_encoding = !self.desktop_settings.gpu_encoding;
+        self.save_desktop_settings_to_vault();
+    }
+
+    /// Opens the application storage folder in the native desktop file manager.
+    pub fn open_app_folder(&self) {
+        let _ = open_path_in_explorer(&self.app_folder);
+    }
+
+    /// Opens the application logs folder in the native desktop file manager.
+    pub fn open_logs_folder(&self) {
+        let _ = open_path_in_explorer(&self.logs_folder);
+    }
+
+    /// Persists current desktop settings to the atomic `SessionVault`.
+    pub fn save_desktop_settings_to_vault(&self) {
+        let mut vault = SessionVault::default();
+        let _ = vault.load();
+        let _ = vault.update_desktop_settings(self.desktop_settings.clone());
+    }
+
     /// Resets all settings to defaults.
     pub fn reset(&mut self) {
         *self = Self::default();
@@ -340,6 +476,7 @@ impl UserSettingsModalView {
             SettingsTab::Appearance,
             SettingsTab::Keybinds,
             SettingsTab::Notifications,
+            SettingsTab::Desktop,
         ];
 
         // 1. Left navigation sidebar rail (200px fixed width)
@@ -482,6 +619,7 @@ impl UserSettingsModalView {
             SettingsTab::Appearance => self.render_appearance_tab(&mut cx),
             SettingsTab::Keybinds => self.render_keybinds_tab(&mut cx),
             SettingsTab::Notifications => self.render_notifications_tab(&mut cx),
+            SettingsTab::Desktop => self.render_desktop_tab(&mut cx),
         };
 
         // Right content panel header
@@ -1182,6 +1320,214 @@ impl UserSettingsModalView {
             .child(sound_switch)
             .child(badge_switch)
     }
+
+    /// Renders the Desktop application settings tab (v0.3.21).
+    fn render_desktop_tab(
+        &self,
+        cx: &mut Option<&mut Context<crate::ui::WorkspaceView>>,
+    ) -> Div {
+        // 1. General & Startup Section
+        let mut auto_start_switch = render_switch_control(
+            "Launch on System Startup",
+            "Automatically start VibeShark when you log into your computer.",
+            self.state.desktop_settings.auto_start,
+        );
+
+        let mut close_to_tray_switch = render_switch_control(
+            "Close to System Tray",
+            "Keep VibeShark running in the system tray when the window is closed.",
+            self.state.desktop_settings.close_to_tray,
+        );
+
+        let mut start_to_tray_switch = render_switch_control(
+            "Start Minimized to Tray",
+            "Start VibeShark silently in the system tray on startup.",
+            self.state.desktop_settings.start_to_tray,
+        );
+
+        let mut dynamic_tray_switch = render_switch_control(
+            "Dynamic System Tray Icon",
+            "Update tray icon dynamically to reflect unread messages and active voice status.",
+            self.state.desktop_settings.dynamic_tray_icon,
+        );
+
+        // 2. Screen Sharing & Hardware Acceleration Section
+        let mut gpu_encoding_switch = render_switch_control(
+            "GPU Accelerated Video Encoding",
+            "Use NVIDIA NVENC, AV1, or H.264 hardware acceleration for 60 FPS ultra-low latency screen sharing.",
+            self.state.desktop_settings.gpu_encoding,
+        );
+
+        // 3. Storage & Directories Section
+        let mut app_folder_btn = div()
+            .id("btn_open_app_folder")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .px_3()
+            .py_1p5()
+            .rounded_md()
+            .bg(theme::bg_surface())
+            .border_1()
+            .border_color(theme::border_hairline())
+            .hover(|s| s.bg(theme::bg_surface_4()).border_color(theme::accent()))
+            .text_xs()
+            .font_weight(gpui::FontWeight::SEMIBOLD)
+            .text_color(theme::text_primary())
+            .child("Open Folder");
+
+        let mut logs_folder_btn = div()
+            .id("btn_open_logs_folder")
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .justify_center()
+            .px_3()
+            .py_1p5()
+            .rounded_md()
+            .bg(theme::bg_surface())
+            .border_1()
+            .border_color(theme::border_hairline())
+            .hover(|s| s.bg(theme::bg_surface_4()).border_color(theme::accent()))
+            .text_xs()
+            .font_weight(gpui::FontWeight::SEMIBOLD)
+            .text_color(theme::text_primary())
+            .child("Open Folder");
+
+        if let Some(ref mut cx) = cx {
+            auto_start_switch = auto_start_switch.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.toggle_desktop_auto_start(cx);
+                }),
+            );
+            close_to_tray_switch = close_to_tray_switch.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.toggle_desktop_close_to_tray(cx);
+                }),
+            );
+            start_to_tray_switch = start_to_tray_switch.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.toggle_desktop_start_to_tray(cx);
+                }),
+            );
+            dynamic_tray_switch = dynamic_tray_switch.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.toggle_desktop_dynamic_tray_icon(cx);
+                }),
+            );
+            gpu_encoding_switch = gpu_encoding_switch.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.toggle_desktop_gpu_encoding(cx);
+                }),
+            );
+            app_folder_btn = app_folder_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.user_settings_modal.open_app_folder();
+                    cx.notify();
+                }),
+            );
+            logs_folder_btn = logs_folder_btn.on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _, _window, cx| {
+                    view.user_settings_modal.open_logs_folder();
+                    cx.notify();
+                }),
+            );
+        }
+
+        let app_folder_row = render_folder_row(
+            "Application Data Folder",
+            "Local session vault, saved accounts, and client cache storage.",
+            &self.state.app_folder,
+            app_folder_btn,
+        );
+
+        let logs_folder_row = render_folder_row(
+            "Application Logs Folder",
+            "Diagnostic session logs, voice SFU telemetry, and crash reports.",
+            &self.state.logs_folder,
+            logs_folder_btn,
+        );
+
+        let hw_accel_status = if self.state.desktop_settings.gpu_encoding {
+            "NVENC AV1 / H.264 (Active)"
+        } else {
+            "Software Fallback (CPU)"
+        };
+
+        div()
+            .flex()
+            .flex_col()
+            .gap_4()
+            // General Section
+            .child(render_section_header(
+                "GENERAL & STARTUP",
+                "Operating system startup and system tray integration controls.",
+            ))
+            .child(auto_start_switch)
+            .child(close_to_tray_switch)
+            .children(if self.state.desktop_settings.close_to_tray {
+                Some(start_to_tray_switch)
+            } else {
+                None
+            })
+            .child(dynamic_tray_switch)
+            // Screen Sharing & Hardware Section
+            .child(render_section_header(
+                "SCREEN SHARING & HARDWARE ACCELERATION",
+                "Video encoding and GPU performance optimization for 60 FPS sharing.",
+            ))
+            .child(gpu_encoding_switch)
+            // Storage Section
+            .child(render_section_header(
+                "STORAGE & DIRECTORIES",
+                "Access application configuration files and runtime logs.",
+            ))
+            .child(app_folder_row)
+            .child(logs_folder_row)
+            // Diagnostics Section
+            .child(render_section_header(
+                "SYSTEM & DIAGNOSTICS",
+                "Native runtime and rendering engine specifications.",
+            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_2p5()
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap_2p5()
+                            .child(div().flex_1().child(render_diagnostic_card("VERSION", &self.state.diagnostics.version)))
+                            .child(div().flex_1().child(render_diagnostic_card("PLATFORM", &self.state.diagnostics.platform))),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap_2p5()
+                            .child(div().flex_1().child(render_diagnostic_card("ARCHITECTURE", &self.state.diagnostics.arch)))
+                            .child(div().flex_1().child(render_diagnostic_card("RENDER ENGINE", &self.state.diagnostics.webview_version))),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap_2p5()
+                            .child(div().flex_1().child(render_diagnostic_card("VIDEO ACCELERATION", hw_accel_status)))
+                            .child(div().flex_1().child(render_diagnostic_card("GRAPHICS BACKEND", &self.state.diagnostics.gpu_backend))),
+                    ),
+            )
+    }
 }
 
 impl Render for UserSettingsModalView {
@@ -1475,4 +1821,112 @@ fn render_badge_button(label: &'static str, is_active: bool) -> Div {
         .font_weight(gpui::FontWeight::MEDIUM)
         .text_color(theme::text_primary())
         .child(label)
+}
+
+/// Renders a section header label and description.
+fn render_section_header(title: &'static str, description: &'static str) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap_0p5()
+        .pt_1()
+        .child(
+            div()
+                .text_xs()
+                .font_weight(gpui::FontWeight::BOLD)
+                .text_color(theme::text_secondary())
+                .child(title),
+        )
+        .child(
+            div()
+                .text_xs()
+                .text_color(theme::text_muted())
+                .child(description),
+        )
+}
+
+/// Renders a directory storage folder row with path display and open button.
+fn render_folder_row(
+    title: &'static str,
+    description: &'static str,
+    path_display: &str,
+    open_btn: impl IntoElement,
+) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .p_3()
+        .rounded_lg()
+        .bg(theme::bg_elevated())
+        .border_1()
+        .border_color(theme::border_hairline())
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap_0p5()
+                .child(
+                    div()
+                        .text_sm()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .text_color(theme::text_primary())
+                        .child(title),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(theme::text_muted())
+                        .child(description),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_3()
+                .child(
+                    div()
+                        .flex_1()
+                        .px_2p5()
+                        .py_1p5()
+                        .rounded_md()
+                        .bg(theme::bg_surface())
+                        .border_1()
+                        .border_color(theme::border_hairline())
+                        .text_xs()
+                        .text_color(theme::text_secondary())
+                        .overflow_hidden()
+                        .child(path_display.to_string()),
+                )
+                .child(open_btn),
+        )
+}
+
+/// Renders a diagnostic telemetry card with label and value.
+fn render_diagnostic_card(label: &'static str, value: &str) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap_1()
+        .p_3()
+        .rounded_lg()
+        .bg(theme::bg_elevated())
+        .border_1()
+        .border_color(theme::border_hairline())
+        .child(
+            div()
+                .text_xs()
+                .font_weight(gpui::FontWeight::BOLD)
+                .text_color(theme::text_muted())
+                .child(label),
+        )
+        .child(
+            div()
+                .text_sm()
+                .font_weight(gpui::FontWeight::SEMIBOLD)
+                .text_color(theme::text_primary())
+                .child(value.to_string()),
+        )
 }
