@@ -2,23 +2,15 @@ import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
 import { useCan, useUserSettingsPlugins } from '@/features/server/hooks';
 import { Permission, PluginSlot } from '@sharkord/shared';
 import { type TSettingsEntry } from '@sharkord/ui';
-import {
-  Bell,
-  Headphones,
-  Keyboard,
-  KeyRound,
-  MonitorSmartphone,
-  Package,
-  SlidersHorizontal,
-  Trash2,
-  User
-} from 'lucide-react';
+import { Package } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TServerScreenBaseProps } from '../screens';
 import { SettingsShell } from '../settings-shell';
 import { DeleteAccount } from './delete-account';
+import { DesktopSettings } from './desktop';
 import { Devices } from './devices';
+import { getUserSettingsEntries } from './helpers';
 import { Hotkeys } from './hotkeys';
 import { Notifications } from './notifications';
 import { Others } from './others';
@@ -26,65 +18,31 @@ import { Password } from './password';
 import { Profile } from './profile';
 import { Sessions } from './sessions';
 
-type TUserSettingsProps = TServerScreenBaseProps;
+type TUserSettingsProps = TServerScreenBaseProps & { defaultTab?: string };
 
-const UserSettings = memo(({ close }: TUserSettingsProps) => {
+const UserSettings = memo(({ close, defaultTab }: TUserSettingsProps) => {
   const { t } = useTranslation('settings');
   const can = useCan();
   const userSettingsPlugins = useUserSettingsPlugins();
 
+  const contentMap = useMemo(
+    () => ({
+      profile: <Profile />,
+      devices: <Devices />,
+      hotkeys: <Hotkeys />,
+      desktop: <DesktopSettings />,
+      password: <Password />,
+      sessions: <Sessions />,
+      notifications: <Notifications />,
+      others: <Others />,
+      deleteAccount: <DeleteAccount />
+    }),
+    []
+  );
+
   const entries = useMemo<TSettingsEntry[]>(
-    () => [
-      {
-        id: 'profile',
-        label: t('profileTab'),
-        icon: User,
-        content: <Profile />
-      },
-      {
-        id: 'devices',
-        label: t('devicesTab'),
-        icon: Headphones,
-        content: <Devices />
-      },
-      {
-        id: 'hotkeys',
-        label: t('hotkeysTab'),
-        icon: Keyboard,
-        content: <Hotkeys />
-      },
-      {
-        id: 'password',
-        label: t('passwordTab'),
-        icon: KeyRound,
-        content: <Password />
-      },
-      {
-        id: 'sessions',
-        label: t('userSessionsTab'),
-        icon: MonitorSmartphone,
-        content: <Sessions />
-      },
-      {
-        id: 'notifications',
-        label: t('notificationsTab'),
-        icon: Bell,
-        content: <Notifications />
-      },
-      {
-        id: 'others',
-        label: t('othersTab'),
-        icon: SlidersHorizontal,
-        content: <Others />
-      },
-      {
-        id: 'delete-account',
-        label: t('deleteAccountTab'),
-        icon: Trash2,
-        content: <DeleteAccount />
-      }
-    ],
-    [t]
+    () => getUserSettingsEntries(t, contentMap),
+    [t, contentMap]
   );
 
   // the plugin owns everything inside its entry, so this renders its slot and
@@ -112,6 +70,7 @@ const UserSettings = memo(({ close }: TUserSettingsProps) => {
       close={close}
       entries={entries}
       pluginEntries={pluginEntries}
+      defaultTab={defaultTab}
     />
   );
 });

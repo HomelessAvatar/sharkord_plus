@@ -50,7 +50,7 @@ const DesktopController = memo(() => {
     }
 
     return desktopApi.onOpenSettings(() => {
-      openServerScreen(ServerScreen.USER_SETTINGS);
+      openServerScreen(ServerScreen.USER_SETTINGS, { defaultTab: 'desktop' });
     });
   }, [desktopApi]);
 

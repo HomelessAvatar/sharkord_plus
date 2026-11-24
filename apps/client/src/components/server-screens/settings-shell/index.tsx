@@ -17,6 +17,7 @@ type TSettingsShellProps = {
   close: () => void;
   entries: TSettingsEntry[];
   pluginEntries?: TSettingsEntry[];
+  defaultTab?: string;
 };
 
 const NO_ENTRIES: TSettingsEntry[] = [];
@@ -26,10 +27,13 @@ const SettingsShell = memo(
     title,
     close,
     entries,
-    pluginEntries = NO_ENTRIES
+    pluginEntries = NO_ENTRIES,
+    defaultTab
   }: TSettingsShellProps) => {
     const { t } = useTranslation('settings');
-    const [selectedId, setSelectedId] = useState(() => entries[0]?.id ?? '');
+    const [selectedId, setSelectedId] = useState(
+      () => defaultTab || entries[0]?.id || ''
+    );
     const [form, setForm] = useState<TSettingsFormHandle | null>(null);
     const { isOpen: isModViewOpen } = useModViewOpen();
     const { isOpen: isDialogOpen } = useDialogInfo();
@@ -40,6 +44,12 @@ const SettingsShell = memo(
       () => [...entries, ...pluginEntries],
       [entries, pluginEntries]
     );
+
+    useEffect(() => {
+      if (defaultTab && allEntries.some((e) => e.id === defaultTab)) {
+        setSelectedId(defaultTab);
+      }
+    }, [defaultTab, allEntries]);
 
     const selectedEntry =
       allEntries.find((entry) => entry.id === selectedId) ?? allEntries[0];

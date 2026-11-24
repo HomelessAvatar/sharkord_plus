@@ -49,7 +49,7 @@ const TopBar = memo(
       : t('openServerList');
 
     const handleOpenDesktopSettings = useCallback(() => {
-      openServerScreen(ServerScreen.USER_SETTINGS);
+      openServerScreen(ServerScreen.USER_SETTINGS, { defaultTab: 'desktop' });
       if (desktopApi) {
         desktopApi.openSettings();
       }
