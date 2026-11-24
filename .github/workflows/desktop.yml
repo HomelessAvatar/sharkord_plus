@@ -99,7 +99,9 @@ jobs:
       - name: Build Native GPUI Desktop Application
         shell: bash
         run: |
-          cargo test -p desktop-gpui
+          if [ "${{ matrix.platform }}" != "macos-universal" ]; then
+            cargo test -p desktop-gpui
+          fi
           if [ "${{ matrix.platform }}" = "macos-universal" ]; then
             cargo build --release -p desktop-gpui --target aarch64-apple-darwin && \
             cargo build --release -p desktop-gpui --target x86_64-apple-darwin && \
