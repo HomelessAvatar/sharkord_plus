@@ -997,7 +997,6 @@ impl AuthModalView {
         // Dialog container box adhering strictly to Pure Neutral Dark
         let mut dialog_body = div()
             .id("auth_modal_dialog_card")
-            .on_mouse_down(MouseButton::Left, |_, _, _| {}) // stop click propagation to backdrop
             .flex()
             .flex_col()
             .w(px(460.0))
