@@ -17,27 +17,35 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
+  prepare:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Determine build platforms
+        id: set-matrix
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.ref }}" == refs/tags/* || "${{ github.ref }}" == "refs/heads/main" ]]; then
+            MATRIX='{"include":[{"platform":"windows-x64","os":"windows-latest","artifact_name":"sharkord-desktop-windows","experimental":false},{"platform":"linux-x86_64","os":"ubuntu-24.04","artifact_name":"sharkord-desktop-linux","experimental":false},{"platform":"macos-universal","os":"macos-latest","artifact_name":"sharkord-desktop-macos","experimental":true}]}'
+          else
+            MATRIX='{"include":[{"platform":"windows-x64","os":"windows-latest","artifact_name":"sharkord-desktop-windows","experimental":false},{"platform":"linux-x86_64","os":"ubuntu-24.04","artifact_name":"sharkord-desktop-linux","experimental":false}]}'
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build-tauri-desktop:
     name: Build Desktop (${{ matrix.platform }})
+    needs: [prepare]
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: windows-x64
-            os: windows-latest
-            artifact_name: sharkord-desktop-windows
-            experimental: false
-          - platform: linux-x86_64
-            os: ubuntu-24.04
-            artifact_name: sharkord-desktop-linux
-            experimental: false
-          - platform: macos-universal
-            os: macos-latest
-            artifact_name: sharkord-desktop-macos
-            experimental: true
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
 
     steps:
       - name: Checkout repository
@@ -64,7 +72,7 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file libxkbcommon-dev libx11-dev libwayland-dev libxkbcommon-x11-dev
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev libssl-dev build-essential file pkg-config libxkbcommon-dev libx11-dev libwayland-dev libxkbcommon-x11-dev libpipewire-0.3-dev libspa-0.2-dev libclang-dev clang libgbm-dev libdrm-dev libfontconfig1-dev libfreetype-dev libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev libvulkan1
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2t64 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libfuse2 || true
 
       - name: Run Tauri unit tests
@@ -82,14 +90,19 @@ jobs:
       - name: Build Native GPUI Desktop Application
         shell: bash
         run: |
-          cargo build --release -p desktop-gpui || echo "Warning: GPUI build failed for ${{ matrix.platform }}"
+          cargo test -p desktop-gpui
+          cargo build --release -p desktop-gpui
 
       - name: Stage desktop artifacts
         shell: bash
         run: |
           mkdir -p dist-desktop
           find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          rm -f dist-desktop/desktop-gpui.exe
           VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+            VERSION=$(bun -e "console.log(require('./package.json').version)" 2>/dev/null || echo "0.3.21")
+          fi
           [ -z "$VERSION" ] && VERSION="0.3.21"
           if [ -f dist-desktop/sharkord-tauri.exe ]; then
             mv dist-desktop/sharkord-tauri.exe "dist-desktop/VibeShark_${VERSION}_x64-portable.exe"
