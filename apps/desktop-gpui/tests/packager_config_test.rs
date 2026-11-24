@@ -14,7 +14,7 @@ fn test_packager_configuration_file_validity() {
     let content = fs::read_to_string(&full_path).expect("Failed to read packager.toml");
 
     // Must define product name and bundle identifier
-    assert!(content.contains("product_name = \"Sharkord Plus\""));
+    assert!(content.contains("product_name = \"VibeShark\""));
     assert!(content.contains("identifier = \"com.homelessavatar.sharkord\""));
 
     // Must define authors and description

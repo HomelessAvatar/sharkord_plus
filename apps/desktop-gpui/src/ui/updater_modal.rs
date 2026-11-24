@@ -136,7 +136,7 @@ impl UpdaterModalView {
             UpdateStatus::ReadyToInstall { .. } => "Update Ready to Install",
             UpdateStatus::Downloading { .. } => "Downloading Update",
             UpdateStatus::Checking => "Checking for Updates",
-            UpdateStatus::UpToDate => "Sharkord is Up to Date",
+            UpdateStatus::UpToDate => "VibeShark is Up to Date",
             UpdateStatus::Error(_) => "Update Error",
             _ => "Update Available",
         };
@@ -265,7 +265,7 @@ impl UpdaterModalView {
                 )
                 .child(div().text_xs().text_color(theme::text_secondary()).child(
                     "The update package has been downloaded and verified. \
-                             Restart Sharkord Plus now to apply the update seamlessly.",
+                             Restart VibeShark now to apply the update seamlessly.",
                 ))
                 .into_any_element(),
             UpdateStatus::Downloading {
@@ -326,7 +326,7 @@ impl UpdaterModalView {
                         .text_sm()
                         .font_weight(gpui::FontWeight::SEMIBOLD)
                         .text_color(theme::status_online())
-                        .child("You're using the latest version of Sharkord Plus."),
+                        .child("You're using the latest version of VibeShark."),
                 )
                 .into_any_element(),
             UpdateStatus::Checking => div()

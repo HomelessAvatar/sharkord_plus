@@ -194,7 +194,7 @@ pub struct ChannelTreeView {
 impl Default for ChannelTreeView {
     fn default() -> Self {
         Self {
-            server_name: "Sharkord Plus".to_string(),
+            server_name: "VibeShark".to_string(),
             groups: Vec::new(),
             active_channel_id: None,
         }

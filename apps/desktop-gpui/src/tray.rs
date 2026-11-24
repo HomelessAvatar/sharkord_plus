@@ -21,8 +21,8 @@ impl TrayAction {
             TrayAction::ToggleDeafen => "Toggle Deafen",
             TrayAction::DisconnectVoice => "Disconnect Voice",
             TrayAction::CheckForUpdates => "Check for Updates...",
-            TrayAction::FocusWindow => "Open Sharkord",
-            TrayAction::Quit => "Quit Sharkord",
+            TrayAction::FocusWindow => "Open VibeShark",
+            TrayAction::Quit => "Quit VibeShark",
         }
     }
 }
@@ -91,7 +91,7 @@ impl TrayMenuState {
         vec![
             TrayMenuItem {
                 id: "focus_window".to_string(),
-                label: "Open Sharkord".to_string(),
+                label: "Open VibeShark".to_string(),
                 enabled: true,
                 checked: None,
                 action: TrayAction::FocusWindow,
@@ -134,7 +134,7 @@ impl TrayMenuState {
             },
             TrayMenuItem {
                 id: "quit".to_string(),
-                label: "Quit Sharkord".to_string(),
+                label: "Quit VibeShark".to_string(),
                 enabled: true,
                 checked: None,
                 action: TrayAction::Quit,
@@ -176,11 +176,11 @@ impl DesktopTray {
     /// Generates tooltip text for the system tray icon.
     pub fn tooltip(&self) -> String {
         if self.state.unread_count > 0 {
-            format!("Sharkord ({} unread)", self.state.unread_count)
+            format!("VibeShark ({} unread)", self.state.unread_count)
         } else if self.state.is_connected {
-            "Sharkord (Voice Connected)".to_string()
+            "VibeShark (Voice Connected)".to_string()
         } else {
-            "Sharkord".to_string()
+            "VibeShark".to_string()
         }
     }
 }

@@ -86,15 +86,15 @@ jobs:
           mkdir -p dist-desktop
           find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
           VERSION="${GITHUB_REF_NAME#v}"
-          [ -z "$VERSION" ] && VERSION="0.3.18"
+          [ -z "$VERSION" ] && VERSION="0.3.19"
           if [ -f dist-desktop/sharkord-tauri.exe ]; then
-            mv dist-desktop/sharkord-tauri.exe "dist-desktop/Sharkord.Plus_${VERSION}_x64-portable.exe"
+            mv dist-desktop/sharkord-tauri.exe "dist-desktop/VibeShark_${VERSION}_x64-portable.exe"
           fi
           if [ -f target/release/desktop-gpui.exe ]; then
-            cp target/release/desktop-gpui.exe "dist-desktop/Sharkord.Plus-Native-GPUI_${VERSION}_windows-x64.exe"
+            cp target/release/desktop-gpui.exe "dist-desktop/VibeShark-Native-GPUI_${VERSION}_windows-x64.exe"
           fi
           if [ -f target/release/desktop-gpui ]; then
-            cp target/release/desktop-gpui "dist-desktop/Sharkord.Plus-Native-GPUI_${VERSION}_${{ matrix.platform }}"
+            cp target/release/desktop-gpui "dist-desktop/VibeShark-Native-GPUI_${VERSION}_${{ matrix.platform }}"
           fi
           echo "=== Staged Desktop Artifacts ==="
           ls -la dist-desktop || true
@@ -125,7 +125,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "Sharkord.Plus-Native-GPUI*" \) -exec cp {} dist-release/ \;
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*GPUI*" \) -exec cp {} dist-release/ \;
           echo "=== Contents of dist-release ==="
           ls -la dist-release
 

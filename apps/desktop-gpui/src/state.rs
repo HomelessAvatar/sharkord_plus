@@ -75,7 +75,7 @@ impl AppState {
         let mut state = Self::new();
         state.server_settings = Some(ServerSettings {
             server_id: "sharkord-main".to_string(),
-            name: "Sharkord Plus HQ".to_string(),
+            name: "VibeShark HQ".to_string(),
             is_plus: Some(true),
             ..Default::default()
         });
@@ -90,7 +90,7 @@ impl AppState {
                 id: 1,
                 name: "general".to_string(),
                 channel_type: sharkord_core::types::ChannelType::Text,
-                topic: Some("General discussion for Sharkord Plus".to_string()),
+                topic: Some("General discussion for VibeShark".to_string()),
                 private: false,
                 is_dm: false,
                 position: 0,

@@ -73,7 +73,7 @@ impl AppState {
                     id: "chan_general".to_string(),
                     name: "general".to_string(),
                     is_voice: false,
-                    topic: Some("General discussion for Sharkord Plus".to_string()),
+                    topic: Some("General discussion for VibeShark".to_string()),
                 },
                 ChannelModel {
                     id: "chan_voice_lounge".to_string(),
@@ -86,7 +86,7 @@ impl AppState {
                 id: "msg_1".to_string(),
                 channel_id: "chan_general".to_string(),
                 sender_name: "SharkordAdmin".to_string(),
-                content: "Welcome to Sharkord Plus!".to_string(),
+                content: "Welcome to VibeShark!".to_string(),
                 timestamp: 1000,
             }],
             current_user_name: "User".to_string(),

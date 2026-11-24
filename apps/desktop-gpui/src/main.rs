@@ -77,7 +77,7 @@ fn main() {
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: Some(TitlebarOptions {
-                title: Some("Sharkord Plus".into()),
+                title: Some("VibeShark".into()),
                 appears_transparent: false,
                 traffic_light_position: None,
             }),

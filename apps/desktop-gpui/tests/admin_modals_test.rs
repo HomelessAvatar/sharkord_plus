@@ -201,7 +201,7 @@ fn test_workspace_view_admin_modals_integration() {
     assert_eq!(workspace.edit_channel_modal.name, "general");
     assert_eq!(
         workspace.edit_channel_modal.topic,
-        "General discussion for Sharkord Plus"
+        "General discussion for VibeShark"
     );
     workspace.close_edit_channel();
     assert!(!workspace.edit_channel_modal.is_open);
@@ -210,7 +210,7 @@ fn test_workspace_view_admin_modals_integration() {
     assert!(workspace.server_settings_modal.is_open);
     assert_eq!(
         workspace.server_settings_modal.server_name,
-        "Sharkord Plus HQ"
+        "VibeShark HQ"
     );
     workspace.close_server_settings();
     assert!(!workspace.server_settings_modal.is_open);

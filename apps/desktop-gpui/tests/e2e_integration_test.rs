@@ -493,7 +493,7 @@ fn test_end_to_end_workspace_parity_lifecycle() {
     tray.dispatch_action(TrayAction::FocusWindow);
     assert!(tray.is_window_focused);
     let tooltip = tray.tooltip();
-    assert_eq!(tooltip, "Sharkord");
+    assert_eq!(tooltip, "VibeShark");
 
     // -------------------------------------------------------------------------
     // 10. Mediasoup WebRTC Live Voice Client (Audio Levels, VAD, PTT, Speaking)

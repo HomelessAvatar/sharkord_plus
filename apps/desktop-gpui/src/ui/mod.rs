@@ -284,7 +284,7 @@ impl WorkspaceView {
             .server_settings
             .as_ref()
             .map(|s| s.name.clone())
-            .unwrap_or_else(|| "Sharkord Plus".to_string());
+            .unwrap_or_else(|| "VibeShark".to_string());
 
         self.channel_tree = ChannelTreeView::new(
             server_name,
