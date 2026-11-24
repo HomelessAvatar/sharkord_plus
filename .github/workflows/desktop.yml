@@ -112,7 +112,7 @@ jobs:
 
   publish-release:
     name: Publish Desktop Release
-    if: "always() && !cancelled() && (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/desktop-v'))"
+    if: "!cancelled() && (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/desktop-v'))"
     needs: [build-tauri-desktop]
     runs-on: ubuntu-24.04
     steps:
@@ -128,10 +128,14 @@ jobs:
 
       - name: Prepare release assets
         run: |
-          mkdir -p dist-release
-          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*GPUI*" \) -exec cp {} dist-release/ \;
+          mkdir -p release-artifacts dist-release
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" -o -name "*GPUI*" \) -exec cp {} dist-release/ \; 2>/dev/null || true
           echo "=== Contents of dist-release ==="
           ls -la dist-release
+          if [ -z "$(ls -A dist-release 2>/dev/null)" ]; then
+            echo "Error: No desktop artifacts found to publish."
+            exit 1
+          fi
 
       - name: Generate release notes
         id: notes
