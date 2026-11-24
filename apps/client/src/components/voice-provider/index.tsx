@@ -31,7 +31,11 @@ import { releaseStalePictureInPicture } from '@/helpers/picture-in-picture';
 import { registerVoiceDebugSource } from '@/helpers/voice-debug';
 import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
 import { getTRPCClient } from '@/lib/trpc';
-import { NoiseSuppression, type TStreamQuality } from '@/types';
+import {
+  NoiseSuppression,
+  ScreenContentHint,
+  type TStreamQuality
+} from '@/types';
 import {
   DEFAULT_BITRATE,
   getErrorMessage,
@@ -1119,10 +1123,16 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
         const canSuppressLocalAudioPlayback =
           getSuppressLocalAudioPlaybackSupport();
 
+        const { width, height } = getResWidthHeight(
+          screenSettings.screenResolution
+        );
+        const fps = screenSettings.screenFramerate || 30;
+
         const displayMediaConstraints: MediaStreamConstraints = {
           video: {
-            ...getResWidthHeight(screenSettings.screenResolution),
-            frameRate: screenSettings.screenFramerate,
+            width: { ideal: width, max: width },
+            height: { ideal: height, max: height },
+            frameRate: { ideal: fps, max: fps },
             // @ts-expect-error - display capture only, not in MediaTrackConstraints
             cursor: screenSettings.screenCursor
           },
@@ -1174,7 +1184,12 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
             settings: videoTrack.getSettings()
           });
 
-          videoTrack.contentHint = screenSettings.screenContentHint;
+          const effectiveHint =
+            fps >= 60 &&
+            screenSettings.screenContentHint === ScreenContentHint.DETAIL
+              ? ScreenContentHint.MOTION
+              : screenSettings.screenContentHint;
+          videoTrack.contentHint = effectiveHint;
 
           let preferredCodec: RtpCodecCapability | undefined;
 
@@ -1218,7 +1233,9 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
               encodings: [
                 {
                   priority: 'low',
-                  networkPriority: 'low'
+                  networkPriority: 'low',
+                  maxBitrate: maxBitrateKbps * 1000,
+                  maxFramerate: fps
                 }
               ],
               codecOptions: {
@@ -1238,7 +1255,8 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
           if (simulcastCodec) {
             const encodings = getScreenShareSimulcastEncodings(
-              maxBitrateKbps * 1000
+              maxBitrateKbps * 1000,
+              fps
             );
             const qualityLayers = getSimulcastQualityLayers(encodings);
 
@@ -1266,6 +1284,21 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
               await producerTransport.current?.produce(
                 fallbackScreenShareProducerOptions
               );
+          }
+
+          if (localScreenShareProducer.current?.rtpSender) {
+            try {
+              const sender = localScreenShareProducer.current.rtpSender;
+              const params = sender.getParameters();
+              params.degradationPreference =
+                fps >= 60 ? 'maintain-framerate' : 'balanced';
+              await sender.setParameters(params);
+            } catch (e) {
+              voiceLogger.warn(
+                'screen: failed to set degradationPreference on rtpSender',
+                { error: e }
+              );
+            }
           }
 
           voiceLogger.info('screen: producer created', {

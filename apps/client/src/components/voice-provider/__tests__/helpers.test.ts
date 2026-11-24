@@ -10,6 +10,7 @@ import {
   getOwnedExternalVolumeKeys,
   getPreferredScreenCodec,
   getPreferredVideoCodec,
+  getScreenShareSimulcastEncodings,
   getSimulcastCodec,
   getUserScreenVolumeKey,
   isOwnProducerEvent,
@@ -303,5 +304,53 @@ describe('getPreferredScreenCodec', () => {
 
   test('should return nothing before the device is loaded', () => {
     expect(getPreferredScreenCodec(null, VideoCodec.VP9)).toBeUndefined();
+  });
+});
+
+describe('getScreenShareSimulcastEncodings', () => {
+  test('should set target framerate on the high layer and cap lower layers appropriately for 60 fps', () => {
+    const encodings = getScreenShareSimulcastEncodings(3_000_000, 60);
+
+    expect(encodings).toHaveLength(3);
+    // low layer
+    expect(encodings[0].maxFramerate).toBe(30);
+    expect(encodings[0].scaleResolutionDownBy).toBe(4);
+    expect(encodings[0].priority).toBe('low');
+    expect(encodings[0].networkPriority).toBe('low');
+    // mid layer
+    expect(encodings[1].maxFramerate).toBe(60);
+    expect(encodings[1].scaleResolutionDownBy).toBe(2);
+    expect(encodings[1].priority).toBe('low');
+    expect(encodings[1].networkPriority).toBe('low');
+    // high layer
+    expect(encodings[2].maxFramerate).toBe(60);
+    expect(encodings[2].scaleResolutionDownBy).toBe(1);
+    expect(encodings[2].maxBitrate).toBe(3_000_000);
+    expect(encodings[2].priority).toBe('low');
+    expect(encodings[2].networkPriority).toBe('low');
+  });
+
+  test('should default target framerate to 60 when omitted', () => {
+    const encodings = getScreenShareSimulcastEncodings(3_000_000);
+
+    expect(encodings[2].maxFramerate).toBe(60);
+    expect(encodings[1].maxFramerate).toBe(60);
+    expect(encodings[0].maxFramerate).toBe(30);
+  });
+
+  test('should cap mid and low layers when target framerate is 30 fps', () => {
+    const encodings = getScreenShareSimulcastEncodings(3_000_000, 30);
+
+    expect(encodings[0].maxFramerate).toBe(30);
+    expect(encodings[1].maxFramerate).toBe(30);
+    expect(encodings[2].maxFramerate).toBe(30);
+  });
+
+  test('should support high framerates like 120 fps while capping lower layers', () => {
+    const encodings = getScreenShareSimulcastEncodings(3_000_000, 120);
+
+    expect(encodings[0].maxFramerate).toBe(30);
+    expect(encodings[1].maxFramerate).toBe(60);
+    expect(encodings[2].maxFramerate).toBe(120);
   });
 });

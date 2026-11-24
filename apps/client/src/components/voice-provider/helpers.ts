@@ -201,9 +201,19 @@ const getSimulcastEncodings = (
 };
 
 const getScreenShareSimulcastEncodings = (
-  maxBitrate: number
+  maxBitrate: number,
+  targetFramerate?: number
 ): RTCRtpEncodingParameters[] => {
   const safeMaxBitrate = Math.max(SIMULCAST_MIN_MAX_BITRATE, maxBitrate);
+  const highFramerate = Math.max(30, targetFramerate ?? 60);
+  const midFramerate = Math.min(
+    SIMULCAST_SCREEN_MID_LAYER_MAX_FRAMERATE,
+    highFramerate
+  );
+  const lowFramerate = Math.min(
+    SIMULCAST_SCREEN_LOW_LAYER_MAX_FRAMERATE,
+    highFramerate
+  );
 
   return [
     {
@@ -213,7 +223,7 @@ const getScreenShareSimulcastEncodings = (
         SIMULCAST_SCREEN_LOW_LAYER_MAX_BITRATE,
         Math.round(safeMaxBitrate * SIMULCAST_SCREEN_LOW_LAYER_BITRATE_RATIO)
       ),
-      maxFramerate: SIMULCAST_SCREEN_LOW_LAYER_MAX_FRAMERATE,
+      maxFramerate: lowFramerate,
       scaleResolutionDownBy: SIMULCAST_LOW_LAYER_SCALE
     },
     {
@@ -223,13 +233,14 @@ const getScreenShareSimulcastEncodings = (
         SIMULCAST_SCREEN_MID_LAYER_MAX_BITRATE,
         Math.round(safeMaxBitrate * SIMULCAST_SCREEN_MID_LAYER_BITRATE_RATIO)
       ),
-      maxFramerate: SIMULCAST_SCREEN_MID_LAYER_MAX_FRAMERATE,
+      maxFramerate: midFramerate,
       scaleResolutionDownBy: SIMULCAST_MID_LAYER_SCALE
     },
     {
       priority: 'low',
       networkPriority: 'low',
       maxBitrate: safeMaxBitrate,
+      maxFramerate: highFramerate,
       scaleResolutionDownBy: SIMULCAST_HIGH_LAYER_SCALE
     }
   ];
