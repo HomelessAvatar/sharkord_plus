@@ -118,7 +118,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist-desktop
-          find target/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
+          find target/release/bundle target/universal-apple-darwin/release/bundle apps/tauri/src-tauri/target/release/bundle target/release apps/tauri/src-tauri/target/release -maxdepth 4 -type f \( -name "*.exe" -o -name "*.msi" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.dmg" \) -exec cp {} dist-desktop/ \; 2>/dev/null || true
           rm -f dist-desktop/desktop-gpui.exe
           VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$GITHUB_REF" != refs/tags/* ]]; then
