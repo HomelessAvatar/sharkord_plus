@@ -32,7 +32,7 @@ jobs:
         id: set-matrix
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.ref }}" == refs/tags/* || "${{ github.ref }}" == "refs/heads/main" ]]; then
-            MATRIX='{"include":[{"platform":"windows-x64","os":"windows-latest","artifact_name":"sharkord-desktop-windows","experimental":false},{"platform":"linux-x86_64","os":"ubuntu-24.04","artifact_name":"sharkord-desktop-linux","experimental":false},{"platform":"macos-universal","os":"macos-latest","artifact_name":"sharkord-desktop-macos","experimental":true}]}'
+            MATRIX='{"include":[{"platform":"windows-x64","os":"windows-latest","artifact_name":"sharkord-desktop-windows","experimental":false},{"platform":"linux-x86_64","os":"ubuntu-24.04","artifact_name":"sharkord-desktop-linux","experimental":false},{"platform":"macos-universal","os":"macos-15-intel","artifact_name":"sharkord-desktop-macos","experimental":true}]}'
           else
             MATRIX='{"include":[{"platform":"windows-x64","os":"windows-latest","artifact_name":"sharkord-desktop-windows","experimental":false},{"platform":"linux-x86_64","os":"ubuntu-24.04","artifact_name":"sharkord-desktop-linux","experimental":false}]}'
           fi
@@ -62,6 +62,10 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add macOS universal Rust targets
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -83,7 +87,12 @@ jobs:
 
       - name: Build Tauri desktop application
         shell: bash
-        run: bun --filter @sharkord/tauri build || (sleep 5 && bun --filter @sharkord/tauri build)
+        run: |
+          if [ "${{ matrix.platform }}" = "macos-universal" ]; then
+            bun --filter @sharkord/tauri build -- --target universal-apple-darwin || (sleep 5 && bun --filter @sharkord/tauri build -- --target universal-apple-darwin)
+          else
+            bun --filter @sharkord/tauri build || (sleep 5 && bun --filter @sharkord/tauri build)
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -91,7 +100,17 @@ jobs:
         shell: bash
         run: |
           cargo test -p desktop-gpui
-          cargo build --release -p desktop-gpui
+          if [ "${{ matrix.platform }}" = "macos-universal" ]; then
+            cargo build --release -p desktop-gpui --target aarch64-apple-darwin && \
+            cargo build --release -p desktop-gpui --target x86_64-apple-darwin && \
+            mkdir -p target/release && \
+            lipo -create -output target/release/desktop-gpui \
+              target/aarch64-apple-darwin/release/desktop-gpui \
+              target/x86_64-apple-darwin/release/desktop-gpui || \
+            cargo build --release -p desktop-gpui
+          else
+            cargo build --release -p desktop-gpui
+          fi
 
       - name: Stage desktop artifacts
         shell: bash

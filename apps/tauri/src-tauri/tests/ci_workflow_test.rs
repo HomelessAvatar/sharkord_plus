@@ -8,7 +8,7 @@ fn test_desktop_workflow_validity() {
     assert!(!workflow.contains("always() && !cancelled()"), "desktop.yml must not publish release on build failure");
     assert!(workflow.contains("windows-latest"));
     assert!(workflow.contains("ubuntu-24.04"));
-    assert!(workflow.contains("macos-latest"));
+    assert!(workflow.contains("macos-latest") || workflow.contains("macos-15-intel"));
 }
 
 #[test]
