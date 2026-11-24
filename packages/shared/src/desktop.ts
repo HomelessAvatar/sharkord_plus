@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { TAppNotification, TNotificationTarget } from './notifications';
 
 export type TDesktopUnreadState = {
@@ -48,6 +49,38 @@ export type TDesktopStartAudioOptions = {
   targetProcessId?: number;
 };
 
+export type TDesktopSettings = {
+  autoStart: boolean;
+  closeToTray: boolean;
+  startToTray: boolean;
+  dynamicTrayIcon: boolean;
+  gpuEncoding: boolean;
+};
+
+export const DEFAULT_DESKTOP_SETTINGS: TDesktopSettings = {
+  autoStart: false,
+  closeToTray: true,
+  startToTray: false,
+  dynamicTrayIcon: true,
+  gpuEncoding: true
+};
+
+export const desktopSettingsSchema = z.object({
+  autoStart: z.boolean().default(false),
+  closeToTray: z.boolean().default(true),
+  startToTray: z.boolean().default(false),
+  dynamicTrayIcon: z.boolean().default(true),
+  gpuEncoding: z.boolean().default(true)
+});
+
+export type TDesktopDiagnostics = {
+  version: string;
+  platform: string;
+  arch: string;
+  osVersion: string;
+  webviewVersion: string;
+};
+
 export type TDesktopBridge = {
   getServerListVisible: () => Promise<boolean>;
   onServerListVisibleChange: (
@@ -75,6 +108,16 @@ export type TDesktopBridge = {
   onNotificationClick: (
     listener: (target: TNotificationTarget) => void
   ) => () => void;
+  getSettings: () => Promise<TDesktopSettings>;
+  updateSettings: (settings: Partial<TDesktopSettings>) => Promise<void>;
+  onSettingsChanged?: (
+    listener: (settings: TDesktopSettings) => void
+  ) => () => void;
+  getAppFolder: () => Promise<string>;
+  openAppFolder: () => Promise<void>;
+  getLogsFolder: () => Promise<string>;
+  openLogsFolder: () => Promise<void>;
+  getDiagnostics: () => Promise<TDesktopDiagnostics>;
 };
 
 // must match exactly between the desktop app and a server's client
