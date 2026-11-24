@@ -52,9 +52,11 @@ While standard Sharkord provides a fantastic Discord-like self-hosted experience
 - **Lightweight Footprint:** ~120–180 MB RAM idle, ~15 MB installer size (zero Electron or Chromium distribution bloat).
 
 ### ⚡ 2. Pure Native Rust + GPUI Desktop Client (`apps/desktop-gpui`)
+- **100% Feature Parity with Web & Tauri:** Full 3-column Discord/Slack-grade workspace with server rail, channel tree with collapsible categories, chat canvas with markdown syntax highlighting, per-message reactions, file attachments, right-hand member sidebar, interactive channel management, and voice grid stage.
 - **GPU-Accelerated 120+ FPS Rendering:** Built with Zed's GPU-accelerated [GPUI](https://github.com/zed-industries/zed) framework (`#0A0A0A` Pure Neutral Dark theme following [DESIGN.md](DESIGN.md)).
 - **Sub-50MB RAM Footprint:** Ultra-low resource consumption for competitive esports and memory-constrained environments.
-- **Interactive State Model:** Reactive `AppState` coordinating channel navigation, voice controls, and text input composition.
+- **Interactive State Model & Native Superpowers:** Reactive `AppState` coordinating channel navigation, voice controls, system tray integration, quick switcher (`Ctrl+K`), audio device selection with VU meters, and seamless in-app auto-updating.
+- **Standalone Native Binaries:** Packaged and distributed directly as `VibeShark-Native-GPUI_${VERSION}_${PLATFORM}`.
 
 ### 🎥 3. 4K & 120/144 FPS Hardware Video Streaming & Presets
 - **Esports Frame Rates:** 4K 60 FPS, 1440p 120 FPS, 1080p 144 FPS, and Custom bitrate/framerate screen-sharing presets.
@@ -68,7 +70,7 @@ While standard Sharkord provides a fantastic Discord-like self-hosted experience
 
 ## 🛠️ Project Architecture
 
-Sharkord Plus is structured as a unified monorepo leveraging Bun workspaces for TypeScript and Cargo workspaces for Rust:
+VibeShark is structured as a unified monorepo leveraging Bun workspaces for TypeScript and Cargo workspaces for Rust:
 
 ```
 sharkord_plus/
@@ -124,7 +126,7 @@ docker run -d \
   -p 40000-40050:40000-40050/tcp \
   -v ./data:/home/bun/.config/sharkord \
   --name vibeshark \
-  ghcr.io/homelessavatar/sharkord_plus:0.3.18
+  ghcr.io/homelessavatar/sharkord_plus:0.3.19
 ```
 
 ### 4. Local Web & Server Development
@@ -148,7 +150,7 @@ cargo test --all
 
 VibeShark follows [Semantic Versioning (SemVer 2.0.0)](https://semver.org/):
 
-* **Current Version:** `v0.3.18`
+* **Current Version:** `v0.3.19`
 * **Upstream Compatibility Matrix:**
   | VibeShark Version | Compatible Sharkord Upstream Server |
   |-------------------|-------------------------------------|
