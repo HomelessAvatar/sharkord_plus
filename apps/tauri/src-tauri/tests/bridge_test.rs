@@ -103,9 +103,9 @@ fn test_bridge_data_serialization() {
 #[test]
 fn test_bridge_default_state() {
     let state = BridgeState::default();
-    assert!(!state.server_list_visible.load(Ordering::SeqCst));
-    state.server_list_visible.store(true, Ordering::SeqCst);
     assert!(state.server_list_visible.load(Ordering::SeqCst));
+    state.server_list_visible.store(false, Ordering::SeqCst);
+    assert!(!state.server_list_visible.load(Ordering::SeqCst));
 
     let shortcut_state = ShortcutStateMap::default();
     let map = shortcut_state.registered.lock().unwrap();

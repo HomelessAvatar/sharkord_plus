@@ -1,3 +1,5 @@
+import { ServerScreen } from '@/components/server-screens/screens';
+import { openServerScreen } from '@/features/server-screens/actions';
 import { useCurrentVoiceChannelId } from '@/features/server/channels/hooks';
 import {
   useDesktopConnectionState,
@@ -41,6 +43,16 @@ const DesktopController = memo(() => {
 
     desktopApi.setVoiceActive(isInVoice);
   }, [desktopApi, isInVoice]);
+
+  useEffect(() => {
+    if (!desktopApi || !desktopApi.onOpenSettings) {
+      return;
+    }
+
+    return desktopApi.onOpenSettings(() => {
+      openServerScreen(ServerScreen.USER_SETTINGS);
+    });
+  }, [desktopApi]);
 
   return null;
 });

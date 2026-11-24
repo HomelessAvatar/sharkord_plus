@@ -11,6 +11,7 @@ import { setDmsOpen } from '@/features/server/actions';
 import { setSelectedChannelId } from '@/features/server/channels/actions';
 import { useSelectedChannelId } from '@/features/server/channels/hooks';
 import { useDmsOpen, usePublicServerSettings } from '@/features/server/hooks';
+import { getDesktopApi } from '@/helpers/desktop-api';
 import {
   getLocalStorageItemBool,
   LocalStorageKey,
@@ -29,6 +30,9 @@ const ServerView = memo(() => {
   const [isMobileUsersOpen, setIsMobileUsersOpen] = useState(false);
   const [isDesktopRightSidebarOpen, setIsDesktopRightSidebarOpen] = useState(
     getLocalStorageItemBool(LocalStorageKey.RIGHT_SIDEBAR_STATE, true)
+  );
+  const [isDesktopLeftSidebarOpen, setIsDesktopLeftSidebarOpen] = useState(
+    getLocalStorageItemBool(LocalStorageKey.LEFT_SIDEBAR_STATE, true)
   );
   const dmsOpen = useDmsOpen();
   const selectedDmChannelId = useSelectedDmChannelId();
@@ -96,6 +100,26 @@ const ServerView = memo(() => {
     );
   }, [isDesktopRightSidebarOpen]);
 
+  const handleDesktopLeftSidebarToggle = useCallback(() => {
+    setIsDesktopLeftSidebarOpen((prev) => {
+      const next = !prev;
+      setLocalStorageItemBool(LocalStorageKey.LEFT_SIDEBAR_STATE, next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const desktopApi = getDesktopApi();
+    if (!desktopApi) {
+      return;
+    }
+
+    return desktopApi.onServerListVisibleChange((visible) => {
+      setIsDesktopLeftSidebarOpen(visible);
+      setLocalStorageItemBool(LocalStorageKey.LEFT_SIDEBAR_STATE, visible);
+    });
+  }, []);
+
   const handleSwipeRight = useCallback(() => {
     if (isMobileMenuOpen || isMobileUsersOpen) {
       setIsMobileMenuOpen(false);
@@ -146,6 +170,8 @@ const ServerView = memo(() => {
           {...swipeHandlers}
         >
           <TopBar
+            onToggleLeftSidebar={handleDesktopLeftSidebarToggle}
+            isLeftOpen={isDesktopLeftSidebarOpen}
             onToggleRightSidebar={handleDesktopRightSidebarToggle}
             isOpen={isDesktopRightSidebarOpen}
           />
@@ -173,6 +199,7 @@ const ServerView = memo(() => {
                   ? 'translate-x-0'
                   : '-translate-x-full md:translate-x-0'
               )}
+              isOpen={isMobileMenuOpen || isDesktopLeftSidebarOpen}
             />
 
             <ContentWrapper

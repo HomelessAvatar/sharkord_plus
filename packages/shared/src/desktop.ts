@@ -55,6 +55,7 @@ export type TDesktopBridge = {
   ) => () => void;
   toggleServerList: () => Promise<void>;
   openSettings: () => Promise<void>;
+  onOpenSettings?: (listener: () => void) => () => void;
   setUnreadState: (state: TDesktopUnreadState) => void;
   setConnectionState: (state: TDesktopConnectionState) => void;
   setVoiceActive: (active: boolean) => void;

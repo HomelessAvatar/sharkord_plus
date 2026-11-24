@@ -7,9 +7,16 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-#[derive(Default)]
 pub struct BridgeState {
     pub server_list_visible: AtomicBool,
+}
+
+impl Default for BridgeState {
+    fn default() -> Self {
+        Self {
+            server_list_visible: AtomicBool::new(true),
+        }
+    }
 }
 
 #[derive(Default)]

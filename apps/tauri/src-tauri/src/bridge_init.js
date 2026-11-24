@@ -20,7 +20,8 @@ const DESKTOP_BRIDGE_VERSION = 1;
   const hotkeyErrorListeners = new Set();
   const notificationClickListeners = new Set();
   const serverListVisibleListeners = new Set();
-  let serverListVisible = false;
+  const openSettingsListeners = new Set();
+  let serverListVisible = true;
 
   // Single event dispatcher for incoming desktop events
   function dispatchDesktopEvent(event, payload) {
@@ -62,6 +63,14 @@ const DESKTOP_BRIDGE_VERSION = 1;
           console.error('[SharkordDesktop] Server list visible listener error:', e);
         }
       });
+    } else if (event === 'open-settings') {
+      openSettingsListeners.forEach((listener) => {
+        try {
+          listener();
+        } catch (e) {
+          console.error('[SharkordDesktop] Open settings listener error:', e);
+        }
+      });
     }
   }
 
@@ -96,6 +105,10 @@ const DESKTOP_BRIDGE_VERSION = 1;
         if (e && e.payload !== undefined) {
           dispatchDesktopEvent('server-list-visible', e.payload);
         }
+      });
+
+      listen('desktop:open-settings', () => {
+        dispatchDesktopEvent('open-settings');
       });
     }
   };
@@ -144,6 +157,13 @@ const DESKTOP_BRIDGE_VERSION = 1;
         } catch (e) {
           console.error('[SharkordDesktop] Failed to open settings:', e);
         }
+      },
+
+      onOpenSettings: (listener) => {
+        openSettingsListeners.add(listener);
+        return () => {
+          openSettingsListeners.delete(listener);
+        };
       },
 
       setUnreadState: (state) => {
