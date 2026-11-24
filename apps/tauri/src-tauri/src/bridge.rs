@@ -1,6 +1,7 @@
 use crate::shortcuts::{self, HotkeyBinding, HotkeyError, ShortcutStateMap};
 use crate::tray;
 use serde::{Deserialize, Serialize};
+use sharkord_core::vault::{DesktopSettings, SessionVault};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::Mutex;
@@ -9,12 +10,16 @@ use tauri_plugin_notification::NotificationExt;
 
 pub struct BridgeState {
     pub server_list_visible: AtomicBool,
+    pub close_to_tray: AtomicBool,
+    pub start_to_tray: AtomicBool,
 }
 
 impl Default for BridgeState {
     fn default() -> Self {
         Self {
             server_list_visible: AtomicBool::new(true),
+            close_to_tray: AtomicBool::new(true),
+            start_to_tray: AtomicBool::new(false),
         }
     }
 }
@@ -187,3 +192,142 @@ pub fn get_hotkey_capabilities() -> Result<HotkeyCapabilities, String> {
         system_managed: false,
     })
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopDiagnostics {
+    pub version: String,
+    pub platform: String,
+    pub arch: String,
+    pub os_version: String,
+    pub webview_version: String,
+}
+
+pub fn get_diagnostics_info() -> DesktopDiagnostics {
+    DesktopDiagnostics {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        platform: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+        os_version: format!("{} ({})", std::env::consts::OS, std::env::consts::ARCH),
+        webview_version: "WebView2 / WebKit".to_string(),
+    }
+}
+
+pub fn resolve_app_folder() -> std::path::PathBuf {
+    let path = SessionVault::default_path();
+    path.parent().unwrap_or(&path).to_path_buf()
+}
+
+pub fn resolve_logs_folder() -> std::path::PathBuf {
+    resolve_app_folder().join("logs")
+}
+
+pub fn open_path_in_explorer<P: AsRef<std::path::Path>>(path: P) -> Result<(), String> {
+    let path_ref = path.as_ref();
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(path_ref)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_desktop_settings(
+    vault: tauri::State<'_, crate::vault::VaultState>,
+) -> Result<DesktopSettings, String> {
+    let v = vault.0.lock().map_err(|e| e.to_string())?;
+    Ok(v.desktop_settings.clone())
+}
+
+#[tauri::command]
+pub fn update_desktop_settings(
+    app: tauri::AppHandle,
+    vault: tauri::State<'_, crate::vault::VaultState>,
+    bridge: tauri::State<'_, BridgeState>,
+    settings: DesktopSettings,
+) -> Result<(), String> {
+    {
+        let mut v = vault.0.lock().map_err(|e| e.to_string())?;
+        v.update_desktop_settings(settings.clone())
+            .map_err(|e| e.to_string())?;
+    }
+    bridge
+        .close_to_tray
+        .store(settings.close_to_tray, Ordering::SeqCst);
+    bridge
+        .start_to_tray
+        .store(settings.start_to_tray, Ordering::SeqCst);
+
+    let _ = app.emit("desktop:settings-changed", settings);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_app_folder() -> Result<String, String> {
+    Ok(resolve_app_folder().to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn open_app_folder() -> Result<(), String> {
+    let folder = resolve_app_folder();
+    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    open_path_in_explorer(&folder)
+}
+
+#[tauri::command]
+pub fn get_logs_folder() -> Result<String, String> {
+    Ok(resolve_logs_folder().to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn open_logs_folder() -> Result<(), String> {
+    let folder = resolve_logs_folder();
+    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    open_path_in_explorer(&folder)
+}
+
+#[tauri::command]
+pub fn get_desktop_diagnostics() -> Result<DesktopDiagnostics, String> {
+    Ok(get_diagnostics_info())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_diagnostics_structure() {
+        let diag = get_diagnostics_info();
+        assert!(!diag.version.is_empty());
+        assert!(!diag.platform.is_empty());
+        assert!(!diag.arch.is_empty());
+        assert!(!diag.os_version.is_empty());
+        assert!(!diag.webview_version.is_empty());
+    }
+
+    #[test]
+    fn test_folder_paths() {
+        let app_folder = resolve_app_folder();
+        let logs_folder = resolve_logs_folder();
+        assert_eq!(logs_folder, app_folder.join("logs"));
+        assert!(!app_folder.to_string_lossy().is_empty());
+    }
+}
+

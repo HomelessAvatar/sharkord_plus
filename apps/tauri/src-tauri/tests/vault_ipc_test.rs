@@ -124,3 +124,32 @@ fn test_vault_startup_persistence_across_separate_instances() {
         assert_eq!(profiles[0].token, "session_token_xyz");
     }
 }
+
+#[test]
+fn test_desktop_settings_persistence_across_instances() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let vault_path = temp_dir.path().join("settings_vault.json");
+
+    // Default settings
+    {
+        let mut vault_1 = SessionVault::with_path(vault_path.clone());
+        let mut settings = vault_1.get_desktop_settings().clone();
+        assert!(settings.close_to_tray);
+        assert!(!settings.start_to_tray);
+
+        settings.close_to_tray = false;
+        settings.start_to_tray = true;
+        settings.auto_start = true;
+        vault_1.update_desktop_settings(settings).unwrap();
+    }
+
+    // Reload from disk
+    {
+        let vault_2 = SessionVault::load_from_path(&vault_path).unwrap();
+        let loaded = vault_2.get_desktop_settings();
+        assert!(!loaded.close_to_tray);
+        assert!(loaded.start_to_tray);
+        assert!(loaded.auto_start);
+        assert!(loaded.gpu_encoding);
+    }
+}

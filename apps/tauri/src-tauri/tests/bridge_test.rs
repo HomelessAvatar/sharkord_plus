@@ -1,5 +1,8 @@
 use serde_json::json;
-use sharkord_tauri_lib::bridge::{BridgeState, HotkeyCapabilities, NotificationState, UnreadState};
+use sharkord_core::vault::DesktopSettings;
+use sharkord_tauri_lib::bridge::{
+    get_diagnostics_info, BridgeState, HotkeyCapabilities, NotificationState, UnreadState,
+};
 use sharkord_tauri_lib::shortcuts::{self, HotkeyBinding, HotkeyError, ShortcutStateMap};
 use sharkord_tauri_lib::tray;
 use std::sync::atomic::Ordering;
@@ -31,6 +34,13 @@ fn test_bridge_methods_present_in_js() {
         "onHotkey",
         "onHotkeyErrors",
         "onNotificationClick",
+        "getSettings",
+        "updateSettings",
+        "getAppFolder",
+        "openAppFolder",
+        "getLogsFolder",
+        "openLogsFolder",
+        "getDiagnostics",
     ];
 
     for method in required_methods {
@@ -98,14 +108,36 @@ fn test_bridge_data_serialization() {
     let caps_json = serde_json::to_value(&caps).unwrap();
     assert_eq!(caps_json["keyUp"], true);
     assert_eq!(caps_json["systemManaged"], false);
+
+    let diag = get_diagnostics_info();
+    let diag_json = serde_json::to_value(&diag).unwrap();
+    assert!(diag_json.get("version").is_some());
+    assert!(diag_json.get("platform").is_some());
+    assert!(diag_json.get("arch").is_some());
+    assert!(diag_json.get("osVersion").is_some());
+    assert!(diag_json.get("webviewVersion").is_some());
+
+    let settings = DesktopSettings::default();
+    let settings_json = serde_json::to_value(&settings).unwrap();
+    assert_eq!(settings_json["autoStart"], false);
+    assert_eq!(settings_json["closeToTray"], true);
+    assert_eq!(settings_json["startToTray"], false);
+    assert_eq!(settings_json["dynamicTrayIcon"], true);
+    assert_eq!(settings_json["gpuEncoding"], true);
 }
 
 #[test]
 fn test_bridge_default_state() {
     let state = BridgeState::default();
     assert!(state.server_list_visible.load(Ordering::SeqCst));
+    assert!(state.close_to_tray.load(Ordering::SeqCst));
+    assert!(!state.start_to_tray.load(Ordering::SeqCst));
     state.server_list_visible.store(false, Ordering::SeqCst);
     assert!(!state.server_list_visible.load(Ordering::SeqCst));
+    state.close_to_tray.store(false, Ordering::SeqCst);
+    assert!(!state.close_to_tray.load(Ordering::SeqCst));
+    state.start_to_tray.store(true, Ordering::SeqCst);
+    assert!(state.start_to_tray.load(Ordering::SeqCst));
 
     let shortcut_state = ShortcutStateMap::default();
     let map = shortcut_state.registered.lock().unwrap();

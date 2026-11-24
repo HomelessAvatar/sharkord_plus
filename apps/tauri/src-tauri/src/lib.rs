@@ -7,6 +7,7 @@ pub mod vault;
 use bridge::{BridgeState, NotificationState};
 use sharkord_core::vault::SessionVault;
 use shortcuts::ShortcutStateMap;
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
@@ -14,8 +15,26 @@ use vault::VaultState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    {
+        let existing = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default();
+        let hw_args = "--enable-features=WebRtcAllowHwAv1Encoding,ZeroCopyVideoStream,RawDraw --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy";
+        let combined = if existing.is_empty() {
+            hw_args.to_string()
+        } else {
+            format!("{} {}", existing, hw_args)
+        };
+        std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", combined);
+    }
+
     let vault = SessionVault::load_from_path(SessionVault::default_path())
         .unwrap_or_else(|_| SessionVault::default());
+
+    let bridge_state = BridgeState {
+        server_list_visible: AtomicBool::new(true),
+        close_to_tray: AtomicBool::new(vault.desktop_settings.close_to_tray),
+        start_to_tray: AtomicBool::new(vault.desktop_settings.start_to_tray),
+    };
 
     #[cfg(desktop)]
     let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
@@ -33,10 +52,22 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .manage(VaultState(Mutex::new(vault)))
         .manage(ShortcutStateMap::default())
-        .manage(BridgeState::default())
+        .manage(bridge_state)
         .manage(NotificationState::default())
         .plugin(tauri_plugin_notification::init())
-        .plugin(bridge_plugin);
+        .plugin(bridge_plugin)
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                #[cfg(desktop)]
+                {
+                    let bridge_state = window.state::<BridgeState>();
+                    if bridge_state.close_to_tray.load(std::sync::atomic::Ordering::SeqCst) {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                }
+            }
+        });
 
     #[cfg(desktop)]
     {
@@ -60,6 +91,13 @@ pub fn run() {
             bridge::show_notification,
             bridge::set_hotkeys,
             bridge::get_hotkey_capabilities,
+            bridge::get_desktop_settings,
+            bridge::update_desktop_settings,
+            bridge::get_app_folder,
+            bridge::open_app_folder,
+            bridge::get_logs_folder,
+            bridge::open_logs_folder,
+            bridge::get_desktop_diagnostics,
             mobile_voice::set_mobile_voice_active,
         ])
         .setup(|app| {
@@ -78,6 +116,15 @@ pub fn run() {
                 });
 
                 tray::setup_tray(app.handle())?;
+
+                let args: Vec<String> = std::env::args().collect();
+                let is_autostart = args.iter().any(|arg| arg == "--hidden" || arg == "--autostart");
+                let bridge_state = app.state::<BridgeState>();
+                if is_autostart && bridge_state.start_to_tray.load(std::sync::atomic::Ordering::SeqCst) {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.hide();
+                    }
+                }
             }
             Ok(())
         })

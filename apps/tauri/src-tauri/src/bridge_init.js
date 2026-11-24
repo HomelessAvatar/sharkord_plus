@@ -21,6 +21,7 @@ const DESKTOP_BRIDGE_VERSION = 1;
   const notificationClickListeners = new Set();
   const serverListVisibleListeners = new Set();
   const openSettingsListeners = new Set();
+  const settingsChangedListeners = new Set();
   let serverListVisible = true;
 
   // Single event dispatcher for incoming desktop events
@@ -71,6 +72,14 @@ const DESKTOP_BRIDGE_VERSION = 1;
           console.error('[SharkordDesktop] Open settings listener error:', e);
         }
       });
+    } else if (event === 'settings-changed') {
+      settingsChangedListeners.forEach((listener) => {
+        try {
+          listener(payload);
+        } catch (e) {
+          console.error('[SharkordDesktop] Settings changed listener error:', e);
+        }
+      });
     }
   }
 
@@ -109,6 +118,12 @@ const DESKTOP_BRIDGE_VERSION = 1;
 
       listen('desktop:open-settings', () => {
         dispatchDesktopEvent('open-settings');
+      });
+
+      listen('desktop:settings-changed', (e) => {
+        if (e && e.payload) {
+          dispatchDesktopEvent('settings-changed', e.payload);
+        }
       });
     }
   };
@@ -261,6 +276,73 @@ const DESKTOP_BRIDGE_VERSION = 1;
         return () => {
           notificationClickListeners.delete(listener);
         };
+      },
+
+      getSettings: async () => {
+        try {
+          return await invoke('get_desktop_settings');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to get desktop settings:', e);
+          return null;
+        }
+      },
+
+      updateSettings: async (settings) => {
+        try {
+          await invoke('update_desktop_settings', { settings });
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to update desktop settings:', e);
+        }
+      },
+
+      onSettingsChanged: (listener) => {
+        settingsChangedListeners.add(listener);
+        return () => {
+          settingsChangedListeners.delete(listener);
+        };
+      },
+
+      getAppFolder: async () => {
+        try {
+          return await invoke('get_app_folder');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to get app folder:', e);
+          return '';
+        }
+      },
+
+      openAppFolder: async () => {
+        try {
+          await invoke('open_app_folder');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to open app folder:', e);
+        }
+      },
+
+      getLogsFolder: async () => {
+        try {
+          return await invoke('get_logs_folder');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to get logs folder:', e);
+          return '';
+        }
+      },
+
+      openLogsFolder: async () => {
+        try {
+          await invoke('open_logs_folder');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to open logs folder:', e);
+        }
+      },
+
+      getDiagnostics: async () => {
+        try {
+          return await invoke('get_desktop_diagnostics');
+        } catch (e) {
+          console.error('[SharkordDesktop] Failed to get diagnostics:', e);
+          return null;
+        }
       }
     };
   }
