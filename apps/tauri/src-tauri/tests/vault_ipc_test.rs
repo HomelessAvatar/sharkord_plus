@@ -153,3 +153,65 @@ fn test_desktop_settings_persistence_across_instances() {
         assert!(loaded.gpu_encoding);
     }
 }
+
+#[test]
+fn test_partial_desktop_settings_update_does_not_clobber() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let vault_path = temp_dir.path().join("partial_settings_vault.json");
+    let mut vault = SessionVault::with_path(vault_path.clone());
+
+    // Configure non-default custom settings
+    let mut custom_settings = vault.get_desktop_settings().clone();
+    custom_settings.close_to_tray = false;
+    custom_settings.gpu_encoding = false;
+    custom_settings.start_to_tray = true;
+    custom_settings.dynamic_tray_icon = false;
+    custom_settings.auto_start = false;
+    vault.update_desktop_settings(custom_settings).unwrap();
+
+    // Verify initial custom settings are written
+    let loaded = vault.get_desktop_settings();
+    assert!(!loaded.close_to_tray);
+    assert!(!loaded.gpu_encoding);
+    assert!(loaded.start_to_tray);
+    assert!(!loaded.dynamic_tray_icon);
+    assert!(!loaded.auto_start);
+
+    // Simulate sending partial update payload from frontend: only autoStart: true
+    let payload_json = serde_json::json!({
+        "autoStart": true
+    });
+    let input: sharkord_tauri_lib::bridge::UpdateDesktopSettingsInput =
+        serde_json::from_value(payload_json).expect("failed to deserialize partial settings payload");
+
+    assert_eq!(input.auto_start, Some(true));
+    assert_eq!(input.close_to_tray, None);
+    assert_eq!(input.start_to_tray, None);
+    assert_eq!(input.dynamic_tray_icon, None);
+    assert_eq!(input.gpu_encoding, None);
+
+    // Apply partial update to vault
+    input.apply_to(&mut vault.desktop_settings);
+    vault.save().unwrap();
+
+    // Reload from disk and verify: auto_start updated, other settings PRESERVED
+    let reloaded = SessionVault::load_from_path(&vault_path).unwrap();
+    let reloaded_settings = reloaded.get_desktop_settings();
+    assert!(reloaded_settings.auto_start, "autoStart must be updated to true");
+    assert!(
+        !reloaded_settings.close_to_tray,
+        "closeToTray must remain false and not be clobbered by default"
+    );
+    assert!(
+        !reloaded_settings.gpu_encoding,
+        "gpuEncoding must remain false and not be clobbered by default"
+    );
+    assert!(
+        reloaded_settings.start_to_tray,
+        "startToTray must remain true and not be clobbered by default"
+    );
+    assert!(
+        !reloaded_settings.dynamic_tray_icon,
+        "dynamicTrayIcon must remain false and not be clobbered by default"
+    );
+}

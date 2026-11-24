@@ -132,12 +132,15 @@ fn test_bridge_default_state() {
     assert!(state.server_list_visible.load(Ordering::SeqCst));
     assert!(state.close_to_tray.load(Ordering::SeqCst));
     assert!(!state.start_to_tray.load(Ordering::SeqCst));
+    assert!(state.dynamic_tray_icon.load(Ordering::SeqCst));
     state.server_list_visible.store(false, Ordering::SeqCst);
     assert!(!state.server_list_visible.load(Ordering::SeqCst));
     state.close_to_tray.store(false, Ordering::SeqCst);
     assert!(!state.close_to_tray.load(Ordering::SeqCst));
     state.start_to_tray.store(true, Ordering::SeqCst);
     assert!(state.start_to_tray.load(Ordering::SeqCst));
+    state.dynamic_tray_icon.store(false, Ordering::SeqCst);
+    assert!(!state.dynamic_tray_icon.load(Ordering::SeqCst));
 
     let shortcut_state = ShortcutStateMap::default();
     let map = shortcut_state.registered.lock().unwrap();

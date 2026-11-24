@@ -12,6 +12,7 @@ pub struct BridgeState {
     pub server_list_visible: AtomicBool,
     pub close_to_tray: AtomicBool,
     pub start_to_tray: AtomicBool,
+    pub dynamic_tray_icon: AtomicBool,
 }
 
 impl Default for BridgeState {
@@ -20,6 +21,7 @@ impl Default for BridgeState {
             server_list_visible: AtomicBool::new(true),
             close_to_tray: AtomicBool::new(true),
             start_to_tray: AtomicBool::new(false),
+            dynamic_tray_icon: AtomicBool::new(true),
         }
     }
 }
@@ -92,18 +94,35 @@ pub fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn set_unread_state(app: tauri::AppHandle, count: u32, mentioned: bool) -> Result<(), String> {
+pub fn set_unread_state(
+    app: tauri::AppHandle,
+    bridge: tauri::State<'_, BridgeState>,
+    count: u32,
+    mentioned: bool,
+) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         #[cfg(desktop)]
         {
-            if count > 0 || mentioned {
-                let attention = if mentioned {
-                    tauri::UserAttentionType::Critical
+            if bridge.dynamic_tray_icon.load(Ordering::SeqCst) {
+                if count > 0 || mentioned {
+                    let attention = if mentioned {
+                        tauri::UserAttentionType::Critical
+                    } else {
+                        tauri::UserAttentionType::Informational
+                    };
+                    let _ = window.request_user_attention(Some(attention));
+                    let _ = window.set_badge_count(Some(count as i64));
+                    let tooltip = if count > 0 {
+                        format!("VibeShark - {} unread", count)
+                    } else {
+                        "VibeShark - Mentioned".to_string()
+                    };
+                    tray::update_tray_tooltip(&app, &tooltip);
                 } else {
-                    tauri::UserAttentionType::Informational
-                };
-                let _ = window.request_user_attention(Some(attention));
-                let _ = window.set_badge_count(Some(count as i64));
+                    let _ = window.request_user_attention(None);
+                    let _ = window.set_badge_count(None);
+                    tray::update_tray_tooltip(&app, "VibeShark");
+                }
             } else {
                 let _ = window.request_user_attention(None);
                 let _ = window.set_badge_count(None);
@@ -111,7 +130,7 @@ pub fn set_unread_state(app: tauri::AppHandle, count: u32, mentioned: bool) -> R
         }
         #[cfg(not(desktop))]
         {
-            let _ = (window, count, mentioned);
+            let _ = (window, count, mentioned, bridge);
         }
     }
     Ok(())
@@ -256,26 +275,72 @@ pub fn get_desktop_settings(
     Ok(v.desktop_settings.clone())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateDesktopSettingsInput {
+    pub auto_start: Option<bool>,
+    pub close_to_tray: Option<bool>,
+    pub start_to_tray: Option<bool>,
+    pub dynamic_tray_icon: Option<bool>,
+    pub gpu_encoding: Option<bool>,
+}
+
+impl UpdateDesktopSettingsInput {
+    pub fn apply_to(&self, target: &mut DesktopSettings) {
+        if let Some(val) = self.auto_start {
+            target.auto_start = val;
+        }
+        if let Some(val) = self.close_to_tray {
+            target.close_to_tray = val;
+        }
+        if let Some(val) = self.start_to_tray {
+            target.start_to_tray = val;
+        }
+        if let Some(val) = self.dynamic_tray_icon {
+            target.dynamic_tray_icon = val;
+        }
+        if let Some(val) = self.gpu_encoding {
+            target.gpu_encoding = val;
+        }
+    }
+}
+
 #[tauri::command]
 pub fn update_desktop_settings(
     app: tauri::AppHandle,
     vault: tauri::State<'_, crate::vault::VaultState>,
     bridge: tauri::State<'_, BridgeState>,
-    settings: DesktopSettings,
+    settings: UpdateDesktopSettingsInput,
 ) -> Result<(), String> {
-    {
+    let updated = {
         let mut v = vault.0.lock().map_err(|e| e.to_string())?;
-        v.update_desktop_settings(settings.clone())
-            .map_err(|e| e.to_string())?;
-    }
+        settings.apply_to(&mut v.desktop_settings);
+        v.save().map_err(|e| e.to_string())?;
+        v.desktop_settings.clone()
+    };
+
     bridge
         .close_to_tray
-        .store(settings.close_to_tray, Ordering::SeqCst);
+        .store(updated.close_to_tray, Ordering::SeqCst);
     bridge
         .start_to_tray
-        .store(settings.start_to_tray, Ordering::SeqCst);
+        .store(updated.start_to_tray, Ordering::SeqCst);
+    bridge
+        .dynamic_tray_icon
+        .store(updated.dynamic_tray_icon, Ordering::SeqCst);
 
-    let _ = app.emit("desktop:settings-changed", settings);
+    #[cfg(desktop)]
+    if let Some(enable_autostart) = settings.auto_start {
+        use tauri_plugin_autostart::ManagerExt;
+        let autostart_manager = app.autolaunch();
+        if enable_autostart {
+            let _ = autostart_manager.enable();
+        } else {
+            let _ = autostart_manager.disable();
+        }
+    }
+
+    let _ = app.emit("desktop:settings-changed", updated);
     Ok(())
 }
 
