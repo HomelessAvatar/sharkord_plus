@@ -9,7 +9,10 @@ use sharkord_core::vault::SessionVault;
 use shortcuts::ShortcutStateMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
+#[allow(unused_imports)]
+use tauri::Manager;
+#[cfg(desktop)]
 use tauri_plugin_notification::NotificationExt;
 use vault::VaultState;
 
@@ -56,10 +59,6 @@ pub fn run() {
         .manage(bridge_state)
         .manage(NotificationState::default())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--autostart"]),
-        ))
         .plugin(bridge_plugin)
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -76,7 +75,12 @@ pub fn run() {
 
     #[cfg(desktop)]
     {
-        builder = builder.plugin(shortcut_plugin);
+        builder = builder
+            .plugin(shortcut_plugin)
+            .plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                Some(vec!["--autostart"]),
+            ));
     }
 
     builder
