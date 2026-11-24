@@ -111,6 +111,38 @@ impl IntoActiveServerId for &String {
     }
 }
 
+fn default_true() -> bool {
+    true
+}
+
+/// Desktop-specific persistent client settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DesktopSettings {
+    #[serde(default)]
+    pub auto_start: bool,
+    #[serde(default = "default_true")]
+    pub close_to_tray: bool,
+    #[serde(default)]
+    pub start_to_tray: bool,
+    #[serde(default = "default_true")]
+    pub dynamic_tray_icon: bool,
+    #[serde(default = "default_true")]
+    pub gpu_encoding: bool,
+}
+
+impl Default for DesktopSettings {
+    fn default() -> Self {
+        Self {
+            auto_start: false,
+            close_to_tray: true,
+            start_to_tray: false,
+            dynamic_tray_icon: true,
+            gpu_encoding: true,
+        }
+    }
+}
+
 /// Multi-server session storage manager with atomic disk persistence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -122,6 +154,8 @@ pub struct SessionVault {
     pub servers: Vec<SavedServerSession>,
     #[serde(default)]
     pub profiles: Vec<ServerProfile>,
+    #[serde(default)]
+    pub desktop_settings: DesktopSettings,
 }
 
 impl Default for SessionVault {
@@ -138,6 +172,7 @@ impl SessionVault {
             active_server_id: None,
             servers: Vec::new(),
             profiles: Vec::new(),
+            desktop_settings: DesktopSettings::default(),
         }
     }
 
@@ -211,6 +246,7 @@ impl SessionVault {
         self.active_server_id = loaded.active_server_id;
         self.servers = loaded.servers;
         self.profiles = loaded.profiles;
+        self.desktop_settings = loaded.desktop_settings;
         Ok(())
     }
 
@@ -425,6 +461,20 @@ impl SessionVault {
     /// Finds a mutable saved server session by its `server_id`.
     pub fn get_server_mut(&mut self, server_id: &str) -> Option<&mut SavedServerSession> {
         self.servers.iter_mut().find(|s| s.server_id == server_id)
+    }
+
+    /// Returns a reference to the desktop settings.
+    pub fn get_desktop_settings(&self) -> &DesktopSettings {
+        &self.desktop_settings
+    }
+
+    /// Updates the desktop settings and persists the vault.
+    pub fn update_desktop_settings(
+        &mut self,
+        settings: DesktopSettings,
+    ) -> Result<(), SharkordError> {
+        self.desktop_settings = settings;
+        self.save()
     }
 
     /// Clears all server sessions and resets the active server pointer.

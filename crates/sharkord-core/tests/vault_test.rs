@@ -253,3 +253,50 @@ fn test_session_vault_default_path_is_not_empty() {
     assert!(!path.as_os_str().is_empty());
     assert!(path.to_string_lossy().ends_with("vault.json"));
 }
+
+#[test]
+fn test_desktop_settings_default_and_backward_compatibility() {
+    let temp_dir = std::env::temp_dir().join(format!(
+        "sharkord_test_vault_desktop_settings_{}",
+        std::process::id()
+    ));
+    let file_path = temp_dir.join("vault.json");
+    let _ = std::fs::remove_dir_all(&temp_dir);
+    std::fs::create_dir_all(&temp_dir).unwrap();
+
+    // Old vault JSON without desktopSettings
+    let old_json = r#"{"servers":[],"profiles":[]}"#;
+    std::fs::write(&file_path, old_json).unwrap();
+
+    let mut vault = SessionVault::load_from_path(&file_path).unwrap();
+    assert_eq!(vault.desktop_settings.close_to_tray, true);
+    assert_eq!(vault.desktop_settings.gpu_encoding, true);
+    assert_eq!(vault.desktop_settings.dynamic_tray_icon, true);
+    assert_eq!(vault.desktop_settings.auto_start, false);
+    assert_eq!(vault.desktop_settings.start_to_tray, false);
+    assert_eq!(vault.get_desktop_settings().close_to_tray, true);
+
+    // Update desktop settings
+    vault.desktop_settings.auto_start = true;
+    vault.desktop_settings.close_to_tray = false;
+    vault.save().unwrap();
+
+    let reloaded = SessionVault::load_from_path(&file_path).unwrap();
+    assert_eq!(reloaded.desktop_settings.auto_start, true);
+    assert_eq!(reloaded.desktop_settings.close_to_tray, false);
+    assert_eq!(reloaded.get_desktop_settings().auto_start, true);
+
+    // Update via update_desktop_settings helper
+    let mut updated = reloaded.get_desktop_settings().clone();
+    updated.dynamic_tray_icon = false;
+    updated.gpu_encoding = false;
+    let mut vault_to_update = reloaded;
+    vault_to_update.update_desktop_settings(updated).unwrap();
+
+    let reloaded_after_helper = SessionVault::load_from_path(&file_path).unwrap();
+    assert_eq!(reloaded_after_helper.desktop_settings.dynamic_tray_icon, false);
+    assert_eq!(reloaded_after_helper.desktop_settings.gpu_encoding, false);
+
+    let _ = std::fs::remove_dir_all(&temp_dir);
+}
+
