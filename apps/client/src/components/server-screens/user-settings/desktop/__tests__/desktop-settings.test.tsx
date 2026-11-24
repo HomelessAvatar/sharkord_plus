@@ -25,7 +25,7 @@ describe('DesktopSettings Component', () => {
       ),
       openLogsFolder: mock(async () => {}),
       getDiagnostics: mock(async () => ({
-        version: '0.3.20',
+        version: '0.3.21',
         platform: 'windows',
         arch: 'x86_64',
         osVersion: '10.0.19045',
@@ -79,7 +79,7 @@ describe('DesktopSettings Component', () => {
       getLogsFolder: mock(async () => 'C:/mock/logs'),
       openLogsFolder: mock(async () => {}),
       getDiagnostics: mock(async () => ({
-        version: '0.3.20',
+        version: '0.3.21',
         platform: 'windows',
         arch: 'x86_64',
         osVersion: '10.0',
