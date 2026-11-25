@@ -222,7 +222,9 @@ const getScreenShareSingleEncoding = (
   priority: fps >= 60 ? 'high' : 'medium',
   networkPriority: fps >= 60 ? 'high' : 'medium',
   maxBitrate: maxBitrateBps,
-  maxFramerate: fps
+  // Give a 15% jitter margin at >= 60fps so minor DWM/VSync timing variance
+  // does not trigger WebRTC's frame dropper down to ~50fps.
+  maxFramerate: fps >= 60 ? Math.round(fps * 1.15) : fps
 });
 
 const getScreenShareStartBitrate = (

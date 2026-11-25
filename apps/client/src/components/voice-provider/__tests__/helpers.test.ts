@@ -391,7 +391,7 @@ describe('getScreenShareSingleEncoding and getScreenShareStartBitrate', () => {
     expect(encoding.priority).toBe('high');
     expect(encoding.networkPriority).toBe('high');
     expect(encoding.maxBitrate).toBe(8_000_000);
-    expect(encoding.maxFramerate).toBe(60);
+    expect(encoding.maxFramerate).toBe(69);
   });
 
   test('should boost start bitrate for 60 fps without exceeding maxBitrateKbps', () => {
