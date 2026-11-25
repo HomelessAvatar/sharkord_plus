@@ -1,6 +1,6 @@
 product_name = "VibeShark"
 identifier = "com.homelessavatar.sharkord"
-version = "0.3.21"
+version = "0.3.22"
 authors = ["HomelessAvatar"]
 description = "High-performance Discord-alternative chat, voice, and video client in Rust & GPUI."
 long_description = "A fast, lightweight, and modern desktop client for Sharkord built with Rust and GPUI."
