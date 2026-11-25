@@ -1,6 +1,6 @@
 [package]
 name = "sharkord-tauri"
-version = "0.3.22"
+version = "0.3.23"
 description = "VibeShark Universal Desktop and Mobile Client"
 authors = ["Sharkord Team"]
 edition = "2021"
