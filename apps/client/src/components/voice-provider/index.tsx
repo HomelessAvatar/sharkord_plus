@@ -70,6 +70,9 @@ import {
   getPreferredScreenCodec,
   getRemoteConsumerTypeKey,
   getScreenShareSimulcastEncodings,
+  getScreenShareSingleEncoding,
+  getScreenShareStartBitrate,
+  getScreenShareVideoConstraints,
   getSimulcastCodec,
   getSimulcastEncodings,
   getSimulcastQualityLayers,
@@ -1129,13 +1132,12 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
         const fps = screenSettings.screenFramerate || 30;
 
         const displayMediaConstraints: MediaStreamConstraints = {
-          video: {
-            width: { ideal: width, max: width },
-            height: { ideal: height, max: height },
-            frameRate: { ideal: fps, max: fps },
-            // @ts-expect-error - display capture only, not in MediaTrackConstraints
-            cursor: screenSettings.screenCursor
-          },
+          video: getScreenShareVideoConstraints(
+            width,
+            height,
+            fps,
+            screenSettings.screenCursor
+          ),
           audio: wantsSystemAudio && {
             echoCancellation: false,
             noiseSuppression: false,
@@ -1231,15 +1233,13 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
               track: videoTrack,
               codec: screenCodec,
               encodings: [
-                {
-                  priority: 'low',
-                  networkPriority: 'low',
-                  maxBitrate: maxBitrateKbps * 1000,
-                  maxFramerate: fps
-                }
+                getScreenShareSingleEncoding(maxBitrateKbps * 1000, fps)
               ],
               codecOptions: {
-                videoGoogleStartBitrate: Math.min(1000, maxBitrateKbps),
+                videoGoogleStartBitrate: getScreenShareStartBitrate(
+                  maxBitrateKbps,
+                  fps
+                ),
                 videoGoogleMaxBitrate: maxBitrateKbps,
                 videoGoogleMinBitrate: Math.min(100, maxBitrateKbps)
               },

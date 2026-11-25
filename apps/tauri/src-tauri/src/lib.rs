@@ -24,7 +24,7 @@ pub fn run() {
     #[cfg(target_os = "windows")]
     if vault.desktop_settings.gpu_encoding {
         let existing = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default();
-        let hw_args = "--enable-features=WebRtcAllowHwAv1Encoding,ZeroCopyVideoStream,RawDraw --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy";
+        let hw_args = "--enable-features=MediaFoundationAV1Encoding,MediaFoundationAsyncH264Encoding --ignore-gpu-blocklist --enable-gpu-rasterization";
         let combined = if existing.is_empty() {
             hw_args.to_string()
         } else {

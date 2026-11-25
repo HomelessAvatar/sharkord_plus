@@ -1,4 +1,4 @@
-import { VideoCodec } from '@/types';
+import { ScreenCursor, VideoCodec } from '@/types';
 import type { TExternalStreamsMap } from '@sharkord/shared';
 import { StreamKind } from '@sharkord/shared';
 import { describe, expect, test } from 'bun:test';
@@ -11,6 +11,9 @@ import {
   getPreferredScreenCodec,
   getPreferredVideoCodec,
   getScreenShareSimulcastEncodings,
+  getScreenShareSingleEncoding,
+  getScreenShareStartBitrate,
+  getScreenShareVideoConstraints,
   getSimulcastCodec,
   getUserScreenVolumeKey,
   isOwnProducerEvent,
@@ -352,5 +355,48 @@ describe('getScreenShareSimulcastEncodings', () => {
     expect(encodings[0].maxFramerate).toBe(30);
     expect(encodings[1].maxFramerate).toBe(60);
     expect(encodings[2].maxFramerate).toBe(120);
+  });
+});
+
+describe('getScreenShareVideoConstraints', () => {
+  test('should omit strict max frameRate at 60 fps and above to prevent VideoTrackAdapter drops', () => {
+    const constraints60 = getScreenShareVideoConstraints(
+      2560,
+      1440,
+      60,
+      ScreenCursor.ALWAYS
+    );
+
+    expect(constraints60.width).toEqual({ ideal: 2560, max: 2560 });
+    expect(constraints60.height).toEqual({ ideal: 1440, max: 1440 });
+    expect(constraints60.frameRate).toEqual({ ideal: 60 });
+  });
+
+  test('should preserve ideal and max frameRate below 60 fps', () => {
+    const constraints30 = getScreenShareVideoConstraints(
+      1920,
+      1080,
+      30,
+      ScreenCursor.MOTION
+    );
+
+    expect(constraints30.frameRate).toEqual({ ideal: 30, max: 30 });
+  });
+});
+
+describe('getScreenShareSingleEncoding and getScreenShareStartBitrate', () => {
+  test('should prioritize high network and encoding priority for 60 fps screen share', () => {
+    const encoding = getScreenShareSingleEncoding(8_000_000, 60);
+
+    expect(encoding.priority).toBe('high');
+    expect(encoding.networkPriority).toBe('high');
+    expect(encoding.maxBitrate).toBe(8_000_000);
+    expect(encoding.maxFramerate).toBe(60);
+  });
+
+  test('should boost start bitrate for 60 fps without exceeding maxBitrateKbps', () => {
+    expect(getScreenShareStartBitrate(8000, 60)).toBe(4000);
+    expect(getScreenShareStartBitrate(2000, 60)).toBe(2000);
+    expect(getScreenShareStartBitrate(4000, 30)).toBe(1000);
   });
 });

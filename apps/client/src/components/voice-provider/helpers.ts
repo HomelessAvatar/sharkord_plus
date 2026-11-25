@@ -3,7 +3,7 @@ import {
   LocalStorageKey,
   setLocalStorageItemAsJSON
 } from '@/helpers/storage';
-import { VideoCodec, type TStreamQuality } from '@/types';
+import { ScreenCursor, VideoCodec, type TStreamQuality } from '@/types';
 import {
   PAUSABLE_STREAM_KINDS,
   StreamKind,
@@ -199,6 +199,39 @@ const getSimulcastEncodings = (
     }
   ];
 };
+
+const getScreenShareVideoConstraints = (
+  width: number,
+  height: number,
+  fps: number,
+  cursor: ScreenCursor | undefined
+): MediaTrackConstraints => ({
+  width: { ideal: width, max: width },
+  height: { ideal: height, max: height },
+  // Avoid strict `max` framerate at >= 60fps: Chromium's VideoTrackAdapter
+  // drops frames unevenly on 100/144/165Hz displays (~48-50fps instead of 60fps).
+  frameRate: fps >= 60 ? { ideal: fps } : { ideal: fps, max: fps },
+  // @ts-expect-error - display capture only, not in MediaTrackConstraints
+  cursor
+});
+
+const getScreenShareSingleEncoding = (
+  maxBitrateBps: number,
+  fps: number
+): RTCRtpEncodingParameters => ({
+  priority: fps >= 60 ? 'high' : 'medium',
+  networkPriority: fps >= 60 ? 'high' : 'medium',
+  maxBitrate: maxBitrateBps,
+  maxFramerate: fps
+});
+
+const getScreenShareStartBitrate = (
+  maxBitrateKbps: number,
+  fps: number
+): number =>
+  fps >= 60
+    ? Math.min(Math.max(2500, Math.round(maxBitrateKbps * 0.5)), maxBitrateKbps)
+    : Math.min(1000, maxBitrateKbps);
 
 const getScreenShareSimulcastEncodings = (
   maxBitrate: number,
@@ -429,6 +462,9 @@ export {
   getPreferredVideoCodec,
   getRemoteConsumerTypeKey,
   getScreenShareSimulcastEncodings,
+  getScreenShareSingleEncoding,
+  getScreenShareStartBitrate,
+  getScreenShareVideoConstraints,
   getSimulcastCodec,
   getSimulcastEncodings,
   getSimulcastQualityLayers,
